@@ -226,6 +226,7 @@ export function BlockInput({
     return (
       <div
         className="block-wrapper block-divider-wrapper"
+        data-block-id={block.id}
         onClick={() => onFocus(block.id)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowUp') {
@@ -289,6 +290,7 @@ export function BlockInput({
       <div
         ref={wrapperRef}
         className={`block-wrapper block-${block.type}-wrapper${selectedClass}`}
+        data-block-id={block.id}
         onKeyDown={handleWrapperKeyDown}
         onClick={handleWrapperClick}
         tabIndex={0}
@@ -312,6 +314,7 @@ export function BlockInput({
     <div
       ref={wrapperRef}
       className={`block-wrapper${selectedClass}`}
+      data-block-id={block.id}
       onKeyDown={handleWrapperKeyDown}
       onClick={handleWrapperClick}
       tabIndex={0}

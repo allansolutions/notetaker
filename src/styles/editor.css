@@ -13,10 +13,71 @@ body {
 }
 
 .app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1;
   max-width: 900px;
   margin: 0 auto;
   padding: 80px 96px;
-  min-height: 100vh;
+}
+
+.app-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  border-left: 1px solid #e0e0e0;
+  background-color: #fbfbfa;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* Outline styles */
+.outline {
+  padding: 16px;
+}
+
+.outline-header {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: #9b9a97;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.outline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.outline-empty {
+  font-size: 0.875em;
+  color: #9b9a97;
+  font-style: italic;
+}
+
+.outline-item {
+  font-size: 0.875em;
+  color: #37352f;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outline-item:hover {
+  background-color: rgba(55, 53, 47, 0.08);
+}
+
+.outline-h1 {
+  font-weight: 500;
 }
 
 .editor {

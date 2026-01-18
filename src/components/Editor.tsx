@@ -2,11 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Block, BlockType } from '../types';
 import { BlockInput } from './BlockInput';
 import { generateId } from '../utils/markdown';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 
-const STORAGE_KEY = 'notetaker-blocks';
-
-function createBlock(type: BlockType = 'paragraph', content: string = ''): Block {
+export function createBlock(type: BlockType = 'paragraph', content: string = ''): Block {
   return {
     id: generateId(),
     type,
@@ -14,10 +11,14 @@ function createBlock(type: BlockType = 'paragraph', content: string = ''): Block
   };
 }
 
-export function Editor() {
-  const [blocks, setBlocks] = useLocalStorage<Block[]>(STORAGE_KEY, [
-    createBlock(),
-  ]);
+interface EditorProps {
+  blocks: Block[];
+  setBlocks: React.Dispatch<React.SetStateAction<Block[]>>;
+  navigateToId?: string | null;
+  onNavigateComplete?: () => void;
+}
+
+export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete }: EditorProps) {
   const [focusedId, setFocusedId] = useState<string | null>(blocks[0]?.id || null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const pendingFocusRef = useRef<string | null>(null);
@@ -29,6 +30,20 @@ export function Editor() {
       pendingFocusRef.current = null;
     }
   }, [blocks]);
+
+  // Handle navigation from outline
+  useEffect(() => {
+    if (navigateToId) {
+      setFocusedId(navigateToId);
+      setSelectedId(null);
+      // Scroll the block into view
+      const element = document.querySelector(`[data-block-id="${navigateToId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      onNavigateComplete?.();
+    }
+  }, [navigateToId, onNavigateComplete]);
 
   const updateBlock = useCallback((id: string, content: string, type: BlockType) => {
     setBlocks(prev =>
