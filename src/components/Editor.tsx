@@ -16,10 +16,11 @@ interface EditorProps {
   setBlocks: React.Dispatch<React.SetStateAction<Block[]>>;
   navigateToId?: string | null;
   onNavigateComplete?: () => void;
-  hiddenBlockIds?: Set<string>;
+  collapsedBlockIds?: Set<string>;
+  onToggleCollapse?: (id: string) => void;
 }
 
-export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, hiddenBlockIds }: EditorProps) {
+export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, collapsedBlockIds, onToggleCollapse }: EditorProps) {
   const [focusedId, setFocusedId] = useState<string | null>(blocks[0]?.id || null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const pendingFocusRef = useRef<string | null>(null);
@@ -163,20 +164,19 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, hi
     return count;
   };
 
-  // Filter out hidden H1 sections (H1 + all content until next H1)
+  // Filter out collapsed H1 sections (keep the H1, hide content until next H1)
   const visibleBlocks = (() => {
-    if (!hiddenBlockIds || hiddenBlockIds.size === 0) return blocks;
+    if (!collapsedBlockIds || collapsedBlockIds.size === 0) return blocks;
 
     const result: Block[] = [];
-    let isInHiddenSection = false;
+    let isInCollapsedSection = false;
 
     for (const block of blocks) {
       if (block.type === 'h1') {
-        // Start or end of a section
-        isInHiddenSection = hiddenBlockIds.has(block.id);
-      }
-
-      if (!isInHiddenSection) {
+        // Always show the H1 itself, but check if its content is collapsed
+        result.push(block);
+        isInCollapsedSection = collapsedBlockIds.has(block.id);
+      } else if (!isInCollapsedSection) {
         result.push(block);
       }
     }
@@ -205,6 +205,8 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, hi
             onMoveUp={moveBlockUp}
             onMoveDown={moveBlockDown}
             numberedIndex={getNumberedIndex(originalIndex)}
+            isCollapsed={block.type === 'h1' && collapsedBlockIds?.has(block.id)}
+            onToggleCollapse={onToggleCollapse}
           />
         );
       })}

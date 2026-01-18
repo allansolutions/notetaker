@@ -17,6 +17,8 @@ interface BlockInputProps {
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
   numberedIndex: number;
+  isCollapsed?: boolean;
+  onToggleCollapse?: (id: string) => void;
 }
 
 export function BlockInput({
@@ -34,6 +36,8 @@ export function BlockInput({
   onMoveUp,
   onMoveDown,
   numberedIndex,
+  isCollapsed,
+  onToggleCollapse,
 }: BlockInputProps) {
   const inputRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -125,6 +129,13 @@ export function BlockInput({
     if (e.metaKey && e.shiftKey && e.key === 'ArrowDown') {
       e.preventDefault();
       onMoveDown(block.id);
+      return;
+    }
+
+    // Cmd+Return to toggle collapse on H1 blocks
+    if (e.metaKey && e.key === 'Enter' && block.type === 'h1') {
+      e.preventDefault();
+      onToggleCollapse?.(block.id);
       return;
     }
 
@@ -253,6 +264,20 @@ export function BlockInput({
   // Render blocks with visual prefixes
   const renderPrefix = () => {
     switch (block.type) {
+      case 'h1':
+        return (
+          <span
+            className={`block-prefix h1-toggle${isCollapsed ? ' collapsed' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCollapse?.(block.id);
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M4 2l4 4-4 4V2z" />
+            </svg>
+          </span>
+        );
       case 'bullet':
         return <span className="block-prefix bullet-prefix">•</span>;
       case 'numbered':
