@@ -16,9 +16,10 @@ interface EditorProps {
   setBlocks: React.Dispatch<React.SetStateAction<Block[]>>;
   navigateToId?: string | null;
   onNavigateComplete?: () => void;
+  hiddenBlockIds?: Set<string>;
 }
 
-export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete }: EditorProps) {
+export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, hiddenBlockIds }: EditorProps) {
   const [focusedId, setFocusedId] = useState<string | null>(blocks[0]?.id || null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const pendingFocusRef = useRef<string | null>(null);
@@ -162,27 +163,51 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete }: 
     return count;
   };
 
+  // Filter out hidden H1 sections (H1 + all content until next H1)
+  const visibleBlocks = (() => {
+    if (!hiddenBlockIds || hiddenBlockIds.size === 0) return blocks;
+
+    const result: Block[] = [];
+    let isInHiddenSection = false;
+
+    for (const block of blocks) {
+      if (block.type === 'h1') {
+        // Start or end of a section
+        isInHiddenSection = hiddenBlockIds.has(block.id);
+      }
+
+      if (!isInHiddenSection) {
+        result.push(block);
+      }
+    }
+
+    return result;
+  })();
+
   return (
     <div className="editor">
-      {blocks.map((block, index) => (
-        <BlockInput
-          key={block.id}
-          block={block}
-          onUpdate={updateBlock}
-          onEnter={insertBlockAfter}
-          onBackspace={deleteBlock}
-          onFocus={handleBlockFocus}
-          onArrowUp={focusPreviousBlock}
-          onArrowDown={focusNextBlock}
-          isFocused={focusedId === block.id}
-          isSelected={selectedId === block.id}
-          onSelect={selectBlock}
-          onEnterEdit={enterEditMode}
-          onMoveUp={moveBlockUp}
-          onMoveDown={moveBlockDown}
-          numberedIndex={getNumberedIndex(index)}
-        />
-      ))}
+      {visibleBlocks.map((block) => {
+        const originalIndex = blocks.findIndex(b => b.id === block.id);
+        return (
+          <BlockInput
+            key={block.id}
+            block={block}
+            onUpdate={updateBlock}
+            onEnter={insertBlockAfter}
+            onBackspace={deleteBlock}
+            onFocus={handleBlockFocus}
+            onArrowUp={focusPreviousBlock}
+            onArrowDown={focusNextBlock}
+            isFocused={focusedId === block.id}
+            isSelected={selectedId === block.id}
+            onSelect={selectBlock}
+            onEnterEdit={enterEditMode}
+            onMoveUp={moveBlockUp}
+            onMoveDown={moveBlockDown}
+            numberedIndex={getNumberedIndex(originalIndex)}
+          />
+        );
+      })}
     </div>
   );
 }
