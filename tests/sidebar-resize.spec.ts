@@ -4,9 +4,10 @@ test.describe('Sidebar Resize', () => {
   test.beforeEach(async ({ page }) => {
     // Clear localStorage to ensure consistent starting state
     await page.goto('http://localhost:5173');
-    await page.evaluate(() =>
-      localStorage.removeItem('notetaker-sidebar-width')
-    );
+    await page.evaluate(() => {
+      localStorage.removeItem('notetaker-sidebar-width');
+      localStorage.removeItem('notetaker-tasks');
+    });
     await page.reload();
     await page.waitForSelector('[data-testid="sidebar"]');
   });
@@ -177,11 +178,6 @@ test.describe('Sidebar Resize', () => {
 
   test('text is not selected while dragging', async ({ page }) => {
     const handle = page.getByTestId('sidebar-resize-handle');
-
-    // Add some text content to the page
-    const blockInput = page.locator('.block-input').first();
-    await blockInput.click();
-    await blockInput.fill('Some text that should not be selected');
 
     const handleBox = await handle.boundingBox();
     expect(handleBox).not.toBeNull();

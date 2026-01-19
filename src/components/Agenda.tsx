@@ -1,8 +1,7 @@
 import { DndContext, DragEndEvent, Modifier } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
-  Block,
-  TodoMetadata,
+  Task,
   AGENDA_END_HOUR,
   AGENDA_START_HOUR,
   SNAP_INTERVAL,
@@ -11,9 +10,8 @@ import { CurrentTimeLine } from './CurrentTimeLine';
 import { AgendaBlock } from './AgendaBlock';
 
 interface AgendaProps {
-  blocks: Block[];
-  todoMetadata: Record<string, TodoMetadata>;
-  onUpdateTodoMetadata: (blockId: string, metadata: TodoMetadata) => void;
+  tasks: Task[];
+  onUpdateTask: (id: string, updates: Partial<Task>) => void;
 }
 
 const HOUR_HEIGHT = 48; // pixels per hour
@@ -30,38 +28,25 @@ function formatHour(hour: number): string {
   return `${displayHour}:00 ${period}`;
 }
 
-export function Agenda({
-  blocks,
-  todoMetadata,
-  onUpdateTodoMetadata,
-}: AgendaProps) {
+export function Agenda({ tasks, onUpdateTask }: AgendaProps) {
   const hours = Array.from(
     { length: AGENDA_END_HOUR - AGENDA_START_HOUR },
     (_, i) => AGENDA_START_HOUR + i
   );
 
-  const isTodoBlock = (type: string): boolean =>
-    type === 'todo' || type === 'todo-checked';
-
-  const scheduledTodos = blocks.filter((block) => {
-    const metadata = todoMetadata[block.id];
-    return (
-      isTodoBlock(block.type) &&
-      metadata?.scheduled &&
-      metadata.startTime !== undefined
-    );
-  });
+  // Show all tasks that have a startTime (every task should have one)
+  const scheduledTasks = tasks.filter((task) => task.startTime !== undefined);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
-    const blockId = active.id as string;
-    const metadata = todoMetadata[blockId];
+    const taskId = active.id as string;
+    const task = tasks.find((t) => t.id === taskId);
 
-    if (!metadata?.startTime) return;
+    if (!task?.startTime) return;
 
     // Convert pixel delta to minutes
     const deltaMinutes = (delta.y / HOUR_HEIGHT) * 60;
-    const newStartTime = metadata.startTime + deltaMinutes;
+    const newStartTime = task.startTime + deltaMinutes;
 
     // Snap to SNAP_INTERVAL minutes
     const snappedStartTime =
@@ -69,23 +54,17 @@ export function Agenda({
 
     // Clamp to valid agenda range
     const minStartTime = AGENDA_START_HOUR * 60;
-    const maxStartTime = AGENDA_END_HOUR * 60 - (metadata.duration ?? 60);
+    const maxStartTime = AGENDA_END_HOUR * 60 - (task.duration ?? 60);
     const clampedStartTime = Math.max(
       minStartTime,
       Math.min(maxStartTime, snappedStartTime)
     );
 
-    onUpdateTodoMetadata(blockId, {
-      ...metadata,
-      startTime: clampedStartTime,
-    });
+    onUpdateTask(taskId, { startTime: clampedStartTime });
   };
 
   return (
-    <div className="mt-6" data-testid="agenda">
-      <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
-        Agenda
-      </div>
+    <div data-testid="agenda">
       <DndContext
         modifiers={[restrictToVerticalAxis, snapToGrid]}
         onDragEnd={handleDragEnd}
@@ -110,20 +89,16 @@ export function Agenda({
           {/* Current time line */}
           <CurrentTimeLine hourHeight={HOUR_HEIGHT} />
 
-          {/* Scheduled todos */}
-          {scheduledTodos.map((block) => {
-            const metadata = todoMetadata[block.id];
-            if (!metadata?.startTime) return null;
+          {/* Scheduled tasks */}
+          {scheduledTasks.map((task) => {
+            if (!task.startTime) return null;
 
             return (
               <AgendaBlock
-                key={block.id}
-                block={block}
-                metadata={metadata}
+                key={task.id}
+                task={task}
                 hourHeight={HOUR_HEIGHT}
-                onUpdateMetadata={(newMetadata) =>
-                  onUpdateTodoMetadata(block.id, newMetadata)
-                }
+                onUpdateTask={(updates) => onUpdateTask(task.id, updates)}
               />
             );
           })}

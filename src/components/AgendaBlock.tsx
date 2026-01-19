@@ -2,8 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  Block,
-  TodoMetadata,
+  Task,
   AGENDA_START_HOUR,
   AGENDA_END_HOUR,
   SNAP_INTERVAL,
@@ -11,21 +10,19 @@ import {
 } from '../types';
 
 interface AgendaBlockProps {
-  block: Block;
-  metadata: TodoMetadata;
+  task: Task;
   hourHeight: number;
-  onUpdateMetadata: (metadata: TodoMetadata) => void;
+  onUpdateTask: (updates: Partial<Task>) => void;
 }
 
 export function AgendaBlock({
-  block,
-  metadata,
+  task,
   hourHeight,
-  onUpdateMetadata,
+  onUpdateTask,
 }: AgendaBlockProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
-      id: block.id,
+      id: task.id,
     });
 
   const [isResizing, setIsResizing] = useState(false);
@@ -33,8 +30,8 @@ export function AgendaBlock({
     null
   );
 
-  const startMinutes = (metadata.startTime ?? 0) - AGENDA_START_HOUR * 60;
-  const duration = metadata.duration ?? 60;
+  const startMinutes = (task.startTime ?? 0) - AGENDA_START_HOUR * 60;
+  const duration = task.duration ?? 60;
   const top = (startMinutes / 60) * hourHeight;
   const height = (duration / 60) * hourHeight;
 
@@ -63,16 +60,13 @@ export function AgendaBlock({
         Math.round(newDuration / SNAP_INTERVAL) * SNAP_INTERVAL;
 
       // Clamp to valid range
-      const maxDuration = AGENDA_END_HOUR * 60 - (metadata.startTime ?? 0);
+      const maxDuration = AGENDA_END_HOUR * 60 - (task.startTime ?? 0);
       const clampedDuration = Math.max(
         MIN_DURATION,
         Math.min(maxDuration, snappedDuration)
       );
 
-      onUpdateMetadata({
-        ...metadata,
-        duration: clampedDuration,
-      });
+      onUpdateTask({ duration: clampedDuration });
     };
 
     const handleMouseUp = () => {
@@ -87,7 +81,7 @@ export function AgendaBlock({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, hourHeight, metadata, onUpdateMetadata]);
+  }, [isResizing, hourHeight, task.startTime, onUpdateTask]);
 
   const style = {
     top,
@@ -102,7 +96,7 @@ export function AgendaBlock({
       ref={setNodeRef}
       className="absolute left-12 right-1 bg-accent rounded text-xs text-primary overflow-hidden select-none"
       style={style}
-      data-testid={`agenda-block-${block.id}`}
+      data-testid={`agenda-block-${task.id}`}
       {...attributes}
     >
       {/* Drag handle - fills block except resize area */}
@@ -110,9 +104,7 @@ export function AgendaBlock({
         className="absolute inset-0 bottom-2 px-2 py-1 cursor-move"
         {...listeners}
       >
-        <div className="truncate font-medium">
-          {block.content || 'Untitled'}
-        </div>
+        <div className="truncate font-medium">{task.title || 'Untitled'}</div>
       </div>
       {/* Resize handle - bottom edge only */}
       <div
@@ -128,15 +120,15 @@ export function AgendaBlock({
           if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
           e.preventDefault();
 
-          const maxDuration = AGENDA_END_HOUR * 60 - (metadata.startTime ?? 0);
+          const maxDuration = AGENDA_END_HOUR * 60 - (task.startTime ?? 0);
           const delta = e.key === 'ArrowDown' ? SNAP_INTERVAL : -SNAP_INTERVAL;
           const newDuration = Math.max(
             MIN_DURATION,
             Math.min(maxDuration, duration + delta)
           );
-          onUpdateMetadata({ ...metadata, duration: newDuration });
+          onUpdateTask({ duration: newDuration });
         }}
-        data-testid={`agenda-block-resize-${block.id}`}
+        data-testid={`agenda-block-resize-${task.id}`}
       />
     </div>
   );

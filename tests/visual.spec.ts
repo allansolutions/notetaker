@@ -1,29 +1,48 @@
 import { test, expect } from '@playwright/test';
 
-test('Visual check of block selection', async ({ page }) => {
+test('Visual check of spreadsheet view', async ({ page }) => {
   await page.goto('http://localhost:5173');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('[data-testid="sidebar"]');
+
+  // Screenshot of empty spreadsheet
+  await page.screenshot({
+    path: 'test-results/spreadsheet-empty.png',
+    fullPage: true,
+  });
+
+  // Add a task
+  const addTaskInput = page.getByPlaceholder('Add a new task...');
+  await addTaskInput.fill('Test Task');
+  await page.keyboard.press('Enter');
+
+  // Wait for task detail view
   await page.waitForSelector('.block-input');
 
-  const blockInput = page.locator('.block-input').first();
-  await blockInput.click();
-  await page.keyboard.type('This is a test block');
-
-  // Screenshot before selection
+  // Screenshot of task detail
   await page.screenshot({
-    path: 'test-results/before-selection.png',
+    path: 'test-results/task-detail.png',
     fullPage: true,
   });
 
-  await page.keyboard.press('Meta+e');
-  await page.waitForTimeout(100);
+  // Go back to spreadsheet
+  const backButton = page.getByRole('button', { name: /back/i });
+  await backButton.click();
 
-  // Screenshot after Meta+e - should show selection
+  // Wait for spreadsheet view
+  await page.waitForSelector('[data-testid="sidebar"]');
+
+  // Screenshot of spreadsheet with task
   await page.screenshot({
-    path: 'test-results/after-selection.png',
+    path: 'test-results/spreadsheet-with-task.png',
     fullPage: true,
   });
 
-  // Verify the class is there (using data-block-id to find wrapper)
-  const wrapper = page.locator('[data-block-id]').first();
-  await expect(wrapper).toHaveClass(/bg-accent-subtle/);
+  // Verify task is visible in the spreadsheet
+  await expect(
+    page
+      .locator('[data-testid^="task-row-"]')
+      .getByRole('button', { name: 'Test Task' })
+  ).toBeVisible();
 });

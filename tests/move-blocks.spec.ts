@@ -1,127 +1,83 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Move Blocks with Cmd+Shift+Arrow', () => {
+test.describe('Task Detail View', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear localStorage to start fresh
     await page.goto('http://localhost:5173');
     await page.evaluate(() => localStorage.clear());
     await page.reload();
+
+    // Create a task and navigate to its detail view
+    const addTaskInput = page.getByPlaceholder('Add a new task...');
+    await addTaskInput.fill('Test Task');
+    await page.keyboard.press('Enter');
+
+    // Wait for the task detail view to load
     await page.waitForSelector('.block-input');
   });
 
-  async function typeInNewBlock(page, text: string) {
-    // Wait for the focused block to be ready
-    await page.waitForTimeout(150);
-    await page.keyboard.type(text);
-  }
+  test('can edit task title', async ({ page }) => {
+    const titleInput = page.locator('input[type="text"]').first();
 
-  test('Cmd+Shift+Down should move block down', async ({ page }) => {
-    // Create two blocks
-    const firstBlock = page.locator('.block-input').first();
-    await firstBlock.click();
-    await page.keyboard.type('First block');
-    await page.keyboard.press('Enter');
+    // Clear and type new title
+    await titleInput.fill('Updated Task Title');
+    await titleInput.blur();
 
-    // Wait for new block and type
-    await typeInNewBlock(page, 'Second block');
+    // Go back to spreadsheet
+    const backButton = page.getByRole('button', { name: /back/i });
+    await backButton.click();
 
-    // Take screenshot to debug
-    await page.screenshot({
-      path: 'test-results/two-blocks-created.png',
-      fullPage: true,
-    });
+    // Wait for localStorage debounce
+    await page.waitForTimeout(400);
 
-    // Go back to first block and select it
-    const blocks = page.locator('.block-input');
-    await blocks.first().click();
-    await page.waitForTimeout(50);
-    await page.keyboard.press('Meta+e');
-    await page.waitForTimeout(100);
-
-    // Verify first block is selected (using data-block-id to find wrapper)
-    const wrapper = page.locator('[data-block-id]').first();
-    await expect(wrapper).toHaveClass(/bg-accent-subtle/);
-
-    // Move it down with Cmd+Shift+Down
-    await page.keyboard.press('Meta+Shift+ArrowDown');
-    await page.waitForTimeout(100);
-
-    await page.screenshot({
-      path: 'test-results/after-move-down.png',
-      fullPage: true,
-    });
-
-    // Now "First block" should be second
-    const blockTexts = await blocks.allTextContents();
-    console.log('Block order after move:', blockTexts);
-
-    expect(blockTexts[0]).toBe('Second block');
-    expect(blockTexts[1]).toBe('First block');
+    // Verify title was updated in the spreadsheet (use testid to avoid agenda match)
+    await expect(
+      page
+        .locator('[data-testid^="task-row-"]')
+        .getByRole('button', { name: 'Updated Task Title' })
+    ).toBeVisible();
   });
 
-  test('Cmd+Shift+Up should move block up', async ({ page }) => {
-    // Create two blocks
-    const firstBlock = page.locator('.block-input').first();
-    await firstBlock.click();
-    await page.keyboard.type('First block');
+  test('can add content blocks', async ({ page }) => {
+    // Type in the first block
+    const blockInput = page.locator('.block-input').first();
+    await blockInput.click();
+    await page.keyboard.type('First block content');
     await page.keyboard.press('Enter');
-    await typeInNewBlock(page, 'Second block');
 
-    // Select second block (current one)
-    await page.keyboard.press('Meta+e');
-    await page.waitForTimeout(100);
-
-    // Move it up
-    await page.keyboard.press('Meta+Shift+ArrowUp');
-    await page.waitForTimeout(100);
-
-    // Now "Second block" should be first
+    // Wait for second block to be created
     const blocks = page.locator('.block-input');
-    const blockTexts = await blocks.allTextContents();
-    console.log('Block order after move up:', blockTexts);
+    await expect(blocks).toHaveCount(2);
 
-    expect(blockTexts[0]).toBe('Second block');
-    expect(blockTexts[1]).toBe('First block');
+    // Type in second block (should already be focused)
+    await page.keyboard.type('Second block content');
+
+    // Verify content
+    await expect(blocks.first()).toHaveText('First block content');
+    await expect(blocks.nth(1)).toHaveText('Second block content');
   });
 
-  test('Visual verification of block move', async ({ page }) => {
-    // Create three blocks
-    const firstBlock = page.locator('.block-input').first();
-    await firstBlock.click();
-    await page.keyboard.type('Block A');
-    await page.keyboard.press('Enter');
-    await typeInNewBlock(page, 'Block B');
-    await page.keyboard.press('Enter');
-    await typeInNewBlock(page, 'Block C');
+  test('block content persists after reload', async ({ page }) => {
+    // Add content
+    const blockInput = page.locator('.block-input').first();
+    await blockInput.click();
+    await page.keyboard.type('Persistent content');
 
-    await page.screenshot({
-      path: 'test-results/before-move.png',
-      fullPage: true,
-    });
+    // Go back and wait for save
+    const backButton = page.getByRole('button', { name: /back/i });
+    await backButton.click();
+    await page.waitForTimeout(400);
 
-    // Go to Block B and select it
-    const blocks = page.locator('.block-input');
-    await blocks.nth(1).click();
-    await page.waitForTimeout(50);
-    await page.keyboard.press('Meta+e');
-    await page.waitForTimeout(100);
+    // Click on the task in the spreadsheet to go back to detail view
+    const taskTitle = page
+      .locator('[data-testid^="task-row-"]')
+      .getByRole('button', { name: 'Test Task' });
+    await taskTitle.click();
 
-    await page.screenshot({
-      path: 'test-results/block-b-selected.png',
-      fullPage: true,
-    });
+    // Wait for detail view
+    await page.waitForSelector('.block-input');
 
-    // Move Block B up
-    await page.keyboard.press('Meta+Shift+ArrowUp');
-    await page.waitForTimeout(100);
-
-    await page.screenshot({
-      path: 'test-results/after-move-up.png',
-      fullPage: true,
-    });
-
-    // Verify order
-    const blockTexts = await blocks.allTextContents();
-    expect(blockTexts).toEqual(['Block B', 'Block A', 'Block C']);
+    // Content should be there
+    const content = await page.locator('.block-input').first().textContent();
+    expect(content).toBe('Persistent content');
   });
 });

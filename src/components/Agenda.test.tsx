@@ -1,29 +1,33 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Agenda, snapToGrid, SNAP_GRID_SIZE } from './Agenda';
-import { Block, TodoMetadata } from '../types';
+import { Task } from '../types';
 
-const createBlock = (
+const createTask = (
   id: string,
-  type: Block['type'],
-  content: string
-): Block => ({
+  title: string,
+  scheduled?: boolean,
+  startTime?: number,
+  duration?: number
+): Task => ({
   id,
-  type,
-  content,
+  type: 'admin',
+  title,
+  status: 'todo',
+  importance: 'mid',
+  blocks: [],
+  scheduled,
+  startTime,
+  duration,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
 });
 
 describe('Agenda', () => {
   const defaultProps = {
-    blocks: [] as Block[],
-    todoMetadata: {} as Record<string, TodoMetadata>,
-    onUpdateTodoMetadata: vi.fn(),
+    tasks: [] as Task[],
+    onUpdateTask: vi.fn(),
   };
-
-  it('renders agenda header', () => {
-    render(<Agenda {...defaultProps} />);
-    expect(screen.getByText('Agenda')).toBeInTheDocument();
-  });
 
   it('renders hour markers from 6:00 AM to 10:00 PM', () => {
     render(<Agenda {...defaultProps} />);
@@ -33,128 +37,62 @@ describe('Agenda', () => {
     expect(screen.getByText('10:00 PM')).toBeInTheDocument();
   });
 
-  it('does not render blocks that are not scheduled', () => {
-    const blocks = [
-      createBlock('1', 'todo', 'Unscheduled task'),
-      createBlock('2', 'todo', 'Another task'),
+  it('does not render tasks that are not scheduled', () => {
+    const tasks = [
+      createTask('1', 'Unscheduled task', false),
+      createTask('2', 'Another task'),
     ];
-    const todoMetadata = {
-      '1': { scheduled: false },
-      '2': {},
-    };
-    render(
-      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
-    );
+    render(<Agenda {...defaultProps} tasks={tasks} />);
 
     expect(screen.queryByTestId('agenda-block-1')).not.toBeInTheDocument();
     expect(screen.queryByTestId('agenda-block-2')).not.toBeInTheDocument();
   });
 
-  it('renders scheduled todo blocks', () => {
-    const blocks = [createBlock('1', 'todo', 'Scheduled task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 60 }, // 9:00 AM
-    };
-    render(
-      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
-    );
+  it('renders scheduled tasks', () => {
+    const tasks = [createTask('1', 'Scheduled task', true, 540, 60)]; // 9:00 AM
+    render(<Agenda {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByTestId('agenda-block-1')).toBeInTheDocument();
     expect(screen.getByText('Scheduled task')).toBeInTheDocument();
   });
 
-  it('renders completed todo blocks when scheduled', () => {
-    const blocks = [createBlock('1', 'todo-checked', 'Completed task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 600, duration: 30 }, // 10:00 AM
-    };
-    render(
-      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
-    );
-
-    expect(screen.getByTestId('agenda-block-1')).toBeInTheDocument();
-    expect(screen.getByText('Completed task')).toBeInTheDocument();
-  });
-
-  it('positions block based on startTime', () => {
-    const blocks = [createBlock('1', 'todo', 'Morning task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 480, duration: 60 }, // 8:00 AM (2 hours after agenda start)
-    };
-    render(
-      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
-    );
+  it('positions task based on startTime', () => {
+    const tasks = [createTask('1', 'Morning task', true, 480, 60)]; // 8:00 AM (2 hours after agenda start)
+    render(<Agenda {...defaultProps} tasks={tasks} />);
 
     const block = screen.getByTestId('agenda-block-1');
     // 2 hours * 48px per hour = 96px
     expect(block.style.top).toBe('96px');
   });
 
-  it('sizes block based on duration', () => {
-    const blocks = [createBlock('1', 'todo', 'Long task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 120 }, // 2 hours
-    };
-    render(
-      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
-    );
+  it('sizes task based on duration', () => {
+    const tasks = [createTask('1', 'Long task', true, 540, 120)]; // 2 hours
+    render(<Agenda {...defaultProps} tasks={tasks} />);
 
     const block = screen.getByTestId('agenda-block-1');
     // 2 hours * 48px per hour = 96px
     expect(block.style.height).toBe('96px');
   });
 
-  it('shows "Untitled" for blocks with empty content', () => {
-    const blocks = [createBlock('1', 'todo', '')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 60 },
-    };
-    render(
-      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
-    );
+  it('shows "Untitled" for tasks with empty title', () => {
+    const tasks = [createTask('1', '', true, 540, 60)];
+    render(<Agenda {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByText('Untitled')).toBeInTheDocument();
   });
 
-  it('has a resize handle on each block', () => {
-    const blocks = [createBlock('1', 'todo', 'Task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 60 },
-    };
-    render(
-      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
-    );
+  it('has a resize handle on each task', () => {
+    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    render(<Agenda {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByTestId('agenda-block-resize-1')).toBeInTheDocument();
   });
 
-  it('does not render block when startTime is undefined', () => {
-    const blocks = [createBlock('1', 'todo', 'Task')];
-    const todoMetadata = {
-      '1': { scheduled: true }, // no startTime
-    };
-    render(
-      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
-    );
+  it('does not render task when startTime is undefined', () => {
+    const tasks = [createTask('1', 'Task', true)]; // no startTime
+    render(<Agenda {...defaultProps} tasks={tasks} />);
 
     expect(screen.queryByTestId('agenda-block-1')).not.toBeInTheDocument();
-  });
-
-  it('ignores non-todo block types', () => {
-    const blocks = [
-      createBlock('1', 'paragraph', 'Some text'),
-      createBlock('2', 'h1', 'Heading'),
-    ];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 60 },
-      '2': { scheduled: true, startTime: 600, duration: 60 },
-    };
-    render(
-      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
-    );
-
-    expect(screen.queryByTestId('agenda-block-1')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('agenda-block-2')).not.toBeInTheDocument();
   });
 });
 
@@ -273,9 +211,8 @@ describe('snapToGrid modifier', () => {
 
 describe('AgendaBlock resize', () => {
   const defaultProps = {
-    blocks: [] as Block[],
-    todoMetadata: {} as Record<string, TodoMetadata>,
-    onUpdateTodoMetadata: vi.fn(),
+    tasks: [] as Task[],
+    onUpdateTask: vi.fn(),
   };
 
   beforeEach(() => {
@@ -283,18 +220,10 @@ describe('AgendaBlock resize', () => {
   });
 
   it('changes duration with keyboard arrow keys', () => {
-    const blocks = [createBlock('1', 'todo', 'Task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 60 },
-    };
-    const onUpdateTodoMetadata = vi.fn();
+    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const onUpdateTask = vi.fn();
     render(
-      <Agenda
-        {...defaultProps}
-        blocks={blocks}
-        todoMetadata={todoMetadata}
-        onUpdateTodoMetadata={onUpdateTodoMetadata}
-      />
+      <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
     );
 
     const resizeHandle = screen.getByTestId('agenda-block-resize-1');
@@ -302,26 +231,14 @@ describe('AgendaBlock resize', () => {
     // Press ArrowDown to increase duration
     fireEvent.keyDown(resizeHandle, { key: 'ArrowDown' });
 
-    expect(onUpdateTodoMetadata).toHaveBeenCalledWith('1', {
-      scheduled: true,
-      startTime: 540,
-      duration: 75, // 60 + 15 minutes
-    });
+    expect(onUpdateTask).toHaveBeenCalledWith('1', { duration: 75 }); // 60 + 15 minutes
   });
 
   it('decreases duration with ArrowUp key', () => {
-    const blocks = [createBlock('1', 'todo', 'Task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 60 },
-    };
-    const onUpdateTodoMetadata = vi.fn();
+    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const onUpdateTask = vi.fn();
     render(
-      <Agenda
-        {...defaultProps}
-        blocks={blocks}
-        todoMetadata={todoMetadata}
-        onUpdateTodoMetadata={onUpdateTodoMetadata}
-      />
+      <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
     );
 
     const resizeHandle = screen.getByTestId('agenda-block-resize-1');
@@ -329,26 +246,14 @@ describe('AgendaBlock resize', () => {
     // Press ArrowUp to decrease duration
     fireEvent.keyDown(resizeHandle, { key: 'ArrowUp' });
 
-    expect(onUpdateTodoMetadata).toHaveBeenCalledWith('1', {
-      scheduled: true,
-      startTime: 540,
-      duration: 45, // 60 - 15 minutes
-    });
+    expect(onUpdateTask).toHaveBeenCalledWith('1', { duration: 45 }); // 60 - 15 minutes
   });
 
   it('respects minimum duration when decreasing', () => {
-    const blocks = [createBlock('1', 'todo', 'Task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 15 }, // Already at minimum
-    };
-    const onUpdateTodoMetadata = vi.fn();
+    const tasks = [createTask('1', 'Task', true, 540, 15)]; // Already at minimum
+    const onUpdateTask = vi.fn();
     render(
-      <Agenda
-        {...defaultProps}
-        blocks={blocks}
-        todoMetadata={todoMetadata}
-        onUpdateTodoMetadata={onUpdateTodoMetadata}
-      />
+      <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
     );
 
     const resizeHandle = screen.getByTestId('agenda-block-resize-1');
@@ -356,26 +261,14 @@ describe('AgendaBlock resize', () => {
     // Try to decrease below minimum
     fireEvent.keyDown(resizeHandle, { key: 'ArrowUp' });
 
-    expect(onUpdateTodoMetadata).toHaveBeenCalledWith('1', {
-      scheduled: true,
-      startTime: 540,
-      duration: 15, // Should stay at minimum
-    });
+    expect(onUpdateTask).toHaveBeenCalledWith('1', { duration: 15 }); // Should stay at minimum
   });
 
   it('ignores non-arrow keys', () => {
-    const blocks = [createBlock('1', 'todo', 'Task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 60 },
-    };
-    const onUpdateTodoMetadata = vi.fn();
+    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const onUpdateTask = vi.fn();
     render(
-      <Agenda
-        {...defaultProps}
-        blocks={blocks}
-        todoMetadata={todoMetadata}
-        onUpdateTodoMetadata={onUpdateTodoMetadata}
-      />
+      <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
     );
 
     const resizeHandle = screen.getByTestId('agenda-block-resize-1');
@@ -383,22 +276,14 @@ describe('AgendaBlock resize', () => {
     // Press a non-arrow key
     fireEvent.keyDown(resizeHandle, { key: 'Enter' });
 
-    expect(onUpdateTodoMetadata).not.toHaveBeenCalled();
+    expect(onUpdateTask).not.toHaveBeenCalled();
   });
 
   it('updates duration on mouse drag resize', () => {
-    const blocks = [createBlock('1', 'todo', 'Task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 60 },
-    };
-    const onUpdateTodoMetadata = vi.fn();
+    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const onUpdateTask = vi.fn();
     render(
-      <Agenda
-        {...defaultProps}
-        blocks={blocks}
-        todoMetadata={todoMetadata}
-        onUpdateTodoMetadata={onUpdateTodoMetadata}
-      />
+      <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
     );
 
     const resizeHandle = screen.getByTestId('agenda-block-resize-1');
@@ -409,26 +294,14 @@ describe('AgendaBlock resize', () => {
     // Move mouse down by 24 pixels (30 minutes worth at 48px/hour)
     fireEvent.mouseMove(document, { clientY: 124 });
 
-    expect(onUpdateTodoMetadata).toHaveBeenCalledWith('1', {
-      scheduled: true,
-      startTime: 540,
-      duration: 90, // 60 + 30 minutes (snapped)
-    });
+    expect(onUpdateTask).toHaveBeenCalledWith('1', { duration: 90 }); // 60 + 30 minutes (snapped)
   });
 
   it('stops resize on mouse up', () => {
-    const blocks = [createBlock('1', 'todo', 'Task')];
-    const todoMetadata = {
-      '1': { scheduled: true, startTime: 540, duration: 60 },
-    };
-    const onUpdateTodoMetadata = vi.fn();
+    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const onUpdateTask = vi.fn();
     render(
-      <Agenda
-        {...defaultProps}
-        blocks={blocks}
-        todoMetadata={todoMetadata}
-        onUpdateTodoMetadata={onUpdateTodoMetadata}
-      />
+      <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
     );
 
     const resizeHandle = screen.getByTestId('agenda-block-resize-1');
@@ -438,7 +311,7 @@ describe('AgendaBlock resize', () => {
 
     // Move mouse
     fireEvent.mouseMove(document, { clientY: 124 });
-    onUpdateTodoMetadata.mockClear();
+    onUpdateTask.mockClear();
 
     // Release mouse
     fireEvent.mouseUp(document);
@@ -446,15 +319,14 @@ describe('AgendaBlock resize', () => {
     // Moving after mouseUp should not trigger updates
     fireEvent.mouseMove(document, { clientY: 150 });
 
-    expect(onUpdateTodoMetadata).not.toHaveBeenCalled();
+    expect(onUpdateTask).not.toHaveBeenCalled();
   });
 });
 
 describe('CurrentTimeLine', () => {
   const timeLineProps = {
-    blocks: [] as Block[],
-    todoMetadata: {} as Record<string, TodoMetadata>,
-    onUpdateTodoMetadata: vi.fn(),
+    tasks: [] as Task[],
+    onUpdateTask: vi.fn(),
   };
 
   beforeEach(() => {
