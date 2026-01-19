@@ -13,10 +13,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
   const timeoutRef = useRef<number | null>(null);
 
   const setValue = useCallback((value: T | ((prev: T) => T)) => {
-    setStoredValue(prev => {
-      const valueToStore = value instanceof Function ? value(prev) : value;
-      return valueToStore;
-    });
+    setStoredValue(prev => value instanceof Function ? value(prev) : value);
   }, []);
 
   // Debounced save to localStorage

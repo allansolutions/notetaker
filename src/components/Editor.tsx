@@ -1,15 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+
 import { Block, BlockType } from '../types';
 import { BlockInput } from './BlockInput';
-import { generateId } from '../utils/markdown';
 import {
-  moveBlockUp as moveBlockUpUtil,
-  moveBlockDown as moveBlockDownUtil,
-  getNumberedIndex as getNumberedIndexUtil,
+  deleteBlock as deleteBlockUtil,
+  getNumberedIndex,
   getVisibleBlocks,
   insertBlockAfter as insertBlockAfterUtil,
-  deleteBlock as deleteBlockUtil,
+  moveBlockDown,
+  moveBlockUp,
 } from '../utils/block-operations';
+import { generateId } from '../utils/markdown';
 
 export function createBlock(type: BlockType = 'paragraph', content: string = ''): Block {
   return {
@@ -84,24 +85,18 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
   }, [setBlocks]);
 
   const focusPreviousBlock = useCallback((id: string) => {
-    setBlocks(prev => {
-      const index = prev.findIndex(b => b.id === id);
-      if (index > 0) {
-        setFocusedId(prev[index - 1].id);
-      }
-      return prev;
-    });
-  }, [setBlocks]);
+    const index = blocks.findIndex(b => b.id === id);
+    if (index > 0) {
+      setFocusedId(blocks[index - 1].id);
+    }
+  }, [blocks]);
 
   const focusNextBlock = useCallback((id: string) => {
-    setBlocks(prev => {
-      const index = prev.findIndex(b => b.id === id);
-      if (index < prev.length - 1) {
-        setFocusedId(prev[index + 1].id);
-      }
-      return prev;
-    });
-  }, [setBlocks]);
+    const index = blocks.findIndex(b => b.id === id);
+    if (index < blocks.length - 1) {
+      setFocusedId(blocks[index + 1].id);
+    }
+  }, [blocks]);
 
   const selectBlock = useCallback((id: string) => {
     setSelectedId(id);
@@ -113,18 +108,12 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
     setFocusedId(id);
   }, []);
 
-  // Clear selection when focusing any block for editing
-  const handleBlockFocus = useCallback((id: string) => {
-    setSelectedId(null);
-    setFocusedId(id);
-  }, []);
-
-  const moveBlockUp = useCallback((id: string) => {
-    setBlocks(prev => moveBlockUpUtil(prev, id));
+  const handleMoveUp = useCallback((id: string) => {
+    setBlocks(prev => moveBlockUp(prev, id));
   }, [setBlocks]);
 
-  const moveBlockDown = useCallback((id: string) => {
-    setBlocks(prev => moveBlockDownUtil(prev, id));
+  const handleMoveDown = useCallback((id: string) => {
+    setBlocks(prev => moveBlockDown(prev, id));
   }, [setBlocks]);
 
   const visibleBlocks = getVisibleBlocks(blocks, collapsedBlockIds);
@@ -140,16 +129,16 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
             onUpdate={updateBlock}
             onEnter={insertBlockAfter}
             onBackspace={deleteBlock}
-            onFocus={handleBlockFocus}
+            onFocus={enterEditMode}
             onArrowUp={focusPreviousBlock}
             onArrowDown={focusNextBlock}
             isFocused={focusedId === block.id}
             isSelected={selectedId === block.id}
             onSelect={selectBlock}
             onEnterEdit={enterEditMode}
-            onMoveUp={moveBlockUp}
-            onMoveDown={moveBlockDown}
-            numberedIndex={getNumberedIndexUtil(blocks, originalIndex)}
+            onMoveUp={handleMoveUp}
+            onMoveDown={handleMoveDown}
+            numberedIndex={getNumberedIndex(blocks, originalIndex)}
             isCollapsed={block.type === 'h1' && collapsedBlockIds?.has(block.id)}
             onToggleCollapse={onToggleCollapse}
           />

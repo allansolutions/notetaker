@@ -314,8 +314,11 @@ describe('Editor', () => {
       // Press ArrowUp to focus previous block
       await user.keyboard('{ArrowUp}');
 
-      // setBlocks should be called (for focusPreviousBlock)
-      expect(setBlocks).toHaveBeenCalled();
+      // Wait for focus effect to run (setTimeout(0) in BlockInput)
+      await vi.waitFor(() => {
+        const firstBlockInput = document.querySelector('[data-block-id="1"] .block-input');
+        expect(document.activeElement).toBe(firstBlockInput);
+      });
     });
 
     it('does nothing when first block tries to focus previous', async () => {
@@ -326,9 +329,11 @@ describe('Editor', () => {
       await user.click(firstBlock);
       await user.keyboard('{ArrowUp}');
 
-      // The function should still be called but not change focus
-      // (first block has no previous)
-      expect(setBlocks).toHaveBeenCalled();
+      // First block should still be focused (no previous block)
+      await vi.waitFor(() => {
+        const firstBlockInput = document.querySelector('[data-block-id="1"] .block-input');
+        expect(document.activeElement).toBe(firstBlockInput);
+      });
     });
   });
 
@@ -341,7 +346,11 @@ describe('Editor', () => {
       await user.click(firstBlock);
       await user.keyboard('{ArrowDown}');
 
-      expect(setBlocks).toHaveBeenCalled();
+      // Wait for focus effect to run
+      await vi.waitFor(() => {
+        const secondBlockInput = document.querySelector('[data-block-id="2"] .block-input');
+        expect(document.activeElement).toBe(secondBlockInput);
+      });
     });
 
     it('does nothing when last block tries to focus next', async () => {
@@ -352,8 +361,11 @@ describe('Editor', () => {
       await user.click(thirdBlock);
       await user.keyboard('{ArrowDown}');
 
-      // The function should still be called but not change focus
-      expect(setBlocks).toHaveBeenCalled();
+      // Third block should still be focused (no next block)
+      await vi.waitFor(() => {
+        const thirdBlockInput = document.querySelector('[data-block-id="3"] .block-input');
+        expect(document.activeElement).toBe(thirdBlockInput);
+      });
     });
   });
 
