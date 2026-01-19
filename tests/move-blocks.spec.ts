@@ -35,9 +35,9 @@ test.describe('Move Blocks with Cmd+Shift+Arrow', () => {
     await page.keyboard.press('Meta+e');
     await page.waitForTimeout(100);
 
-    // Verify first block is selected
-    const wrapper = page.locator('.block-wrapper').first();
-    await expect(wrapper).toHaveClass(/block-selected/);
+    // Verify first block is selected (using data-block-id to find wrapper)
+    const wrapper = page.locator('[data-block-id]').first();
+    await expect(wrapper).toHaveClass(/bg-accent-subtle/);
 
     // Move it down with Cmd+Shift+Down
     await page.keyboard.press('Meta+Shift+ArrowDown');

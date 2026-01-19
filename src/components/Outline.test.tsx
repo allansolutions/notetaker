@@ -75,27 +75,31 @@ describe('Outline', () => {
       />
     );
 
-    const toggleButton = document.querySelector('.outline-visibility-toggle');
+    // Find the visibility toggle button (it contains an svg)
+    const toggleButton = document.querySelector('button');
     fireEvent.click(toggleButton!);
     expect(onToggleVisibility).toHaveBeenCalledWith('1');
   });
 
-  it('adds hidden class when block is hidden', () => {
+  it('adds opacity-50 class when block is hidden', () => {
     const blocks = [createBlock('1', 'h1', 'Section')];
     const hiddenIds = new Set(['1']);
     render(
       <Outline {...defaultProps} blocks={blocks} hiddenBlockIds={hiddenIds} />
     );
 
-    const item = document.querySelector('.outline-item');
-    expect(item?.classList.contains('outline-item-hidden')).toBe(true);
+    // Find the item container (parent of the text span)
+    const itemText = screen.getByText('Section');
+    const item = itemText.closest('div.group');
+    expect(item?.classList.contains('opacity-50')).toBe(true);
   });
 
-  it('does not add hidden class when block is visible', () => {
+  it('does not add opacity-50 class when block is visible', () => {
     const blocks = [createBlock('1', 'h1', 'Section')];
     render(<Outline {...defaultProps} blocks={blocks} />);
 
-    const item = document.querySelector('.outline-item');
-    expect(item?.classList.contains('outline-item-hidden')).toBe(false);
+    const itemText = screen.getByText('Section');
+    const item = itemText.closest('div.group');
+    expect(item?.classList.contains('opacity-50')).toBe(false);
   });
 });

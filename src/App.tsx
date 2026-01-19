@@ -3,7 +3,7 @@ import { Editor, createBlock } from './components/Editor';
 import { Outline } from './components/Outline';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { Block } from './types';
-import './styles/editor.css';
+import './styles/main.css';
 
 const STORAGE_KEY = 'notetaker-blocks';
 
@@ -48,8 +48,8 @@ function App() {
   }, []);
 
   return (
-    <div className="app">
-      <div className="app-main">
+    <div className="flex min-h-screen">
+      <div className="flex-1 max-w-[var(--width-content)] mx-auto py-20 px-24">
         <Editor
           blocks={blocks}
           setBlocks={setBlocks}
@@ -60,7 +60,7 @@ function App() {
           hiddenBlockIds={hiddenBlockIds}
         />
       </div>
-      <div className="app-sidebar">
+      <div className="w-[var(--width-sidebar)] shrink-0 border-l border-border bg-surface-alt sticky top-0 h-screen overflow-y-auto">
         <Outline
           blocks={blocks}
           onNavigate={handleNavigate}

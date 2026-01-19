@@ -17,7 +17,7 @@ test('Visual check of block selection', async ({ page }) => {
   // Screenshot after Meta+e - should show selection
   await page.screenshot({ path: 'test-results/after-selection.png', fullPage: true });
 
-  // Verify the class is there
-  const wrapper = page.locator('.block-wrapper').first();
-  await expect(wrapper).toHaveClass(/block-selected/);
+  // Verify the class is there (using data-block-id to find wrapper)
+  const wrapper = page.locator('[data-block-id]').first();
+  await expect(wrapper).toHaveClass(/bg-accent-subtle/);
 });

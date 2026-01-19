@@ -133,7 +133,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'Enter' });
 
       expect(props.onEnterEdit).toHaveBeenCalledWith('test-1');
@@ -143,7 +143,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       // Should not throw and should not call any handlers
       fireEvent.keyDown(wrapper!, { key: 'Escape' });
 
@@ -154,7 +154,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'ArrowUp' });
 
       expect(props.onArrowUp).toHaveBeenCalledWith('test-1');
@@ -164,7 +164,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'ArrowDown' });
 
       expect(props.onArrowDown).toHaveBeenCalledWith('test-1');
@@ -174,7 +174,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'ArrowUp', metaKey: true, shiftKey: true });
 
       expect(props.onMoveUp).toHaveBeenCalledWith('test-1');
@@ -184,7 +184,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'ArrowDown', metaKey: true, shiftKey: true });
 
       expect(props.onMoveDown).toHaveBeenCalledWith('test-1');
@@ -194,7 +194,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'Backspace' });
 
       expect(props.onBackspace).toHaveBeenCalledWith('test-1');
@@ -204,7 +204,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'Delete' });
 
       expect(props.onBackspace).toHaveBeenCalledWith('test-1');
@@ -214,7 +214,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={false} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'Enter' });
 
       expect(props.onEnterEdit).not.toHaveBeenCalled();
@@ -226,7 +226,8 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'todo', content: 'Task' });
       render(<BlockInput {...props} />);
 
-      const checkbox = document.querySelector('.todo-prefix');
+      // Find the todo prefix span that contains the checkbox
+      const checkbox = document.querySelector('[data-block-id="test-1"] > span');
       fireEvent.click(checkbox!);
 
       expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Task', 'todo-checked');
@@ -236,7 +237,7 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'todo-checked', content: 'Done' });
       render(<BlockInput {...props} />);
 
-      const checkbox = document.querySelector('.todo-prefix');
+      const checkbox = document.querySelector('[data-block-id="test-1"] > span');
       fireEvent.click(checkbox!);
 
       expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Done', 'todo');
@@ -258,18 +259,19 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'h1', content: 'Heading' });
       render(<BlockInput {...props} />);
 
-      const toggle = document.querySelector('.h1-toggle');
+      // H1 toggle is the first span child (contains svg)
+      const toggle = document.querySelector('[data-block-id="test-1"] > span');
       fireEvent.click(toggle!);
 
       expect(props.onToggleCollapse).toHaveBeenCalledWith('test-1');
     });
 
-    it('adds collapsed class when isCollapsed is true', async () => {
+    it('adds rotate-0 class when isCollapsed is true', async () => {
       const props = createMockProps({ type: 'h1', content: 'Heading' });
       render(<BlockInput {...props} isCollapsed={true} />);
 
-      const toggle = document.querySelector('.h1-toggle');
-      expect(toggle?.classList.contains('collapsed')).toBe(true);
+      const toggle = document.querySelector('[data-block-id="test-1"] > span');
+      expect(toggle?.classList.contains('rotate-0')).toBe(true);
     });
   });
 
@@ -298,7 +300,7 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'todo', content: 'Task' });
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'Enter', metaKey: true });
 
       expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Task', 'todo-checked');
@@ -310,14 +312,14 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'divider', content: '' });
       render(<BlockInput {...props} />);
 
-      expect(document.querySelector('.block-divider')).toBeInTheDocument();
+      expect(document.querySelector('hr')).toBeInTheDocument();
     });
 
     it('calls onArrowUp when ArrowUp pressed on divider', async () => {
       const props = createMockProps({ type: 'divider', content: '' });
       render(<BlockInput {...props} />);
 
-      const wrapper = document.querySelector('.block-divider-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'ArrowUp' });
 
       expect(props.onArrowUp).toHaveBeenCalledWith('test-1');
@@ -327,7 +329,7 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'divider', content: '' });
       render(<BlockInput {...props} />);
 
-      const wrapper = document.querySelector('.block-divider-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'ArrowDown' });
 
       expect(props.onArrowDown).toHaveBeenCalledWith('test-1');
@@ -337,7 +339,7 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'divider', content: '' });
       render(<BlockInput {...props} />);
 
-      const wrapper = document.querySelector('.block-divider-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'Backspace' });
 
       expect(props.onBackspace).toHaveBeenCalledWith('test-1');
@@ -347,7 +349,7 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'divider', content: '' });
       render(<BlockInput {...props} />);
 
-      const wrapper = document.querySelector('.block-divider-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'Delete' });
 
       expect(props.onBackspace).toHaveBeenCalledWith('test-1');
@@ -357,7 +359,7 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'divider', content: '' });
       render(<BlockInput {...props} />);
 
-      const wrapper = document.querySelector('.block-divider-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'Enter' });
 
       expect(props.onEnter).toHaveBeenCalledWith('test-1');
@@ -367,7 +369,7 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'divider', content: '' });
       render(<BlockInput {...props} />);
 
-      const wrapper = document.querySelector('.block-divider-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.click(wrapper!);
 
       expect(props.onFocus).toHaveBeenCalledWith('test-1');
@@ -379,7 +381,6 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'bullet', content: 'item' });
       render(<BlockInput {...props} numberedIndex={0} />);
 
-      expect(document.querySelector('.bullet-prefix')).toBeInTheDocument();
       expect(screen.getByText('•')).toBeInTheDocument();
     });
 
@@ -387,36 +388,39 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'numbered', content: 'item' });
       render(<BlockInput {...props} numberedIndex={3} />);
 
-      expect(document.querySelector('.numbered-prefix')).toBeInTheDocument();
       expect(screen.getByText('3.')).toBeInTheDocument();
     });
 
-    it('renders quote prefix', () => {
+    it('renders quote with border styling', () => {
       const props = createMockProps({ type: 'quote', content: 'quoted text' });
       render(<BlockInput {...props} />);
 
-      expect(document.querySelector('.quote-prefix')).toBeInTheDocument();
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
+      expect(wrapper?.classList.contains('border-l-[3px]')).toBe(true);
     });
 
-    it('renders code block', () => {
+    it('renders code block with mono font', () => {
       const props = createMockProps({ type: 'code', content: 'const x = 1' });
       render(<BlockInput {...props} />);
 
-      expect(document.querySelector('.block-code')).toBeInTheDocument();
+      const input = document.querySelector('.block-input');
+      expect(input?.classList.contains('font-mono')).toBe(true);
     });
 
-    it('renders h2 block', () => {
+    it('renders h2 block with correct text size', () => {
       const props = createMockProps({ type: 'h2', content: 'Subheading' });
       render(<BlockInput {...props} />);
 
-      expect(document.querySelector('.block-h2')).toBeInTheDocument();
+      const input = document.querySelector('.block-input');
+      expect(input?.classList.contains('text-h2')).toBe(true);
     });
 
-    it('renders h3 block', () => {
+    it('renders h3 block with correct text size', () => {
       const props = createMockProps({ type: 'h3', content: 'Small heading' });
       render(<BlockInput {...props} />);
 
-      expect(document.querySelector('.block-h3')).toBeInTheDocument();
+      const input = document.querySelector('.block-input');
+      expect(input?.classList.contains('text-h3')).toBe(true);
     });
   });
 
@@ -425,7 +429,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.click(wrapper!);
 
       expect(props.onEnterEdit).toHaveBeenCalledWith('test-1');
@@ -435,7 +439,7 @@ describe('BlockInput', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={false} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.click(wrapper!);
 
       expect(props.onEnterEdit).not.toHaveBeenCalled();
@@ -443,20 +447,20 @@ describe('BlockInput', () => {
   });
 
   describe('selected state styling', () => {
-    it('adds block-selected class when selected', () => {
+    it('adds bg-accent-subtle class when selected', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={true} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
-      expect(wrapper?.classList.contains('block-selected')).toBe(true);
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
+      expect(wrapper?.classList.contains('bg-accent-subtle')).toBe(true);
     });
 
-    it('does not have block-selected class when not selected', () => {
+    it('does not have bg-accent-subtle class when not selected', () => {
       const props = createMockProps();
       render(<BlockInput {...props} isSelected={false} />);
 
-      const wrapper = document.querySelector('.block-wrapper');
-      expect(wrapper?.classList.contains('block-selected')).toBe(false);
+      const wrapper = document.querySelector('[data-block-id="test-1"]');
+      expect(wrapper?.classList.contains('bg-accent-subtle')).toBe(false);
     });
   });
 

@@ -28,27 +28,27 @@ export function Outline({ blocks, onNavigate, hiddenBlockIds, onToggleVisibility
   const h1Blocks = blocks.filter(block => block.type === 'h1');
 
   return (
-    <div className="outline">
-      <div className="outline-header">Outline</div>
-      <div className="outline-content">
+    <div className="p-4">
+      <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Outline</div>
+      <div className="flex flex-col gap-1">
         {h1Blocks.length === 0 ? (
-          <div className="outline-empty">No headings</div>
+          <div className="text-small text-muted italic">No headings</div>
         ) : (
           h1Blocks.map(block => {
             const isVisible = !hiddenBlockIds.has(block.id);
             return (
               <div
                 key={block.id}
-                className={`outline-item outline-h1${isVisible ? '' : ' outline-item-hidden'}`}
+                className={`group flex items-center gap-1 text-small text-primary py-1 px-2 rounded-md hover:bg-hover font-medium${isVisible ? '' : ' opacity-50'}`}
               >
                 <span
-                  className="outline-item-text"
+                  className="flex-1 truncate cursor-pointer"
                   onClick={() => onNavigate(block.id)}
                 >
                   {block.content || 'Untitled'}
                 </span>
                 <button
-                  className="outline-visibility-toggle"
+                  className={`shrink-0 size-6 flex items-center justify-center text-muted rounded-md hover:bg-hover hover:text-primary transition-opacity duration-normal${isVisible ? ' opacity-0 group-hover:opacity-100' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onToggleVisibility(block.id);

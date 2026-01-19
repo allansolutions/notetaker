@@ -24,11 +24,11 @@ test.describe('Block Selection', () => {
     // Wait a moment for state to update
     await page.waitForTimeout(100);
 
-    // Check if the block-selected class is applied
-    const wrapper = page.locator('.block-wrapper').first();
-    const hasSelectedClass = await wrapper.evaluate(el => el.classList.contains('block-selected'));
+    // Check if the bg-accent-subtle class is applied (selection styling)
+    const wrapper = page.locator('[data-block-id]').first();
+    const hasSelectedClass = await wrapper.evaluate(el => el.classList.contains('bg-accent-subtle'));
 
-    console.log('Has block-selected class:', hasSelectedClass);
+    console.log('Has bg-accent-subtle class:', hasSelectedClass);
 
     // Get the wrapper's classes for debugging
     const wrapperClasses = await wrapper.evaluate(el => el.className);
@@ -50,7 +50,7 @@ test.describe('Block Selection', () => {
     console.log('Focused element:', focusedElement);
 
     // The wrapper should have the selected class
-    await expect(wrapper).toHaveClass(/block-selected/);
+    await expect(wrapper).toHaveClass(/bg-accent-subtle/);
   });
 
   test('Enter should return to edit mode after Meta+e', async ({ page }) => {
@@ -70,9 +70,9 @@ test.describe('Block Selection', () => {
     console.log('Input focused after Enter:', inputFocused);
 
     // Check if selected class is removed
-    const wrapper = page.locator('.block-wrapper').first();
-    const hasSelectedClass = await wrapper.evaluate(el => el.classList.contains('block-selected'));
-    console.log('Has block-selected class after Enter:', hasSelectedClass);
+    const wrapper = page.locator('[data-block-id]').first();
+    const hasSelectedClass = await wrapper.evaluate(el => el.classList.contains('bg-accent-subtle'));
+    console.log('Has bg-accent-subtle class after Enter:', hasSelectedClass);
   });
 
   test('Debug: Check component state after Meta+e', async ({ page }) => {
@@ -83,7 +83,7 @@ test.describe('Block Selection', () => {
 
     // Log before Meta+e
     console.log('=== Before Meta+e ===');
-    let wrapperClasses = await page.locator('.block-wrapper').first().evaluate(el => el.className);
+    let wrapperClasses = await page.locator('[data-block-id]').first().evaluate(el => el.className);
     console.log('Wrapper classes:', wrapperClasses);
 
     // Press Meta+e and watch what happens
@@ -91,18 +91,18 @@ test.describe('Block Selection', () => {
 
     // Check immediately
     console.log('=== Immediately after Meta+e ===');
-    wrapperClasses = await page.locator('.block-wrapper').first().evaluate(el => el.className);
+    wrapperClasses = await page.locator('[data-block-id]').first().evaluate(el => el.className);
     console.log('Wrapper classes:', wrapperClasses);
 
     // Wait and check again
     await page.waitForTimeout(50);
     console.log('=== 50ms after Meta+e ===');
-    wrapperClasses = await page.locator('.block-wrapper').first().evaluate(el => el.className);
+    wrapperClasses = await page.locator('[data-block-id]').first().evaluate(el => el.className);
     console.log('Wrapper classes:', wrapperClasses);
 
     await page.waitForTimeout(100);
     console.log('=== 150ms after Meta+e ===');
-    wrapperClasses = await page.locator('.block-wrapper').first().evaluate(el => el.className);
+    wrapperClasses = await page.locator('[data-block-id]').first().evaluate(el => el.className);
     console.log('Wrapper classes:', wrapperClasses);
 
     // Check contentEditable state

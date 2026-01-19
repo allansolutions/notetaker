@@ -190,7 +190,7 @@ describe('Editor', () => {
 
       // Need to focus the contentEditable directly (not the wrapper)
       // since there's no text to click on in an empty block
-      const contentEditable = document.querySelector('.block-input.block-bullet');
+      const contentEditable = document.querySelector('[data-block-id="1"] .block-input');
       expect(contentEditable).toBeTruthy();
       (contentEditable as HTMLElement).focus();
       await user.keyboard('{Enter}');
@@ -378,9 +378,9 @@ describe('Editor', () => {
       await user.click(firstBlock);
       await user.keyboard('{Meta>}e{/Meta}');
 
-      // Block should have selected class
+      // Block should have selected styling (bg-accent-subtle class)
       const wrapper = document.querySelector('[data-block-id="1"]');
-      expect(wrapper?.classList.contains('block-selected')).toBe(true);
+      expect(wrapper?.classList.contains('bg-accent-subtle')).toBe(true);
     });
 
     it('enters edit mode when Enter pressed on selected block', async () => {
@@ -397,7 +397,7 @@ describe('Editor', () => {
 
       // Block should no longer be selected (should be in edit mode)
       const wrapper = document.querySelector('[data-block-id="1"]');
-      expect(wrapper?.classList.contains('block-selected')).toBe(false);
+      expect(wrapper?.classList.contains('bg-accent-subtle')).toBe(false);
     });
   });
 
@@ -498,7 +498,8 @@ describe('Editor', () => {
         />
       );
 
-      const toggle = document.querySelector('.h1-toggle');
+      // H1 toggle is the first span child of the h1 block wrapper
+      const toggle = document.querySelector('[data-block-id="h1-1"] > span');
       await user.click(toggle!);
 
       expect(onToggleCollapse).toHaveBeenCalledWith('h1-1');

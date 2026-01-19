@@ -21,6 +21,20 @@ interface BlockInputProps {
   onToggleCollapse?: (id: string) => void;
 }
 
+const blockTypeClasses: Record<BlockType, string> = {
+  paragraph: 'text-body',
+  h1: 'text-h1 leading-tight font-bold',
+  h2: 'text-h2 leading-tight font-semibold mt-6 mb-px',
+  h3: 'text-h3 leading-tight font-semibold mt-4 mb-px',
+  bullet: 'text-body',
+  numbered: 'text-body',
+  todo: 'text-body',
+  'todo-checked': 'text-body line-through text-muted',
+  quote: 'text-body',
+  code: 'font-mono text-small bg-surface-raised py-3 px-4 rounded-sm whitespace-pre-wrap',
+  divider: '',
+};
+
 export function BlockInput({
   block,
   onUpdate,
@@ -238,8 +252,8 @@ export function BlockInput({
   };
 
   const getClassName = () => {
-    const baseClass = 'block-input';
-    return `${baseClass} block-${block.type}`;
+    const baseClass = 'block-input w-full outline-none border-none py-[3px] px-0.5 min-h-[1.5em] whitespace-pre-wrap break-words focus:bg-focus-bg focus:rounded-sm';
+    return `${baseClass} ${blockTypeClasses[block.type]}`;
   };
 
   const getPlaceholder = () => {
@@ -252,7 +266,7 @@ export function BlockInput({
   if (block.type === 'divider') {
     return (
       <div
-        className="block-wrapper block-divider-wrapper"
+        className="group flex items-center my-px py-3 cursor-pointer focus:outline-none"
         data-block-id={block.id}
         onClick={() => onFocus(block.id)}
         onKeyDown={(e) => {
@@ -272,7 +286,7 @@ export function BlockInput({
         }}
         tabIndex={0}
       >
-        <hr className="block-divider" />
+        <hr className="w-full border-none border-t border-border group-focus:border-accent" />
       </div>
     );
   }
@@ -283,7 +297,7 @@ export function BlockInput({
       case 'h1':
         return (
           <span
-            className={`block-prefix h1-toggle${isCollapsed ? ' collapsed' : ''}`}
+            className={`shrink-0 select-none text-primary flex items-center justify-center size-6 mr-1 -ml-7 text-muted cursor-pointer rounded-md transition-transform duration-normal hover:bg-hover hover:text-primary ${isCollapsed ? 'rotate-0' : 'rotate-90'}`}
             onClick={(e) => {
               e.stopPropagation();
               onToggleCollapse?.(block.id);
@@ -295,30 +309,30 @@ export function BlockInput({
           </span>
         );
       case 'bullet':
-        return <span className="block-prefix bullet-prefix">•</span>;
+        return <span className="shrink-0 select-none text-primary w-6 h-6 flex items-center justify-center text-[1.4em] leading-none">•</span>;
       case 'numbered':
-        return <span className="block-prefix numbered-prefix">{numberedIndex}.</span>;
+        return <span className="shrink-0 select-none text-primary w-7 pt-[3px] pr-1 text-right">{numberedIndex}.</span>;
       case 'todo':
         return (
-          <span className="block-prefix todo-prefix" onClick={handleTodoClick}>
-            <span className="todo-checkbox" />
+          <span className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer" onClick={handleTodoClick}>
+            <span className="size-4 border-2 border-primary rounded-sm flex items-center justify-center text-xs transition-all duration-fast hover:bg-hover" />
           </span>
         );
       case 'todo-checked':
         return (
-          <span className="block-prefix todo-prefix" onClick={handleTodoClick}>
-            <span className="todo-checkbox checked">✓</span>
+          <span className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer" onClick={handleTodoClick}>
+            <span className="size-4 border-2 border-accent bg-accent rounded-sm flex items-center justify-center text-xs transition-all duration-fast text-inverted">✓</span>
           </span>
         );
       case 'quote':
-        return <span className="block-prefix quote-prefix" />;
+        return <span className="shrink-0 select-none text-primary hidden" />;
       default:
         return null;
     }
   };
 
   const prefix = renderPrefix();
-  const selectedClass = isSelected ? ' block-selected' : '';
+  const selectedClass = isSelected ? ' bg-accent-subtle rounded-sm ring-2 ring-accent-ring ring-inset' : '';
 
   const handleWrapperClick = () => {
     if (isSelected) {
@@ -326,11 +340,24 @@ export function BlockInput({
     }
   };
 
+  // Get wrapper classes based on block type
+  const getWrapperClasses = () => {
+    let classes = 'flex items-center my-px';
+
+    if (block.type === 'h1') {
+      classes = 'flex items-start pt-4 first:pt-0';
+    } else if (block.type === 'quote') {
+      classes = 'flex items-center my-px border-l-[3px] border-primary pl-3.5 ml-0.5';
+    }
+
+    return classes + selectedClass;
+  };
+
   if (prefix) {
     return (
       <div
         ref={wrapperRef}
-        className={`block-wrapper block-${block.type}-wrapper${selectedClass}`}
+        className={getWrapperClasses()}
         data-block-id={block.id}
         onKeyDown={handleWrapperKeyDown}
         onClick={handleWrapperClick}
@@ -339,7 +366,7 @@ export function BlockInput({
         {prefix}
         <div
           ref={inputRef}
-          className={getClassName()}
+          className={getClassName() + ' flex-1'}
           contentEditable={!isSelected}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
@@ -354,7 +381,7 @@ export function BlockInput({
   return (
     <div
       ref={wrapperRef}
-      className={`block-wrapper${selectedClass}`}
+      className={'flex items-center my-px' + selectedClass}
       data-block-id={block.id}
       onKeyDown={handleWrapperKeyDown}
       onClick={handleWrapperClick}

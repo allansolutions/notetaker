@@ -123,7 +123,7 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
   const visibleBlocks = getVisibleBlocks(shownBlocks, collapsedBlockIds);
 
   return (
-    <div className="editor">
+    <div className="w-full">
       {visibleBlocks.map((block) => {
         const originalIndex = blocks.findIndex(b => b.id === block.id);
         return (
