@@ -17,7 +17,7 @@ import {
   reorderTasks,
   updateTaskBlocks,
 } from '../utils/task-operations';
-import { flushPendingSessions } from './useTimeTracking';
+import { flushPendingSessions, PendingSession } from './useTimeTracking';
 
 const TASKS_STORAGE_KEY = 'notetaker-tasks';
 
@@ -27,6 +27,43 @@ function getNextTimeSlot(): number {
   return Math.ceil(minutes / SNAP_INTERVAL) * SNAP_INTERVAL;
 }
 
+// Helper to merge pending sessions into tasks (avoids deep nesting)
+function mergePendingSessions(
+  tasks: Task[],
+  pending: PendingSession[]
+): Task[] {
+  return tasks.map((task) => {
+    const taskSessions = pending.filter((p) => p.taskId === task.id);
+    if (taskSessions.length === 0) return task;
+    return updateTask(task, {
+      sessions: [
+        ...(task.sessions ?? []),
+        ...taskSessions.map((p) => p.session),
+      ],
+    });
+  });
+}
+
+// Helper to update a session within a task
+function updateSessionInTask(
+  task: Task,
+  sessionId: string,
+  updates: Partial<TimeSession>
+): Task {
+  const sessions = (task.sessions ?? []).map((session) =>
+    session.id === sessionId ? { ...session, ...updates } : session
+  );
+  return updateTask(task, { sessions });
+}
+
+// Helper to delete a session from a task
+function deleteSessionFromTask(task: Task, sessionId: string): Task {
+  const sessions = (task.sessions ?? []).filter(
+    (session) => session.id !== sessionId
+  );
+  return updateTask(task, { sessions });
+}
+
 export function useTasks() {
   const [tasks, setTasks] = useLocalStorage<Task[]>(TASKS_STORAGE_KEY, []);
 
@@ -34,18 +71,7 @@ export function useTasks() {
   useEffect(() => {
     const pending = flushPendingSessions();
     if (pending.length > 0) {
-      setTasks((prev) =>
-        prev.map((task) => {
-          const taskSessions = pending.filter((p) => p.taskId === task.id);
-          if (taskSessions.length === 0) return task;
-          return updateTask(task, {
-            sessions: [
-              ...(task.sessions ?? []),
-              ...taskSessions.map((p) => p.session),
-            ],
-          });
-        })
-      );
+      setTasks((prev) => mergePendingSessions(prev, pending));
     }
   }, [setTasks]);
 
@@ -145,13 +171,11 @@ export function useTasks() {
   const updateSession = useCallback(
     (taskId: string, sessionId: string, updates: Partial<TimeSession>) => {
       setTasks((prev) =>
-        prev.map((task) => {
-          if (task.id !== taskId) return task;
-          const sessions = (task.sessions ?? []).map((session) =>
-            session.id === sessionId ? { ...session, ...updates } : session
-          );
-          return updateTask(task, { sessions });
-        })
+        prev.map((task) =>
+          task.id === taskId
+            ? updateSessionInTask(task, sessionId, updates)
+            : task
+        )
       );
     },
     [setTasks]
@@ -160,13 +184,9 @@ export function useTasks() {
   const deleteSession = useCallback(
     (taskId: string, sessionId: string) => {
       setTasks((prev) =>
-        prev.map((task) => {
-          if (task.id !== taskId) return task;
-          const sessions = (task.sessions ?? []).filter(
-            (session) => session.id !== sessionId
-          );
-          return updateTask(task, { sessions });
-        })
+        prev.map((task) =>
+          task.id === taskId ? deleteSessionFromTask(task, sessionId) : task
+        )
       );
     },
     [setTasks]

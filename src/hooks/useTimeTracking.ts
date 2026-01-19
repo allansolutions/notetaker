@@ -11,7 +11,7 @@ interface ActiveSessionData {
   session: TimeSession;
 }
 
-interface PendingSession {
+export interface PendingSession {
   taskId: string;
   session: TimeSession;
 }

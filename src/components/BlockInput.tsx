@@ -38,6 +38,20 @@ const placeholders: Partial<Record<BlockType, string>> = {
   code: 'Code',
 };
 
+// Helper to get cursor position in a contentEditable element
+function getCursorPosition(
+  el: HTMLDivElement,
+  sel: Selection | null,
+  textLength: number
+): number {
+  if (!sel || sel.rangeCount === 0) return textLength;
+  const range = sel.getRangeAt(0);
+  const preCaretRange = range.cloneRange();
+  preCaretRange.selectNodeContents(el);
+  preCaretRange.setEnd(range.startContainer, range.startOffset);
+  return preCaretRange.toString().length;
+}
+
 export function BlockInput({
   block,
   onUpdate,
@@ -165,87 +179,99 @@ export function BlockInput({
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const sel = window.getSelection();
-    const text = inputRef.current?.textContent || '';
-    const isAtStart = sel?.anchorOffset === 0 && sel?.focusOffset === 0;
+  // Handle meta key shortcuts, returns true if handled
+  const handleMetaShortcut = (e: KeyboardEvent<HTMLDivElement>): boolean => {
+    if (!e.metaKey) return false;
 
-    // Cmd+E to select block
-    if (e.metaKey && e.key === 'e') {
+    if (e.key === 'e') {
       e.preventDefault();
       onSelect(block.id);
       inputRef.current?.blur();
-      return;
+      return true;
     }
 
-    // Cmd+Shift+Arrow to move block (works in both edit and select mode)
-    if (e.metaKey && e.shiftKey && e.key === 'ArrowUp') {
+    if (e.shiftKey && e.key === 'ArrowUp') {
       e.preventDefault();
       onMoveUp(block.id);
-      return;
+      return true;
     }
-    if (e.metaKey && e.shiftKey && e.key === 'ArrowDown') {
+
+    if (e.shiftKey && e.key === 'ArrowDown') {
       e.preventDefault();
       onMoveDown(block.id);
-      return;
+      return true;
     }
 
-    // Cmd+Return to toggle collapse on H1 blocks
-    if (e.metaKey && e.key === 'Enter' && block.type === 'h1') {
+    if (e.key === 'Enter' && block.type === 'h1') {
       e.preventDefault();
       onToggleCollapse?.(block.id);
-      return;
+      return true;
     }
 
-    // Cmd+Return to toggle todo done state
     if (
-      e.metaKey &&
       e.key === 'Enter' &&
       (block.type === 'todo' || block.type === 'todo-checked')
     ) {
       e.preventDefault();
       const newType = block.type === 'todo' ? 'todo-checked' : 'todo';
       onUpdate(block.id, block.content, newType);
-      return;
+      return true;
     }
 
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      // Get cursor position relative to the full text content
-      let cursorPos = text.length;
-      if (sel && sel.rangeCount > 0 && inputRef.current) {
-        const range = sel.getRangeAt(0);
-        // Create a range from start of element to cursor position
-        const preCaretRange = range.cloneRange();
-        preCaretRange.selectNodeContents(inputRef.current);
-        preCaretRange.setEnd(range.startContainer, range.startOffset);
-        cursorPos = preCaretRange.toString().length;
-      }
+    return false;
+  };
 
-      const contentBefore = text.slice(0, cursorPos);
-      const contentAfter = text.slice(cursorPos);
+  // Handle Enter key for block splitting
+  const handleEnterKey = (text: string, sel: Selection | null) => {
+    const cursorPos = inputRef.current
+      ? getCursorPosition(inputRef.current, sel, text.length)
+      : text.length;
 
-      // Update DOM immediately to show the split
-      if (inputRef.current) {
-        inputRef.current.textContent = contentBefore;
-      }
+    const contentBefore = text.slice(0, cursorPos);
+    const contentAfter = text.slice(cursorPos);
 
-      onEnter(block.id, { contentBefore, contentAfter });
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      onArrowUp(block.id);
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      onArrowDown(block.id);
-    } else if (e.key === 'Backspace' && isAtStart) {
-      e.preventDefault();
-      if (text === '') {
-        // Empty block: just delete it
-        onBackspace(block.id);
-      } else {
-        // Non-empty block at cursor start: merge with previous block
-        onMerge(block.id);
-      }
+    if (inputRef.current) {
+      inputRef.current.textContent = contentBefore;
+    }
+
+    onEnter(block.id, { contentBefore, contentAfter });
+  };
+
+  // Handle Backspace at start of block
+  const handleBackspaceAtStart = (text: string) => {
+    if (text === '') {
+      onBackspace(block.id);
+    } else {
+      onMerge(block.id);
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (handleMetaShortcut(e)) return;
+
+    const sel = window.getSelection();
+    const text = inputRef.current?.textContent || '';
+    const isAtStart = sel?.anchorOffset === 0 && sel?.focusOffset === 0;
+
+    switch (e.key) {
+      case 'Enter':
+        e.preventDefault();
+        handleEnterKey(text, sel);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        onArrowUp(block.id);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        onArrowDown(block.id);
+        break;
+      case 'Backspace':
+        if (isAtStart) {
+          e.preventDefault();
+          handleBackspaceAtStart(text);
+        }
+        break;
     }
   };
 
