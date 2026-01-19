@@ -1,5 +1,3 @@
-# Run unit tests with coverage threshold check (80% minimum)
-npm run test:coverage
-
-# Run e2e tests
+# Run e2e tests as final gate before push
+# Unit tests and coverage are already checked on commit
 ./node_modules/.bin/playwright test

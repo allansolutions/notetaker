@@ -1,1 +1,13 @@
-./node_modules/.bin/prettier --check . < /dev/null && ./node_modules/.bin/eslint . < /dev/null && ./node_modules/.bin/tsc --noEmit < /dev/null && CI=true ./node_modules/.bin/vitest run --reporter=dot < /dev/null
+echo "Checking formatting..."
+./node_modules/.bin/prettier --check . < /dev/null
+
+echo ""
+./node_modules/.bin/eslint . < /dev/null
+
+echo ""
+./node_modules/.bin/tsc --noEmit < /dev/null
+
+echo ""
+# Run tests with coverage threshold check (80% minimum)
+# This ensures new code has tests before it can be committed
+npm run test:coverage
