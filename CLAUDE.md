@@ -46,3 +46,7 @@ When making significant changes to user interactions, DOM structure, or CSS clas
 ## Tools
 
 Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+
+## Permissions
+
+When the user approves a new tool permission that isn't already in `.claude/settings.json`, add it to `permissions.allow` so it persists across sessions.
