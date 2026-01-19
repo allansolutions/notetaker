@@ -7,5 +7,8 @@ dist/
 # Test results
 test-results/
 
+# TypeScript build info
+tsconfig.tsbuildinfo
+
 # Claude Code local settings
 .claude/settings.local.json
