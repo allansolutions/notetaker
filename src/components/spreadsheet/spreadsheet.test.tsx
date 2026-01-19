@@ -6,7 +6,7 @@ import { TypeCell } from './TypeCell';
 import { StatusCell } from './StatusCell';
 import { ImportanceCell } from './ImportanceCell';
 import { TaskTable } from './TaskTable';
-import { Task } from '../../types';
+import { Task, TaskType, TASK_TYPE_COLORS } from '../../types';
 
 describe('SelectCell', () => {
   const options = [
@@ -85,6 +85,28 @@ describe('TypeCell', () => {
       target: { value: 'fitness' },
     });
     expect(onChange).toHaveBeenCalledWith('fitness');
+  });
+
+  it('applies correct color classes for each task type', () => {
+    const taskTypes: TaskType[] = [
+      'admin',
+      'operations',
+      'business-dev',
+      'jardin-casa',
+      'jardin-finca',
+      'personal',
+      'fitness',
+    ];
+
+    taskTypes.forEach((type) => {
+      const { unmount } = render(<TypeCell value={type} onChange={() => {}} />);
+      const select = screen.getByRole('combobox');
+      const colors = TASK_TYPE_COLORS[type];
+
+      expect(select.className).toContain(colors.bg.split(' ')[0]);
+      expect(select.className).toContain(colors.text.split(' ')[0]);
+      unmount();
+    });
   });
 });
 

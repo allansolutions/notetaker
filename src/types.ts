@@ -69,6 +69,38 @@ export interface Task {
   updatedAt: number;
 }
 
+export const TASK_TYPE_COLORS: Record<TaskType, { bg: string; text: string }> =
+  {
+    admin: {
+      bg: 'bg-gray-100 dark:bg-gray-700',
+      text: 'text-gray-700 dark:text-gray-200',
+    },
+    operations: {
+      bg: 'bg-blue-100 dark:bg-blue-900',
+      text: 'text-blue-700 dark:text-blue-200',
+    },
+    'business-dev': {
+      bg: 'bg-purple-100 dark:bg-purple-900',
+      text: 'text-purple-700 dark:text-purple-200',
+    },
+    'jardin-casa': {
+      bg: 'bg-green-100 dark:bg-green-900',
+      text: 'text-green-700 dark:text-green-200',
+    },
+    'jardin-finca': {
+      bg: 'bg-amber-100 dark:bg-amber-900',
+      text: 'text-amber-700 dark:text-amber-200',
+    },
+    personal: {
+      bg: 'bg-pink-100 dark:bg-pink-900',
+      text: 'text-pink-700 dark:text-pink-200',
+    },
+    fitness: {
+      bg: 'bg-red-100 dark:bg-red-900',
+      text: 'text-red-700 dark:text-red-200',
+    },
+  };
+
 export const TASK_TYPE_OPTIONS: { value: TaskType; label: string }[] = [
   { value: 'admin', label: 'Admin' },
   { value: 'operations', label: 'Operations' },
