@@ -14,6 +14,10 @@ test.describe('Task Spreadsheet View', () => {
     await addTaskInput.fill('My new task');
     await page.keyboard.press('Enter');
 
+    // Dismiss the estimate gate modal by clicking a preset
+    const estimateButton = page.getByRole('button', { name: '15m' });
+    await estimateButton.click();
+
     // Should navigate to task detail view - wait for the block input
     await page.waitForSelector('.block-input');
 
@@ -29,6 +33,10 @@ test.describe('Task Spreadsheet View', () => {
     const addTaskInput = page.getByPlaceholder('Add a new task...');
     await addTaskInput.fill('Test task');
     await page.keyboard.press('Enter');
+
+    // Dismiss the estimate gate modal by clicking a preset
+    const estimateButton = page.getByRole('button', { name: '15m' });
+    await estimateButton.click();
 
     // Wait for detail view
     await page.waitForSelector('.block-input');
@@ -46,6 +54,10 @@ test.describe('Task Spreadsheet View', () => {
     const addTaskInput = page.getByPlaceholder('Add a new task...');
     await addTaskInput.fill('Persistent task');
     await page.keyboard.press('Enter');
+
+    // Dismiss the estimate gate modal by clicking a preset
+    const estimateButton = page.getByRole('button', { name: '15m' });
+    await estimateButton.click();
 
     // Wait for navigation and go back
     await page.waitForSelector('.block-input');

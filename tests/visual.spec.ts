@@ -17,6 +17,10 @@ test('Visual check of spreadsheet view', async ({ page }) => {
   await addTaskInput.fill('Test Task');
   await page.keyboard.press('Enter');
 
+  // Dismiss the estimate gate modal by clicking a preset
+  const estimateButton = page.getByRole('button', { name: '15m' });
+  await estimateButton.click();
+
   // Wait for task detail view
   await page.waitForSelector('.block-input');
 
