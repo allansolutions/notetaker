@@ -81,8 +81,9 @@ test.describe('Agenda', () => {
     const agendaBlock = page.locator('[data-testid^="agenda-block-"]').first();
     await expect(agendaBlock).toBeVisible();
 
-    // Check that the block has the cursor-move class for drag indication
-    await expect(agendaBlock).toHaveClass(/cursor-move/);
+    // Check that the drag handle inside the block has the cursor-move class
+    const dragHandle = agendaBlock.locator('.cursor-move');
+    await expect(dragHandle).toBeVisible();
   });
 
   test('resize handle has correct cursor style', async ({ page }) => {
