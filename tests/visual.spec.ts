@@ -8,14 +8,14 @@ test('Visual check of block selection', async ({ page }) => {
   await blockInput.click();
   await page.keyboard.type('This is a test block');
 
-  // Screenshot before Escape
-  await page.screenshot({ path: 'test-results/before-escape.png', fullPage: true });
+  // Screenshot before selection
+  await page.screenshot({ path: 'test-results/before-selection.png', fullPage: true });
 
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Meta+e');
   await page.waitForTimeout(100);
 
-  // Screenshot after Escape - should show selection
-  await page.screenshot({ path: 'test-results/after-escape.png', fullPage: true });
+  // Screenshot after Meta+e - should show selection
+  await page.screenshot({ path: 'test-results/after-selection.png', fullPage: true });
 
   // Verify the class is there
   const wrapper = page.locator('.block-wrapper').first();
