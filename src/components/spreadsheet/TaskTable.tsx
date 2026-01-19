@@ -27,6 +27,7 @@ import { TypeCell } from './TypeCell';
 import { StatusCell } from './StatusCell';
 import { ImportanceCell } from './ImportanceCell';
 import { TitleCell } from './TitleCell';
+import { DragHandleIcon, TrashIcon } from '../icons';
 
 interface TaskTableProps {
   tasks: Task[];
@@ -42,23 +43,7 @@ const columnHelper = createColumnHelper<Task>();
 function DragHandle() {
   return (
     <div className="cursor-grab active:cursor-grabbing text-muted hover:text-primary px-1">
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="9" cy="6" r="1" fill="currentColor" />
-        <circle cx="15" cy="6" r="1" fill="currentColor" />
-        <circle cx="9" cy="12" r="1" fill="currentColor" />
-        <circle cx="15" cy="12" r="1" fill="currentColor" />
-        <circle cx="9" cy="18" r="1" fill="currentColor" />
-        <circle cx="15" cy="18" r="1" fill="currentColor" />
-      </svg>
+      <DragHandleIcon />
     </div>
   );
 }
@@ -71,20 +56,7 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
       className="text-muted hover:text-error px-1 opacity-0 group-hover:opacity-100 transition-opacity"
       title="Delete task"
     >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M3 6h18" />
-        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-      </svg>
+      <TrashIcon />
     </button>
   );
 }

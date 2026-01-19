@@ -1,4 +1,6 @@
 import { Task, Block, BlockType } from '../../types';
+import { BackButton } from '../BackButton';
+import { blockTypeClasses } from '../../utils/block-styles';
 
 interface FullDayNotesViewProps {
   tasks: Task[];
@@ -6,19 +8,20 @@ interface FullDayNotesViewProps {
   onBack: () => void;
 }
 
-const blockTypeClasses: Record<BlockType, string> = {
-  paragraph: 'text-body',
-  h1: 'text-h1 leading-tight font-bold',
-  h2: 'text-h2 leading-tight font-semibold mt-6 mb-px',
-  h3: 'text-h3 leading-tight font-semibold mt-4 mb-px',
-  bullet: 'text-body',
-  numbered: 'text-body',
-  todo: 'text-body',
-  'todo-checked': 'text-body line-through text-muted',
-  quote: 'text-body',
-  code: 'font-mono text-small bg-surface-raised py-3 px-4 rounded-sm whitespace-pre-wrap',
-  divider: '',
-};
+function getPrefix(type: BlockType, index: number): string {
+  switch (type) {
+    case 'bullet':
+      return '\u2022';
+    case 'numbered':
+      return `${index + 1}.`;
+    case 'todo':
+      return '\u2610';
+    case 'todo-checked':
+      return '\u2611';
+    default:
+      return '';
+  }
+}
 
 function ReadOnlyBlock({ block, index }: { block: Block; index: number }) {
   if (block.type === 'divider') {
@@ -35,21 +38,6 @@ function ReadOnlyBlock({ block, index }: { block: Block; index: number }) {
       </div>
     </div>
   );
-}
-
-function getPrefix(type: BlockType, index: number): string {
-  switch (type) {
-    case 'bullet':
-      return '\u2022';
-    case 'numbered':
-      return `${index + 1}.`;
-    case 'todo':
-      return '\u2610';
-    case 'todo-checked':
-      return '\u2611';
-    default:
-      return '';
-  }
 }
 
 function TaskSection({
@@ -103,25 +91,7 @@ export function FullDayNotesView({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-4 mb-6">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-small text-muted hover:text-primary flex items-center gap-1"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Back
-        </button>
+        <BackButton onClick={onBack} />
         <h1 className="text-lg font-semibold text-primary">Full Day Notes</h1>
       </div>
 

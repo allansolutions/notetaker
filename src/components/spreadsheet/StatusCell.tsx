@@ -1,4 +1,5 @@
 import { TaskStatus, TASK_STATUS_OPTIONS } from '../../types';
+import { SelectCell } from './SelectCell';
 
 interface StatusCellProps {
   value: TaskStatus;
@@ -7,16 +8,10 @@ interface StatusCellProps {
 
 export function StatusCell({ value, onChange }: StatusCellProps) {
   return (
-    <select
+    <SelectCell
       value={value}
-      onChange={(e) => onChange(e.target.value as TaskStatus)}
-      className="w-full bg-transparent text-small text-primary border-none outline-none cursor-pointer appearance-none hover:bg-hover rounded px-2 py-1"
-    >
-      {TASK_STATUS_OPTIONS.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      options={TASK_STATUS_OPTIONS}
+    />
   );
 }

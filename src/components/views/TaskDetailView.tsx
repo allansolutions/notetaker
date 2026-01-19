@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Task, Block } from '../../types';
 import { Editor, createBlock } from '../Editor';
+import { BackButton } from '../BackButton';
 
 interface TaskDetailViewProps {
   task: Task;
@@ -48,25 +49,7 @@ export function TaskDetailView({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-4 mb-6">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-small text-muted hover:text-primary flex items-center gap-1"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Back
-        </button>
+        <BackButton onClick={onBack} />
       </div>
 
       <input
