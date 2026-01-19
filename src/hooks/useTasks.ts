@@ -6,6 +6,7 @@ import {
   TaskStatus,
   TaskImportance,
   Block,
+  TimeSession,
   DEFAULT_DURATION,
   SNAP_INTERVAL,
 } from '../types';
@@ -95,6 +96,32 @@ export function useTasks() {
     [setTasks]
   );
 
+  const setEstimate = useCallback(
+    (id: string, estimate: number) => {
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === id ? updateTask(task, { estimate }) : task
+        )
+      );
+    },
+    [setTasks]
+  );
+
+  const addSession = useCallback(
+    (id: string, session: TimeSession) => {
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === id
+            ? updateTask(task, {
+                sessions: [...(task.sessions ?? []), session],
+              })
+            : task
+        )
+      );
+    },
+    [setTasks]
+  );
+
   return {
     tasks,
     setTasks,
@@ -104,5 +131,7 @@ export function useTasks() {
     reorder,
     updateBlocks,
     toggleScheduled,
+    setEstimate,
+    addSession,
   };
 }

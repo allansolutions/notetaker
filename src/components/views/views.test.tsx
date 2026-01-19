@@ -63,8 +63,10 @@ describe('SpreadsheetView', () => {
 
 describe('TaskDetailView', () => {
   const createProps = (taskOverrides: Partial<Task> = {}) => ({
-    task: createMockTask(taskOverrides),
+    task: createMockTask({ estimate: 60, ...taskOverrides }),
     onUpdateTask: vi.fn(),
+    onSetEstimate: vi.fn(),
+    onAddSession: vi.fn(),
     onBack: vi.fn(),
   });
 
@@ -93,11 +95,17 @@ describe('TaskDetailView', () => {
 
   it('updates title on blur', () => {
     const onUpdateTask = vi.fn();
-    const task = createMockTask({ id: 'task-1', title: 'Original' });
+    const task = createMockTask({
+      id: 'task-1',
+      title: 'Original',
+      estimate: 60,
+    });
     render(
       <TaskDetailView
         task={task}
         onUpdateTask={onUpdateTask}
+        onSetEstimate={vi.fn()}
+        onAddSession={vi.fn()}
         onBack={() => {}}
       />
     );
@@ -113,11 +121,13 @@ describe('TaskDetailView', () => {
 
   it('does not update title on blur if unchanged', () => {
     const onUpdateTask = vi.fn();
-    const task = createMockTask({ title: 'Original' });
+    const task = createMockTask({ title: 'Original', estimate: 60 });
     render(
       <TaskDetailView
         task={task}
         onUpdateTask={onUpdateTask}
+        onSetEstimate={vi.fn()}
+        onAddSession={vi.fn()}
         onBack={() => {}}
       />
     );

@@ -4,6 +4,7 @@ import {
   TaskStatus,
   TaskImportance,
   Block,
+  TimeSession,
   AGENDA_START_HOUR,
   DEFAULT_DURATION,
 } from '../types';
@@ -68,4 +69,19 @@ export function updateTaskBlocks(task: Task, blocks: Block[]): Task {
     blocks,
     updatedAt: Date.now(),
   };
+}
+
+let sessionIdCounter = Date.now();
+
+export function generateSessionId(): string {
+  return `session-${sessionIdCounter++}`;
+}
+
+export function computeTimeSpent(sessions: TimeSession[]): number {
+  return sessions.reduce((total, session) => {
+    if (session.endTime) {
+      return total + (session.endTime - session.startTime);
+    }
+    return total;
+  }, 0);
 }

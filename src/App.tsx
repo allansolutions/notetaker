@@ -15,7 +15,15 @@ const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 500;
 
 function App() {
-  const { tasks, addTask, updateTaskById, removeTask, reorder } = useTasks();
+  const {
+    tasks,
+    addTask,
+    updateTaskById,
+    removeTask,
+    reorder,
+    setEstimate,
+    addSession,
+  } = useTasks();
 
   const [currentView, setCurrentView] = useState<ViewType>('spreadsheet');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -101,6 +109,8 @@ function App() {
           <TaskDetailView
             task={selectedTask}
             onUpdateTask={updateTaskById}
+            onSetEstimate={setEstimate}
+            onAddSession={addSession}
             onBack={handleBackToSpreadsheet}
           />
         );

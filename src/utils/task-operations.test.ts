@@ -6,8 +6,10 @@ import {
   deleteTask,
   reorderTasks,
   updateTaskBlocks,
+  generateSessionId,
+  computeTimeSpent,
 } from './task-operations';
-import { Task, Block } from '../types';
+import { Task, Block, TimeSession } from '../types';
 
 describe('createTask', () => {
   beforeEach(() => {
@@ -186,5 +188,52 @@ describe('updateTaskBlocks', () => {
 
     expect(task.blocks).toEqual([]);
     expect(updated.blocks).toEqual(blocks);
+  });
+});
+
+describe('generateSessionId', () => {
+  it('generates unique session IDs', () => {
+    const id1 = generateSessionId();
+    const id2 = generateSessionId();
+
+    expect(id1).toMatch(/^session-/);
+    expect(id2).toMatch(/^session-/);
+    expect(id1).not.toBe(id2);
+  });
+});
+
+describe('computeTimeSpent', () => {
+  it('returns 0 for empty sessions array', () => {
+    const result = computeTimeSpent([]);
+    expect(result).toBe(0);
+  });
+
+  it('computes total time from completed sessions', () => {
+    const sessions: TimeSession[] = [
+      { id: 's1', startTime: 1000, endTime: 3000 }, // 2 seconds
+      { id: 's2', startTime: 5000, endTime: 8000 }, // 3 seconds
+    ];
+
+    const result = computeTimeSpent(sessions);
+    expect(result).toBe(5000); // 5 seconds total
+  });
+
+  it('ignores sessions without endTime (active sessions)', () => {
+    const sessions: TimeSession[] = [
+      { id: 's1', startTime: 1000, endTime: 3000 }, // 2 seconds
+      { id: 's2', startTime: 5000 }, // Active session - no endTime
+    ];
+
+    const result = computeTimeSpent(sessions);
+    expect(result).toBe(2000); // Only counts completed session
+  });
+
+  it('handles single completed session', () => {
+    const sessions: TimeSession[] = [
+      { id: 's1', startTime: 0, endTime: 60000 }, // 1 minute
+    ];
+
+    const result = computeTimeSpent(sessions);
+    expect(result).toBe(60000);
   });
 });

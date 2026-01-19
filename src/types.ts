@@ -17,6 +17,12 @@ export interface Block {
   content: string;
 }
 
+export interface TimeSession {
+  id: string;
+  startTime: number; // Unix timestamp (ms)
+  endTime?: number; // Unix timestamp (ms), undefined if active
+}
+
 export interface Document {
   id: string;
   title: string;
@@ -57,6 +63,8 @@ export interface Task {
   scheduled?: boolean;
   startTime?: number;
   duration?: number;
+  estimate?: number; // Estimated time in minutes
+  sessions?: TimeSession[]; // Log of all work sessions
   createdAt: number;
   updatedAt: number;
 }
