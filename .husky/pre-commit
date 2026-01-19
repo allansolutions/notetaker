@@ -1,1 +1,1 @@
-./node_modules/.bin/tsc --noEmit
+CI=true ./node_modules/.bin/vitest run
