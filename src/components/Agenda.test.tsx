@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { Agenda } from './Agenda';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Agenda, snapToGrid, SNAP_GRID_SIZE } from './Agenda';
 import { Block, TodoMetadata } from '../types';
 
 const createBlock = (
@@ -126,6 +126,327 @@ describe('Agenda', () => {
     );
 
     expect(screen.getByTestId('agenda-block-resize-1')).toBeInTheDocument();
+  });
+
+  it('does not render block when startTime is undefined', () => {
+    const blocks = [createBlock('1', 'todo', 'Task')];
+    const todoMetadata = {
+      '1': { scheduled: true }, // no startTime
+    };
+    render(
+      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
+    );
+
+    expect(screen.queryByTestId('agenda-block-1')).not.toBeInTheDocument();
+  });
+
+  it('ignores non-todo block types', () => {
+    const blocks = [
+      createBlock('1', 'paragraph', 'Some text'),
+      createBlock('2', 'h1', 'Heading'),
+    ];
+    const todoMetadata = {
+      '1': { scheduled: true, startTime: 540, duration: 60 },
+      '2': { scheduled: true, startTime: 600, duration: 60 },
+    };
+    render(
+      <Agenda {...defaultProps} blocks={blocks} todoMetadata={todoMetadata} />
+    );
+
+    expect(screen.queryByTestId('agenda-block-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('agenda-block-2')).not.toBeInTheDocument();
+  });
+});
+
+describe('snapToGrid modifier', () => {
+  it('has correct grid size for 15-minute intervals', () => {
+    // 15 minutes / 60 * 48px per hour = 12 pixels
+    expect(SNAP_GRID_SIZE).toBe(12);
+  });
+
+  it('snaps transform to nearest grid position', () => {
+    const args = {
+      transform: { x: 0, y: 25, scaleX: 1, scaleY: 1 },
+      activatorEvent: null,
+      active: null,
+      activeNodeRect: null,
+      containerNodeRect: null,
+      draggingNodeRect: null,
+      over: null,
+      overlayNodeRect: null,
+      scrollableAncestors: [],
+      scrollableAncestorRects: [],
+      windowRect: null,
+    };
+
+    const result = snapToGrid(args as Parameters<typeof snapToGrid>[0]);
+
+    // 25px should snap to 24px (2 grid units * 12px)
+    expect(result.y).toBe(24);
+    expect(result.x).toBe(0);
+  });
+
+  it('snaps down when closer to lower grid line', () => {
+    const args = {
+      transform: { x: 0, y: 5, scaleX: 1, scaleY: 1 },
+      activatorEvent: null,
+      active: null,
+      activeNodeRect: null,
+      containerNodeRect: null,
+      draggingNodeRect: null,
+      over: null,
+      overlayNodeRect: null,
+      scrollableAncestors: [],
+      scrollableAncestorRects: [],
+      windowRect: null,
+    };
+
+    const result = snapToGrid(args as Parameters<typeof snapToGrid>[0]);
+
+    // 5px should snap to 0px (closest grid line)
+    expect(result.y).toBe(0);
+  });
+
+  it('snaps up when closer to upper grid line', () => {
+    const args = {
+      transform: { x: 0, y: 7, scaleX: 1, scaleY: 1 },
+      activatorEvent: null,
+      active: null,
+      activeNodeRect: null,
+      containerNodeRect: null,
+      draggingNodeRect: null,
+      over: null,
+      overlayNodeRect: null,
+      scrollableAncestors: [],
+      scrollableAncestorRects: [],
+      windowRect: null,
+    };
+
+    const result = snapToGrid(args as Parameters<typeof snapToGrid>[0]);
+
+    // 7px should snap to 12px (1 grid unit * 12px)
+    expect(result.y).toBe(12);
+  });
+
+  it('handles negative transforms', () => {
+    const args = {
+      transform: { x: 0, y: -25, scaleX: 1, scaleY: 1 },
+      activatorEvent: null,
+      active: null,
+      activeNodeRect: null,
+      containerNodeRect: null,
+      draggingNodeRect: null,
+      over: null,
+      overlayNodeRect: null,
+      scrollableAncestors: [],
+      scrollableAncestorRects: [],
+      windowRect: null,
+    };
+
+    const result = snapToGrid(args as Parameters<typeof snapToGrid>[0]);
+
+    // -25px should snap to -24px
+    expect(result.y).toBe(-24);
+  });
+
+  it('preserves scale values', () => {
+    const args = {
+      transform: { x: 5, y: 10, scaleX: 1.5, scaleY: 2 },
+      activatorEvent: null,
+      active: null,
+      activeNodeRect: null,
+      containerNodeRect: null,
+      draggingNodeRect: null,
+      over: null,
+      overlayNodeRect: null,
+      scrollableAncestors: [],
+      scrollableAncestorRects: [],
+      windowRect: null,
+    };
+
+    const result = snapToGrid(args as Parameters<typeof snapToGrid>[0]);
+
+    expect(result.scaleX).toBe(1.5);
+    expect(result.scaleY).toBe(2);
+  });
+});
+
+describe('AgendaBlock resize', () => {
+  const defaultProps = {
+    blocks: [] as Block[],
+    todoMetadata: {} as Record<string, TodoMetadata>,
+    onUpdateTodoMetadata: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('changes duration with keyboard arrow keys', () => {
+    const blocks = [createBlock('1', 'todo', 'Task')];
+    const todoMetadata = {
+      '1': { scheduled: true, startTime: 540, duration: 60 },
+    };
+    const onUpdateTodoMetadata = vi.fn();
+    render(
+      <Agenda
+        {...defaultProps}
+        blocks={blocks}
+        todoMetadata={todoMetadata}
+        onUpdateTodoMetadata={onUpdateTodoMetadata}
+      />
+    );
+
+    const resizeHandle = screen.getByTestId('agenda-block-resize-1');
+
+    // Press ArrowDown to increase duration
+    fireEvent.keyDown(resizeHandle, { key: 'ArrowDown' });
+
+    expect(onUpdateTodoMetadata).toHaveBeenCalledWith('1', {
+      scheduled: true,
+      startTime: 540,
+      duration: 75, // 60 + 15 minutes
+    });
+  });
+
+  it('decreases duration with ArrowUp key', () => {
+    const blocks = [createBlock('1', 'todo', 'Task')];
+    const todoMetadata = {
+      '1': { scheduled: true, startTime: 540, duration: 60 },
+    };
+    const onUpdateTodoMetadata = vi.fn();
+    render(
+      <Agenda
+        {...defaultProps}
+        blocks={blocks}
+        todoMetadata={todoMetadata}
+        onUpdateTodoMetadata={onUpdateTodoMetadata}
+      />
+    );
+
+    const resizeHandle = screen.getByTestId('agenda-block-resize-1');
+
+    // Press ArrowUp to decrease duration
+    fireEvent.keyDown(resizeHandle, { key: 'ArrowUp' });
+
+    expect(onUpdateTodoMetadata).toHaveBeenCalledWith('1', {
+      scheduled: true,
+      startTime: 540,
+      duration: 45, // 60 - 15 minutes
+    });
+  });
+
+  it('respects minimum duration when decreasing', () => {
+    const blocks = [createBlock('1', 'todo', 'Task')];
+    const todoMetadata = {
+      '1': { scheduled: true, startTime: 540, duration: 15 }, // Already at minimum
+    };
+    const onUpdateTodoMetadata = vi.fn();
+    render(
+      <Agenda
+        {...defaultProps}
+        blocks={blocks}
+        todoMetadata={todoMetadata}
+        onUpdateTodoMetadata={onUpdateTodoMetadata}
+      />
+    );
+
+    const resizeHandle = screen.getByTestId('agenda-block-resize-1');
+
+    // Try to decrease below minimum
+    fireEvent.keyDown(resizeHandle, { key: 'ArrowUp' });
+
+    expect(onUpdateTodoMetadata).toHaveBeenCalledWith('1', {
+      scheduled: true,
+      startTime: 540,
+      duration: 15, // Should stay at minimum
+    });
+  });
+
+  it('ignores non-arrow keys', () => {
+    const blocks = [createBlock('1', 'todo', 'Task')];
+    const todoMetadata = {
+      '1': { scheduled: true, startTime: 540, duration: 60 },
+    };
+    const onUpdateTodoMetadata = vi.fn();
+    render(
+      <Agenda
+        {...defaultProps}
+        blocks={blocks}
+        todoMetadata={todoMetadata}
+        onUpdateTodoMetadata={onUpdateTodoMetadata}
+      />
+    );
+
+    const resizeHandle = screen.getByTestId('agenda-block-resize-1');
+
+    // Press a non-arrow key
+    fireEvent.keyDown(resizeHandle, { key: 'Enter' });
+
+    expect(onUpdateTodoMetadata).not.toHaveBeenCalled();
+  });
+
+  it('updates duration on mouse drag resize', () => {
+    const blocks = [createBlock('1', 'todo', 'Task')];
+    const todoMetadata = {
+      '1': { scheduled: true, startTime: 540, duration: 60 },
+    };
+    const onUpdateTodoMetadata = vi.fn();
+    render(
+      <Agenda
+        {...defaultProps}
+        blocks={blocks}
+        todoMetadata={todoMetadata}
+        onUpdateTodoMetadata={onUpdateTodoMetadata}
+      />
+    );
+
+    const resizeHandle = screen.getByTestId('agenda-block-resize-1');
+
+    // Start resize
+    fireEvent.mouseDown(resizeHandle, { clientY: 100 });
+
+    // Move mouse down by 24 pixels (30 minutes worth at 48px/hour)
+    fireEvent.mouseMove(document, { clientY: 124 });
+
+    expect(onUpdateTodoMetadata).toHaveBeenCalledWith('1', {
+      scheduled: true,
+      startTime: 540,
+      duration: 90, // 60 + 30 minutes (snapped)
+    });
+  });
+
+  it('stops resize on mouse up', () => {
+    const blocks = [createBlock('1', 'todo', 'Task')];
+    const todoMetadata = {
+      '1': { scheduled: true, startTime: 540, duration: 60 },
+    };
+    const onUpdateTodoMetadata = vi.fn();
+    render(
+      <Agenda
+        {...defaultProps}
+        blocks={blocks}
+        todoMetadata={todoMetadata}
+        onUpdateTodoMetadata={onUpdateTodoMetadata}
+      />
+    );
+
+    const resizeHandle = screen.getByTestId('agenda-block-resize-1');
+
+    // Start resize
+    fireEvent.mouseDown(resizeHandle, { clientY: 100 });
+
+    // Move mouse
+    fireEvent.mouseMove(document, { clientY: 124 });
+    onUpdateTodoMetadata.mockClear();
+
+    // Release mouse
+    fireEvent.mouseUp(document);
+
+    // Moving after mouseUp should not trigger updates
+    fireEvent.mouseMove(document, { clientY: 150 });
+
+    expect(onUpdateTodoMetadata).not.toHaveBeenCalled();
   });
 });
 

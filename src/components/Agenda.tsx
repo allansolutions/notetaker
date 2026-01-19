@@ -133,4 +133,4 @@ export function Agenda({
   );
 }
 
-export { HOUR_HEIGHT };
+export { HOUR_HEIGHT, snapToGrid, SNAP_GRID_SIZE };
