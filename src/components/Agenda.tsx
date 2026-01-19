@@ -1,4 +1,4 @@
-import { DndContext, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, Modifier } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   Block,
@@ -17,6 +17,12 @@ interface AgendaProps {
 }
 
 const HOUR_HEIGHT = 48; // pixels per hour
+const SNAP_GRID_SIZE = (SNAP_INTERVAL / 60) * HOUR_HEIGHT; // 12 pixels for 15-minute intervals
+
+const snapToGrid: Modifier = ({ transform }) => ({
+  ...transform,
+  y: Math.round(transform.y / SNAP_GRID_SIZE) * SNAP_GRID_SIZE,
+});
 
 function formatHour(hour: number): string {
   const period = hour >= 12 ? 'PM' : 'AM';
@@ -81,7 +87,7 @@ export function Agenda({
         Agenda
       </div>
       <DndContext
-        modifiers={[restrictToVerticalAxis]}
+        modifiers={[restrictToVerticalAxis, snapToGrid]}
         onDragEnd={handleDragEnd}
       >
         <div
