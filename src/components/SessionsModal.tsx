@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TimeSession } from '../types';
 
 interface SessionsModalProps {
@@ -118,45 +118,40 @@ export function SessionsModal({
     }
   };
 
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  // Open dialog on mount, close on unmount
+  // Handle Escape key to close
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) {
-      dialog.showModal();
-    }
-    return () => {
-      if (dialog?.open) {
-        dialog.close();
-      }
-    };
-  }, []);
-
-  // Handle backdrop click (clicking outside the modal content)
-  const handleDialogClick = useCallback(
-    (e: React.MouseEvent<HTMLDialogElement>) => {
-      if (e.target === dialogRef.current) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
         onClose();
       }
-    },
-    [onClose]
-  );
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
-  // Native <dialog> handles Escape key automatically via onClose.
-  // The onClick detects backdrop clicks (when clicking the dialog element itself, not its contents).
-  // eslint doesn't recognize this native dialog pattern, so we disable the rules here.
-  /* eslint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */
   return (
-    <dialog
-      ref={dialogRef}
-      className="bg-transparent p-0 max-w-md w-full mx-4 max-h-[80vh] backdrop:bg-black/50"
-      onClose={onClose}
-      onClick={handleDialogClick}
-    >
-      <div className="bg-surface rounded-lg shadow-xl flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop button - closes modal when clicked */}
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/50 cursor-default"
+        onClick={onClose}
+        aria-label="Close modal"
+      />
+      {/* Modal content */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sessions-modal-title"
+        className="relative bg-surface rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] flex flex-col"
+      >
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-primary">Time Sessions</h2>
+          <h2
+            id="sessions-modal-title"
+            className="text-lg font-semibold text-primary"
+          >
+            Time Sessions
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -268,6 +263,6 @@ export function SessionsModal({
           </div>
         </div>
       </div>
-    </dialog>
+    </div>
   );
 }

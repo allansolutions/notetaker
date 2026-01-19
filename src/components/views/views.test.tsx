@@ -162,6 +162,18 @@ describe('TaskDetailView', () => {
     // Editor should render a block-input
     expect(screen.getByRole('textbox', { name: '' })).toBeInTheDocument();
   });
+
+  it('opens sessions modal when clicking time display', () => {
+    const props = createProps({ estimate: 60 });
+    render(<TaskDetailView {...props} />);
+
+    // Find and click the time display button (shows "0m / 1h")
+    const timeDisplay = screen.getByRole('button', { name: /0m \/ 1h/i });
+    fireEvent.click(timeDisplay);
+
+    // Modal should appear with "Time Sessions" title
+    expect(screen.getByText('Time Sessions')).toBeInTheDocument();
+  });
 });
 
 describe('FullDayNotesView', () => {
