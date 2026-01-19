@@ -2,6 +2,14 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Block, BlockType } from '../types';
 import { BlockInput } from './BlockInput';
 import { generateId } from '../utils/markdown';
+import {
+  moveBlockUp as moveBlockUpUtil,
+  moveBlockDown as moveBlockDownUtil,
+  getNumberedIndex as getNumberedIndexUtil,
+  getVisibleBlocks,
+  insertBlockAfter as insertBlockAfterUtil,
+  deleteBlock as deleteBlockUtil,
+} from '../utils/block-operations';
 
 export function createBlock(type: BlockType = 'paragraph', content: string = ''): Block {
   return {
@@ -55,46 +63,23 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
     );
   }, [setBlocks]);
 
-  const LIST_TYPES: BlockType[] = ['bullet', 'numbered', 'todo', 'todo-checked'];
-
   const insertBlockAfter = useCallback((id: string) => {
     setBlocks(prev => {
-      const index = prev.findIndex(b => b.id === id);
-      const currentBlock = prev[index];
-
-      // If it's a list type and empty, convert to paragraph instead of continuing list
-      if (LIST_TYPES.includes(currentBlock.type) && currentBlock.content === '') {
-        return prev.map(b =>
-          b.id === id ? { ...b, type: 'paragraph' as BlockType } : b
-        );
+      const result = insertBlockAfterUtil(prev, id, createBlock);
+      if (result.newBlockId) {
+        pendingFocusRef.current = result.newBlockId;
       }
-
-      // Continue list types, or create paragraph for others
-      const newType = LIST_TYPES.includes(currentBlock.type)
-        ? (currentBlock.type === 'todo-checked' ? 'todo' : currentBlock.type)
-        : 'paragraph';
-
-      const newBlock = createBlock(newType);
-      // Store the ID to focus after this update completes
-      pendingFocusRef.current = newBlock.id;
-
-      const newBlocks = [...prev];
-      newBlocks.splice(index + 1, 0, newBlock);
-      return newBlocks;
+      return result.blocks;
     });
   }, [setBlocks]);
 
   const deleteBlock = useCallback((id: string) => {
     setBlocks(prev => {
-      if (prev.length <= 1) return prev; // Keep at least one block
-      const index = prev.findIndex(b => b.id === id);
-      const newBlocks = prev.filter(b => b.id !== id);
-      // Focus previous block
-      const prevBlock = newBlocks[Math.max(0, index - 1)];
-      if (prevBlock) {
-        setFocusedId(prevBlock.id);
+      const result = deleteBlockUtil(prev, id);
+      if (result.focusBlockId) {
+        setFocusedId(result.focusBlockId);
       }
-      return newBlocks;
+      return result.blocks;
     });
   }, [setBlocks]);
 
@@ -135,54 +120,14 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
   }, []);
 
   const moveBlockUp = useCallback((id: string) => {
-    setBlocks(prev => {
-      const index = prev.findIndex(b => b.id === id);
-      if (index <= 0) return prev;
-      const newBlocks = [...prev];
-      [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
-      return newBlocks;
-    });
+    setBlocks(prev => moveBlockUpUtil(prev, id));
   }, [setBlocks]);
 
   const moveBlockDown = useCallback((id: string) => {
-    setBlocks(prev => {
-      const index = prev.findIndex(b => b.id === id);
-      if (index >= prev.length - 1) return prev;
-      const newBlocks = [...prev];
-      [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
-      return newBlocks;
-    });
+    setBlocks(prev => moveBlockDownUtil(prev, id));
   }, [setBlocks]);
 
-  // Calculate numbered list positions (1-based within consecutive runs)
-  const getNumberedIndex = (index: number): number => {
-    if (blocks[index].type !== 'numbered') return 0;
-    let count = 1;
-    for (let i = index - 1; i >= 0 && blocks[i].type === 'numbered'; i--) {
-      count++;
-    }
-    return count;
-  };
-
-  // Filter out collapsed H1 sections (keep the H1, hide content until next H1)
-  const visibleBlocks = (() => {
-    if (!collapsedBlockIds || collapsedBlockIds.size === 0) return blocks;
-
-    const result: Block[] = [];
-    let isInCollapsedSection = false;
-
-    for (const block of blocks) {
-      if (block.type === 'h1') {
-        // Always show the H1 itself, but check if its content is collapsed
-        result.push(block);
-        isInCollapsedSection = collapsedBlockIds.has(block.id);
-      } else if (!isInCollapsedSection) {
-        result.push(block);
-      }
-    }
-
-    return result;
-  })();
+  const visibleBlocks = getVisibleBlocks(blocks, collapsedBlockIds);
 
   return (
     <div className="editor">
@@ -204,7 +149,7 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
             onEnterEdit={enterEditMode}
             onMoveUp={moveBlockUp}
             onMoveDown={moveBlockDown}
-            numberedIndex={getNumberedIndex(originalIndex)}
+            numberedIndex={getNumberedIndexUtil(blocks, originalIndex)}
             isCollapsed={block.type === 'h1' && collapsedBlockIds?.has(block.id)}
             onToggleCollapse={onToggleCollapse}
           />
