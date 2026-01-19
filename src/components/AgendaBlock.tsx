@@ -94,7 +94,7 @@ export function AgendaBlock({
   return (
     <div
       ref={setNodeRef}
-      className="absolute left-12 right-1 bg-accent rounded text-xs text-primary overflow-hidden select-none"
+      className="absolute left-16 right-1 bg-accent rounded text-xs text-primary overflow-hidden select-none"
       style={style}
       data-testid={`agenda-block-${task.id}`}
       {...attributes}
