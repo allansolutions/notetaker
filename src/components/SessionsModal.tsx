@@ -1,0 +1,254 @@
+import { useState, useEffect, useRef } from 'react';
+import { TimeSession } from '../types';
+
+interface SessionsModalProps {
+  sessions: TimeSession[];
+  estimateMinutes: number;
+  onUpdateSession: (sessionId: string, updates: Partial<TimeSession>) => void;
+  onDeleteSession: (sessionId: string) => void;
+  onClose: () => void;
+}
+
+function formatDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function formatDuration(ms: number): string {
+  const totalMinutes = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
+}
+
+function msToMinutes(ms: number): number {
+  return Math.round(ms / 60000);
+}
+
+function minutesToMs(minutes: number): number {
+  return minutes * 60000;
+}
+
+interface EditingState {
+  sessionId: string;
+  minutes: string;
+}
+
+function EditInput({
+  value,
+  onChange,
+  onKeyDown,
+  onBlur,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  onBlur: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return (
+    <input
+      ref={inputRef}
+      type="number"
+      min="0"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      onBlur={onBlur}
+      className="w-16 px-2 py-1 text-sm rounded bg-surface border border-border text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  );
+}
+
+export function SessionsModal({
+  sessions,
+  estimateMinutes,
+  onUpdateSession,
+  onDeleteSession,
+  onClose,
+}: SessionsModalProps) {
+  const [editing, setEditing] = useState<EditingState | null>(null);
+
+  const totalMs = sessions.reduce((sum, s) => {
+    if (s.endTime) {
+      return sum + (s.endTime - s.startTime);
+    }
+    return sum;
+  }, 0);
+
+  const handleEditStart = (session: TimeSession) => {
+    if (!session.endTime) return;
+    const duration = session.endTime - session.startTime;
+    setEditing({
+      sessionId: session.id,
+      minutes: String(msToMinutes(duration)),
+    });
+  };
+
+  const handleEditSave = (session: TimeSession) => {
+    if (!editing || !session.endTime) return;
+    const newMinutes = parseInt(editing.minutes, 10);
+    if (isNaN(newMinutes) || newMinutes < 0) {
+      setEditing(null);
+      return;
+    }
+    const newDuration = minutesToMs(newMinutes);
+    const newEndTime = session.startTime + newDuration;
+    onUpdateSession(session.id, { endTime: newEndTime });
+    setEditing(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, session: TimeSession) => {
+    if (e.key === 'Enter') {
+      handleEditSave(session);
+    } else if (e.key === 'Escape') {
+      setEditing(null);
+    }
+  };
+
+  const handleBackdropKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
+  return (
+    /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- Modal backdrop pattern */
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={onClose}
+      onKeyDown={handleBackdropKeyDown}
+    >
+      <div
+        className="bg-surface rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* eslint-enable jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h2 className="text-lg font-semibold text-primary">Time Sessions</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted hover:text-primary transition-colors"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M5 5l10 10M15 5L5 15" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {sessions.length === 0 ? (
+            <p className="text-muted text-center py-8">
+              No sessions recorded yet
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {sessions.map((session) => {
+                const isComplete = session.endTime !== undefined;
+                // Only show duration for completed sessions
+                const duration = isComplete
+                  ? session.endTime! - session.startTime
+                  : 0;
+                const isEditing = editing?.sessionId === session.id;
+
+                return (
+                  <div
+                    key={session.id}
+                    className="flex items-center gap-3 p-3 rounded-md bg-hover"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-small text-muted truncate">
+                        {formatDate(session.startTime)}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isEditing ? (
+                        <EditInput
+                          value={editing.minutes}
+                          onChange={(value) =>
+                            setEditing({ ...editing, minutes: value })
+                          }
+                          onKeyDown={(e) => handleKeyDown(e, session)}
+                          onBlur={() => handleEditSave(session)}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleEditStart(session)}
+                          disabled={!isComplete}
+                          className={`px-2 py-1 text-sm rounded font-medium ${
+                            isComplete
+                              ? 'text-primary hover:bg-surface cursor-pointer'
+                              : 'text-muted cursor-default'
+                          }`}
+                          title={
+                            isComplete ? 'Click to edit' : 'Active session'
+                          }
+                        >
+                          {isComplete ? formatDuration(duration) : 'Active'}
+                          {!isComplete && (
+                            <span className="ml-1 inline-block size-2 rounded-full bg-green-500 animate-pulse" />
+                          )}
+                        </button>
+                      )}
+
+                      {isComplete && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteSession(session.id)}
+                          className="p-1 text-muted hover:text-red-500 transition-colors"
+                          title="Delete session"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-border">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted">Total</span>
+            <span className="text-primary font-medium">
+              {formatDuration(totalMs)} / {estimateMinutes}m estimate
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

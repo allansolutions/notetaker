@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import {
   Task,
@@ -17,6 +17,7 @@ import {
   reorderTasks,
   updateTaskBlocks,
 } from '../utils/task-operations';
+import { flushPendingSessions } from './useTimeTracking';
 
 const TASKS_STORAGE_KEY = 'notetaker-tasks';
 
@@ -28,6 +29,25 @@ function getNextTimeSlot(): number {
 
 export function useTasks() {
   const [tasks, setTasks] = useLocalStorage<Task[]>(TASKS_STORAGE_KEY, []);
+
+  // Flush any pending sessions saved during previous unmounts
+  useEffect(() => {
+    const pending = flushPendingSessions();
+    if (pending.length > 0) {
+      setTasks((prev) =>
+        prev.map((task) => {
+          const taskSessions = pending.filter((p) => p.taskId === task.id);
+          if (taskSessions.length === 0) return task;
+          return updateTask(task, {
+            sessions: [
+              ...(task.sessions ?? []),
+              ...taskSessions.map((p) => p.session),
+            ],
+          });
+        })
+      );
+    }
+  }, [setTasks]);
 
   const addTask = useCallback(
     (
@@ -122,6 +142,36 @@ export function useTasks() {
     [setTasks]
   );
 
+  const updateSession = useCallback(
+    (taskId: string, sessionId: string, updates: Partial<TimeSession>) => {
+      setTasks((prev) =>
+        prev.map((task) => {
+          if (task.id !== taskId) return task;
+          const sessions = (task.sessions ?? []).map((session) =>
+            session.id === sessionId ? { ...session, ...updates } : session
+          );
+          return updateTask(task, { sessions });
+        })
+      );
+    },
+    [setTasks]
+  );
+
+  const deleteSession = useCallback(
+    (taskId: string, sessionId: string) => {
+      setTasks((prev) =>
+        prev.map((task) => {
+          if (task.id !== taskId) return task;
+          const sessions = (task.sessions ?? []).filter(
+            (session) => session.id !== sessionId
+          );
+          return updateTask(task, { sessions });
+        })
+      );
+    },
+    [setTasks]
+  );
+
   return {
     tasks,
     setTasks,
@@ -133,5 +183,7 @@ export function useTasks() {
     toggleScheduled,
     setEstimate,
     addSession,
+    updateSession,
+    deleteSession,
   };
 }

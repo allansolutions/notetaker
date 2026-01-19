@@ -3,11 +3,39 @@ import { TimeSession } from '../types';
 import { generateSessionId, computeTimeSpent } from '../utils/task-operations';
 
 const ACTIVE_SESSION_KEY = 'notetaker-active-session';
+const PENDING_SESSIONS_KEY = 'notetaker-pending-sessions';
 const SLEEP_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+const MIN_SESSION_DURATION_MS = 1 * 60 * 1000; // 1 minute - sessions shorter than this are not saved
 
 interface ActiveSessionData {
   taskId: string;
   session: TimeSession;
+}
+
+interface PendingSession {
+  taskId: string;
+  session: TimeSession;
+}
+
+// Save a completed session to localStorage for later flushing
+// Only saves if session duration >= 5 minutes
+function savePendingSession(taskId: string, session: TimeSession) {
+  if (!session.endTime) return;
+  const duration = session.endTime - session.startTime;
+  if (duration < MIN_SESSION_DURATION_MS) return;
+
+  const stored = localStorage.getItem(PENDING_SESSIONS_KEY);
+  const pending: PendingSession[] = stored ? JSON.parse(stored) : [];
+  pending.push({ taskId, session });
+  localStorage.setItem(PENDING_SESSIONS_KEY, JSON.stringify(pending));
+}
+
+// Get and clear all pending sessions
+export function flushPendingSessions(): PendingSession[] {
+  const stored = localStorage.getItem(PENDING_SESSIONS_KEY);
+  if (!stored) return [];
+  localStorage.removeItem(PENDING_SESSIONS_KEY);
+  return JSON.parse(stored);
 }
 
 interface UseTimeTrackingOptions {
@@ -95,13 +123,14 @@ export function useTimeTracking({
     }
 
     return () => {
-      // End session on unmount
+      // End session on unmount - save to localStorage for later flushing
+      // (React state updates during cleanup may not persist)
       if (currentSessionRef.current) {
         const completedSession: TimeSession = {
           ...currentSessionRef.current,
           endTime: Date.now(),
         };
-        onSessionComplete(completedSession);
+        savePendingSession(taskId, completedSession);
         localStorage.removeItem(ACTIVE_SESSION_KEY);
       }
     };
@@ -124,7 +153,12 @@ export function useTimeTracking({
           ...currentSessionRef.current!,
           endTime: sessionEndTime,
         };
-        onSessionComplete(completedSession);
+        // Only save if session was >= 5 minutes
+        const sessionDuration =
+          sessionEndTime - currentSessionRef.current!.startTime;
+        if (sessionDuration >= MIN_SESSION_DURATION_MS) {
+          onSessionComplete(completedSession);
+        }
 
         // Start new session
         const newSession: TimeSession = {

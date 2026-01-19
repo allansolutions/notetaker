@@ -4,6 +4,7 @@ import { Editor, createBlock } from '../Editor';
 import { BackButton } from '../BackButton';
 import { TimeDisplay } from '../TimeDisplay';
 import { EstimateGate } from '../EstimateGate';
+import { SessionsModal } from '../SessionsModal';
 import { useTimeTracking } from '../../hooks/useTimeTracking';
 
 interface TaskDetailViewProps {
@@ -11,6 +12,12 @@ interface TaskDetailViewProps {
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onSetEstimate: (id: string, estimate: number) => void;
   onAddSession: (id: string, session: TimeSession) => void;
+  onUpdateSession: (
+    taskId: string,
+    sessionId: string,
+    updates: Partial<TimeSession>
+  ) => void;
+  onDeleteSession: (taskId: string, sessionId: string) => void;
   onBack: () => void;
 }
 
@@ -19,9 +26,12 @@ export function TaskDetailView({
   onUpdateTask,
   onSetEstimate,
   onAddSession,
+  onUpdateSession,
+  onDeleteSession,
   onBack,
 }: TaskDetailViewProps) {
   const [title, setTitle] = useState(task.title);
+  const [showSessionsModal, setShowSessionsModal] = useState(false);
 
   const hasEstimate = task.estimate !== undefined;
 
@@ -76,6 +86,20 @@ export function TaskDetailView({
     [task.id, blocks, onUpdateTask]
   );
 
+  const handleUpdateSession = useCallback(
+    (sessionId: string, updates: Partial<TimeSession>) => {
+      onUpdateSession(task.id, sessionId, updates);
+    },
+    [task.id, onUpdateSession]
+  );
+
+  const handleDeleteSession = useCallback(
+    (sessionId: string) => {
+      onDeleteSession(task.id, sessionId);
+    },
+    [task.id, onDeleteSession]
+  );
+
   return (
     <div className="flex flex-col h-full relative">
       <div className="flex items-center justify-between mb-6">
@@ -86,6 +110,7 @@ export function TaskDetailView({
             totalCompletedMs={totalCompletedMs}
             estimateMinutes={task.estimate!}
             isActive={isActive}
+            onClick={() => setShowSessionsModal(true)}
           />
         )}
       </div>
@@ -105,6 +130,16 @@ export function TaskDetailView({
       </div>
 
       {!hasEstimate && <EstimateGate onSubmit={handleSetEstimate} />}
+
+      {showSessionsModal && hasEstimate && (
+        <SessionsModal
+          sessions={task.sessions ?? []}
+          estimateMinutes={task.estimate!}
+          onUpdateSession={handleUpdateSession}
+          onDeleteSession={handleDeleteSession}
+          onClose={() => setShowSessionsModal(false)}
+        />
+      )}
     </div>
   );
 }

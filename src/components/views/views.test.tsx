@@ -67,6 +67,8 @@ describe('TaskDetailView', () => {
     onUpdateTask: vi.fn(),
     onSetEstimate: vi.fn(),
     onAddSession: vi.fn(),
+    onUpdateSession: vi.fn(),
+    onDeleteSession: vi.fn(),
     onBack: vi.fn(),
   });
 
@@ -106,6 +108,8 @@ describe('TaskDetailView', () => {
         onUpdateTask={onUpdateTask}
         onSetEstimate={vi.fn()}
         onAddSession={vi.fn()}
+        onUpdateSession={vi.fn()}
+        onDeleteSession={vi.fn()}
         onBack={() => {}}
       />
     );
@@ -128,6 +132,8 @@ describe('TaskDetailView', () => {
         onUpdateTask={onUpdateTask}
         onSetEstimate={vi.fn()}
         onAddSession={vi.fn()}
+        onUpdateSession={vi.fn()}
+        onDeleteSession={vi.fn()}
         onBack={() => {}}
       />
     );

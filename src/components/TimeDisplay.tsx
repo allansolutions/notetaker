@@ -3,6 +3,7 @@ interface TimeDisplayProps {
   totalCompletedMs: number;
   estimateMinutes: number;
   isActive: boolean;
+  onClick?: () => void;
 }
 
 function formatDuration(ms: number): string {
@@ -29,13 +30,18 @@ export function TimeDisplay({
   totalCompletedMs,
   estimateMinutes,
   isActive,
+  onClick,
 }: TimeDisplayProps) {
   const totalMs = totalCompletedMs + elapsedMs;
   const estimateMs = estimateMinutes * 60000;
   const isOverEstimate = totalMs > estimateMs;
 
   return (
-    <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-hover transition-colors"
+    >
       <span
         className={`text-small font-medium ${isOverEstimate ? 'text-red-500' : 'text-muted'}`}
       >
@@ -47,6 +53,6 @@ export function TimeDisplay({
           title="Timer active"
         />
       )}
-    </div>
+    </button>
   );
 }

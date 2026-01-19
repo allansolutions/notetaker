@@ -23,6 +23,8 @@ function App() {
     reorder,
     setEstimate,
     addSession,
+    updateSession,
+    deleteSession,
   } = useTasks();
 
   const [currentView, setCurrentView] = useState<ViewType>('spreadsheet');
@@ -111,6 +113,8 @@ function App() {
             onUpdateTask={updateTaskById}
             onSetEstimate={setEstimate}
             onAddSession={addSession}
+            onUpdateSession={updateSession}
+            onDeleteSession={deleteSession}
             onBack={handleBackToSpreadsheet}
           />
         );
