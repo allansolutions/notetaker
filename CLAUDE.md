@@ -37,6 +37,10 @@ The editor uses a block-based architecture where each piece of content is a `Blo
 - Enter - Create new block / enter edit mode when selected
 - Backspace on empty block - Delete block
 
+## Testing Requirements
+
+When adding or updating important functionality, always create or update corresponding unit tests in `src/**/*.test.ts`. Run `npm test` to verify tests pass before committing.
+
 ## Tools
 
 Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
