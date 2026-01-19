@@ -323,13 +323,10 @@ export function BlockInput({
     onUpdate(block.id, block.content, newType);
   };
 
-  const getClassName = () => {
-    const baseClass =
-      'block-input w-full outline-none border-none py-[3px] px-0.5 min-h-[1.5em] whitespace-pre-wrap break-words focus:bg-focus-bg focus:rounded-sm';
-    return `${baseClass} ${blockTypeClasses[block.type]}`;
-  };
-
-  const getPlaceholder = (): string => placeholders[block.type] ?? '';
+  const baseInputClass =
+    'block-input w-full outline-none border-none py-[3px] px-0.5 min-h-[1.5em] whitespace-pre-wrap break-words focus:bg-focus-bg focus:rounded-sm';
+  const inputClass = `${baseInputClass} ${blockTypeClasses[block.type]}`;
+  const placeholder = placeholders[block.type] ?? '';
 
   // Render divider as non-editable
   if (block.type === 'divider') {
@@ -438,58 +435,30 @@ export function BlockInput({
     }
   };
 
-  const getWrapperClasses = (): string => {
-    const baseClasses =
-      wrapperBaseClasses[block.type] ?? 'flex items-center my-px';
-    return baseClasses + selectedClass;
-  };
-
-  if (prefix) {
-    /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Custom editor block widget with selection mode */
-    return (
-      <div
-        ref={wrapperRef}
-        className={getWrapperClasses()}
-        data-block-id={block.id}
-        onKeyDown={handleWrapperKeyDown}
-        onClick={handleWrapperClick}
-        tabIndex={0}
-      >
-        {prefix}
-        <div
-          ref={inputRef}
-          className={getClassName() + ' flex-1'}
-          contentEditable={!isSelected}
-          onInput={handleInput}
-          onKeyDown={handleKeyDown}
-          onFocus={() => onFocus(block.id)}
-          suppressContentEditableWarning
-          data-placeholder={getPlaceholder()}
-        />
-      </div>
-    );
-    /* eslint-enable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex */
-  }
+  const wrapperBaseClass =
+    wrapperBaseClasses[block.type] ?? 'flex items-center my-px';
+  const wrapperClass = wrapperBaseClass + selectedClass;
 
   /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Custom editor block widget with selection mode */
   return (
     <div
       ref={wrapperRef}
-      className={'flex items-center my-px' + selectedClass}
+      className={wrapperClass}
       data-block-id={block.id}
       onKeyDown={handleWrapperKeyDown}
       onClick={handleWrapperClick}
       tabIndex={0}
     >
+      {prefix}
       <div
         ref={inputRef}
-        className={getClassName()}
+        className={prefix ? `${inputClass} flex-1` : inputClass}
         contentEditable={!isSelected}
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onFocus={() => onFocus(block.id)}
         suppressContentEditableWarning
-        data-placeholder={getPlaceholder()}
+        data-placeholder={placeholder}
       />
     </div>
   );

@@ -30,6 +30,7 @@ export function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={cycleMode}
       className="size-6 flex items-center justify-center text-muted rounded-md hover:bg-hover hover:text-primary transition-colors duration-normal"
       title={`Theme: ${modeLabels[mode]}`}

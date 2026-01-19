@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, screen, waitFor } from '@testing-library/react';
 import { SessionsModal } from './SessionsModal';
 import { TimeSession } from '../types';
@@ -9,10 +9,6 @@ describe('SessionsModal', () => {
   const mockOnDeleteSession = vi.fn();
 
   beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
     vi.clearAllMocks();
   });
 
