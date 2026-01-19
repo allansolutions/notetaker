@@ -279,4 +279,234 @@ describe('useTasks', () => {
       expect(result.current.tasks[0].startTime).toBe(originalStartTime);
     });
   });
+
+  describe('setEstimate', () => {
+    it('sets estimate on task', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task');
+      });
+
+      const taskId = result.current.tasks[0].id;
+
+      act(() => {
+        result.current.setEstimate(taskId, 60);
+      });
+
+      expect(result.current.tasks[0].estimate).toBe(60);
+    });
+
+    it('updates existing estimate', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task');
+      });
+
+      const taskId = result.current.tasks[0].id;
+
+      act(() => {
+        result.current.setEstimate(taskId, 30);
+      });
+
+      act(() => {
+        result.current.setEstimate(taskId, 90);
+      });
+
+      expect(result.current.tasks[0].estimate).toBe(90);
+    });
+  });
+
+  describe('addSession', () => {
+    it('adds a session to task', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task');
+      });
+
+      const taskId = result.current.tasks[0].id;
+      const session = { id: 'session-1', startTime: 1000, endTime: 2000 };
+
+      act(() => {
+        result.current.addSession(taskId, session);
+      });
+
+      expect(result.current.tasks[0].sessions).toHaveLength(1);
+      expect(result.current.tasks[0].sessions![0]).toEqual(session);
+    });
+
+    it('appends session to existing sessions', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task');
+      });
+
+      const taskId = result.current.tasks[0].id;
+      const session1 = { id: 'session-1', startTime: 1000, endTime: 2000 };
+      const session2 = { id: 'session-2', startTime: 3000, endTime: 4000 };
+
+      act(() => {
+        result.current.addSession(taskId, session1);
+      });
+
+      act(() => {
+        result.current.addSession(taskId, session2);
+      });
+
+      expect(result.current.tasks[0].sessions).toHaveLength(2);
+    });
+  });
+
+  describe('updateSession', () => {
+    it('updates session endTime', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task');
+      });
+
+      const taskId = result.current.tasks[0].id;
+      const session = { id: 'session-1', startTime: 1000, endTime: 2000 };
+
+      act(() => {
+        result.current.addSession(taskId, session);
+      });
+
+      act(() => {
+        result.current.updateSession(taskId, 'session-1', { endTime: 5000 });
+      });
+
+      expect(result.current.tasks[0].sessions![0].endTime).toBe(5000);
+    });
+
+    it('does not modify other sessions', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task');
+      });
+
+      const taskId = result.current.tasks[0].id;
+      const session1 = { id: 'session-1', startTime: 1000, endTime: 2000 };
+      const session2 = { id: 'session-2', startTime: 3000, endTime: 4000 };
+
+      act(() => {
+        result.current.addSession(taskId, session1);
+        result.current.addSession(taskId, session2);
+      });
+
+      act(() => {
+        result.current.updateSession(taskId, 'session-1', { endTime: 9000 });
+      });
+
+      expect(result.current.tasks[0].sessions![1].endTime).toBe(4000);
+    });
+
+    it('does not modify other tasks', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task 1');
+        result.current.addTask('Task 2');
+      });
+
+      const task1Id = result.current.tasks[0].id;
+      const task2Id = result.current.tasks[1].id;
+      const session = { id: 'session-1', startTime: 1000, endTime: 2000 };
+
+      act(() => {
+        result.current.addSession(task1Id, session);
+        result.current.addSession(task2Id, { ...session, id: 'session-2' });
+      });
+
+      act(() => {
+        result.current.updateSession(task1Id, 'session-1', { endTime: 9999 });
+      });
+
+      expect(result.current.tasks[1].sessions![0].endTime).toBe(2000);
+    });
+  });
+
+  describe('deleteSession', () => {
+    it('deletes a session from task', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task');
+      });
+
+      const taskId = result.current.tasks[0].id;
+      const session = { id: 'session-1', startTime: 1000, endTime: 2000 };
+
+      act(() => {
+        result.current.addSession(taskId, session);
+      });
+
+      expect(result.current.tasks[0].sessions).toHaveLength(1);
+
+      act(() => {
+        result.current.deleteSession(taskId, 'session-1');
+      });
+
+      expect(result.current.tasks[0].sessions).toHaveLength(0);
+    });
+
+    it('only deletes specified session', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task');
+      });
+
+      const taskId = result.current.tasks[0].id;
+      const session1 = { id: 'session-1', startTime: 1000, endTime: 2000 };
+      const session2 = { id: 'session-2', startTime: 3000, endTime: 4000 };
+
+      act(() => {
+        result.current.addSession(taskId, session1);
+        result.current.addSession(taskId, session2);
+      });
+
+      act(() => {
+        result.current.deleteSession(taskId, 'session-1');
+      });
+
+      expect(result.current.tasks[0].sessions).toHaveLength(1);
+      expect(result.current.tasks[0].sessions![0].id).toBe('session-2');
+    });
+
+    it('does not modify other tasks', () => {
+      const { result } = renderHook(() => useTasks());
+
+      act(() => {
+        result.current.addTask('Task 1');
+        result.current.addTask('Task 2');
+      });
+
+      const task1Id = result.current.tasks[0].id;
+      const task2Id = result.current.tasks[1].id;
+
+      act(() => {
+        result.current.addSession(task1Id, {
+          id: 'session-1',
+          startTime: 1000,
+          endTime: 2000,
+        });
+        result.current.addSession(task2Id, {
+          id: 'session-2',
+          startTime: 3000,
+          endTime: 4000,
+        });
+      });
+
+      act(() => {
+        result.current.deleteSession(task1Id, 'session-1');
+      });
+
+      expect(result.current.tasks[1].sessions).toHaveLength(1);
+    });
+  });
 });
