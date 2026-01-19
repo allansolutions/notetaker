@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Outline } from './Outline';
+import { ThemeProvider } from '../context/ThemeContext';
 import { Block } from '../types';
+
+const renderWithTheme = (ui: React.ReactElement) => {
+  return render(<ThemeProvider>{ui}</ThemeProvider>);
+};
 
 const createBlock = (id: string, type: Block['type'], content: string): Block => ({
   id,
@@ -18,12 +23,12 @@ describe('Outline', () => {
   };
 
   it('renders outline header', () => {
-    render(<Outline {...defaultProps} />);
+    renderWithTheme(<Outline {...defaultProps} />);
     expect(screen.getByText('Outline')).toBeInTheDocument();
   });
 
   it('shows "No headings" when no H1 blocks exist', () => {
-    render(<Outline {...defaultProps} blocks={[]} />);
+    renderWithTheme(<Outline {...defaultProps} blocks={[]} />);
     expect(screen.getByText('No headings')).toBeInTheDocument();
   });
 
@@ -32,7 +37,7 @@ describe('Outline', () => {
       createBlock('1', 'paragraph', 'Some text'),
       createBlock('2', 'h2', 'Subheading'),
     ];
-    render(<Outline {...defaultProps} blocks={blocks} />);
+    renderWithTheme(<Outline {...defaultProps} blocks={blocks} />);
     expect(screen.getByText('No headings')).toBeInTheDocument();
   });
 
@@ -42,7 +47,7 @@ describe('Outline', () => {
       createBlock('2', 'paragraph', 'Content'),
       createBlock('3', 'h1', 'Second Section'),
     ];
-    render(<Outline {...defaultProps} blocks={blocks} />);
+    renderWithTheme(<Outline {...defaultProps} blocks={blocks} />);
 
     expect(screen.getByText('First Section')).toBeInTheDocument();
     expect(screen.getByText('Second Section')).toBeInTheDocument();
@@ -51,14 +56,14 @@ describe('Outline', () => {
 
   it('displays "Untitled" for empty H1 content', () => {
     const blocks = [createBlock('1', 'h1', '')];
-    render(<Outline {...defaultProps} blocks={blocks} />);
+    renderWithTheme(<Outline {...defaultProps} blocks={blocks} />);
     expect(screen.getByText('Untitled')).toBeInTheDocument();
   });
 
   it('calls onNavigate when H1 text is clicked', () => {
     const onNavigate = vi.fn();
     const blocks = [createBlock('1', 'h1', 'Section')];
-    render(<Outline {...defaultProps} blocks={blocks} onNavigate={onNavigate} />);
+    renderWithTheme(<Outline {...defaultProps} blocks={blocks} onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByText('Section'));
     expect(onNavigate).toHaveBeenCalledWith('1');
@@ -67,7 +72,7 @@ describe('Outline', () => {
   it('calls onToggleVisibility when visibility button is clicked', () => {
     const onToggleVisibility = vi.fn();
     const blocks = [createBlock('1', 'h1', 'Section')];
-    render(
+    renderWithTheme(
       <Outline
         {...defaultProps}
         blocks={blocks}
@@ -75,16 +80,16 @@ describe('Outline', () => {
       />
     );
 
-    // Find the visibility toggle button (it contains an svg)
-    const toggleButton = document.querySelector('button');
-    fireEvent.click(toggleButton!);
+    // Find the visibility toggle button by its title (not the theme toggle)
+    const toggleButton = screen.getByTitle('Hide section');
+    fireEvent.click(toggleButton);
     expect(onToggleVisibility).toHaveBeenCalledWith('1');
   });
 
   it('adds opacity-50 class when block is hidden', () => {
     const blocks = [createBlock('1', 'h1', 'Section')];
     const hiddenIds = new Set(['1']);
-    render(
+    renderWithTheme(
       <Outline {...defaultProps} blocks={blocks} hiddenBlockIds={hiddenIds} />
     );
 
@@ -96,7 +101,7 @@ describe('Outline', () => {
 
   it('does not add opacity-50 class when block is visible', () => {
     const blocks = [createBlock('1', 'h1', 'Section')];
-    render(<Outline {...defaultProps} blocks={blocks} />);
+    renderWithTheme(<Outline {...defaultProps} blocks={blocks} />);
 
     const itemText = screen.getByText('Section');
     const item = itemText.closest('div.group');

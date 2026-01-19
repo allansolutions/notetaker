@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Editor, createBlock } from './components/Editor';
 import { Outline } from './components/Outline';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { ThemeProvider } from './context/ThemeContext';
 import { Block } from './types';
 import './styles/main.css';
 
@@ -48,27 +49,29 @@ function App() {
   }, []);
 
   return (
-    <div className="flex min-h-screen">
-      <div className="flex-1 max-w-[var(--width-content)] mx-auto py-20 px-24">
-        <Editor
-          blocks={blocks}
-          setBlocks={setBlocks}
-          navigateToId={navigateToId}
-          onNavigateComplete={handleNavigateComplete}
-          collapsedBlockIds={collapsedBlockIds}
-          onToggleCollapse={handleToggleCollapse}
-          hiddenBlockIds={hiddenBlockIds}
-        />
+    <ThemeProvider>
+      <div className="flex min-h-screen">
+        <div className="flex-1 max-w-[var(--width-content)] mx-auto py-20 px-24">
+          <Editor
+            blocks={blocks}
+            setBlocks={setBlocks}
+            navigateToId={navigateToId}
+            onNavigateComplete={handleNavigateComplete}
+            collapsedBlockIds={collapsedBlockIds}
+            onToggleCollapse={handleToggleCollapse}
+            hiddenBlockIds={hiddenBlockIds}
+          />
+        </div>
+        <div className="w-[var(--width-sidebar)] shrink-0 border-l border-border bg-surface-alt sticky top-0 h-screen overflow-y-auto">
+          <Outline
+            blocks={blocks}
+            onNavigate={handleNavigate}
+            hiddenBlockIds={hiddenBlockIds}
+            onToggleVisibility={handleToggleVisibility}
+          />
+        </div>
       </div>
-      <div className="w-[var(--width-sidebar)] shrink-0 border-l border-border bg-surface-alt sticky top-0 h-screen overflow-y-auto">
-        <Outline
-          blocks={blocks}
-          onNavigate={handleNavigate}
-          hiddenBlockIds={hiddenBlockIds}
-          onToggleVisibility={handleToggleVisibility}
-        />
-      </div>
-    </div>
+    </ThemeProvider>
   );
 }
 

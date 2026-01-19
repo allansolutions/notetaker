@@ -1,4 +1,5 @@
 import { Block } from '../types';
+import { ThemeToggle } from './ThemeToggle';
 
 interface OutlineProps {
   blocks: Block[];
@@ -29,7 +30,10 @@ export function Outline({ blocks, onNavigate, hiddenBlockIds, onToggleVisibility
 
   return (
     <div className="p-4">
-      <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Outline</div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs font-semibold text-muted uppercase tracking-wider">Outline</div>
+        <ThemeToggle />
+      </div>
       <div className="flex flex-col gap-1">
         {h1Blocks.length === 0 ? (
           <div className="text-small text-muted italic">No headings</div>
