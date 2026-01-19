@@ -36,3 +36,7 @@ The editor uses a block-based architecture where each piece of content is a `Blo
 - Arrow keys - Navigate between blocks
 - Enter - Create new block / enter edit mode when selected
 - Backspace on empty block - Delete block
+
+## Tools
+
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
