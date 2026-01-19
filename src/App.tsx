@@ -3,11 +3,12 @@ import { Editor, createBlock } from './components/Editor';
 import { Outline } from './components/Outline';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { ThemeProvider } from './context/ThemeContext';
-import { Block } from './types';
+import { Block, TodoMetadata } from './types';
 import './styles/main.css';
 
 const STORAGE_KEY = 'notetaker-blocks';
 const SIDEBAR_WIDTH_KEY = 'notetaker-sidebar-width';
+const TODO_METADATA_KEY = 'notetaker-todo-metadata';
 const DEFAULT_SIDEBAR_WIDTH = 240;
 const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 500;
@@ -25,6 +26,9 @@ function App() {
     SIDEBAR_WIDTH_KEY,
     DEFAULT_SIDEBAR_WIDTH
   );
+  const [todoMetadata, setTodoMetadata] = useLocalStorage<
+    Record<string, TodoMetadata>
+  >(TODO_METADATA_KEY, {});
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
@@ -89,12 +93,23 @@ function App() {
   );
 
   const handleToggleCollapse = useCallback(
-    toggleSetItem(setCollapsedBlockIds),
+    (id: string) => toggleSetItem(setCollapsedBlockIds)(id),
     [toggleSetItem]
   );
-  const handleToggleVisibility = useCallback(toggleSetItem(setHiddenBlockIds), [
-    toggleSetItem,
-  ]);
+  const handleToggleVisibility = useCallback(
+    (id: string) => toggleSetItem(setHiddenBlockIds)(id),
+    [toggleSetItem]
+  );
+
+  const handleUpdateTodoMetadata = useCallback(
+    (blockId: string, metadata: TodoMetadata) => {
+      setTodoMetadata((prev) => ({
+        ...prev,
+        [blockId]: { ...prev[blockId], ...metadata },
+      }));
+    },
+    [setTodoMetadata]
+  );
 
   return (
     <ThemeProvider>
@@ -117,17 +132,34 @@ function App() {
           className="shrink-0 bg-surface-alt sticky top-0 h-screen overflow-y-auto flex"
           style={{ width: sidebarWidth }}
         >
+          {/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Interactive separator (splitter) pattern */}
           <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            tabIndex={0}
             data-testid="sidebar-resize-handle"
             onMouseDown={handleResizeStart}
-            className="w-1 shrink-0 cursor-col-resize border-l border-border hover:bg-accent-subtle active:bg-accent-subtle transition-colors"
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setSidebarWidth((w) => Math.min(MAX_SIDEBAR_WIDTH, w + 10));
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                setSidebarWidth((w) => Math.max(MIN_SIDEBAR_WIDTH, w - 10));
+              }
+            }}
+            className="w-1 shrink-0 cursor-col-resize border-l border-border hover:bg-accent-subtle active:bg-accent-subtle transition-colors focus:bg-accent-subtle focus:outline-none"
           />
+          {/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
           <div className="flex-1 overflow-y-auto">
             <Outline
               blocks={blocks}
               onNavigate={handleNavigate}
               hiddenBlockIds={hiddenBlockIds}
               onToggleVisibility={handleToggleVisibility}
+              todoMetadata={todoMetadata}
+              onUpdateTodoMetadata={handleUpdateTodoMetadata}
             />
           </div>
         </div>

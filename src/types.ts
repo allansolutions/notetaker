@@ -23,3 +23,10 @@ export interface Document {
   blocks: Block[];
   updatedAt: number;
 }
+
+export type TodoImportance = 'high' | 'mid' | 'low';
+
+export interface TodoMetadata {
+  importance?: TodoImportance;
+  scheduled?: boolean;
+}
