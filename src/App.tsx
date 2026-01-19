@@ -24,29 +24,23 @@ function App() {
     setNavigateToId(null);
   }, []);
 
-  const handleToggleCollapse = useCallback((id: string) => {
-    setCollapsedBlockIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
+  const toggleSetItem = useCallback(
+    (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (id: string) => {
+      setter(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    },
+    []
+  );
 
-  const handleToggleVisibility = useCallback((id: string) => {
-    setHiddenBlockIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
+  const handleToggleCollapse = useCallback(toggleSetItem(setCollapsedBlockIds), [toggleSetItem]);
+  const handleToggleVisibility = useCallback(toggleSetItem(setHiddenBlockIds), [toggleSetItem]);
 
   return (
     <ThemeProvider>

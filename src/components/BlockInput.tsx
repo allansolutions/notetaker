@@ -35,6 +35,16 @@ const blockTypeClasses: Record<BlockType, string> = {
   divider: '',
 };
 
+const wrapperBaseClasses: Partial<Record<BlockType, string>> = {
+  h1: 'flex items-start pt-4 first:pt-0',
+  quote: 'flex items-center my-px border-l-[3px] border-primary pl-3.5 ml-0.5',
+};
+
+const placeholders: Partial<Record<BlockType, string>> = {
+  paragraph: "Type '/' for commands...",
+  code: 'Code',
+};
+
 export function BlockInput({
   block,
   onUpdate,
@@ -256,11 +266,7 @@ export function BlockInput({
     return `${baseClass} ${blockTypeClasses[block.type]}`;
   };
 
-  const getPlaceholder = () => {
-    if (block.type === 'paragraph') return "Type '/' for commands...";
-    if (block.type === 'code') return 'Code';
-    return '';
-  };
+  const getPlaceholder = (): string => placeholders[block.type] ?? '';
 
   // Render divider as non-editable
   if (block.type === 'divider') {
@@ -340,17 +346,9 @@ export function BlockInput({
     }
   };
 
-  // Get wrapper classes based on block type
-  const getWrapperClasses = () => {
-    let classes = 'flex items-center my-px';
-
-    if (block.type === 'h1') {
-      classes = 'flex items-start pt-4 first:pt-0';
-    } else if (block.type === 'quote') {
-      classes = 'flex items-center my-px border-l-[3px] border-primary pl-3.5 ml-0.5';
-    }
-
-    return classes + selectedClass;
+  const getWrapperClasses = (): string => {
+    const baseClasses = wrapperBaseClasses[block.type] ?? 'flex items-center my-px';
+    return baseClasses + selectedClass;
   };
 
   if (prefix) {

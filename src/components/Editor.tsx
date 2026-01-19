@@ -13,12 +13,8 @@ import {
 } from '../utils/block-operations';
 import { generateId } from '../utils/markdown';
 
-export function createBlock(type: BlockType = 'paragraph', content: string = ''): Block {
-  return {
-    id: generateId(),
-    type,
-    content,
-  };
+export function createBlock(type: BlockType = 'paragraph', content = ''): Block {
+  return { id: generateId(), type, content };
 }
 
 interface EditorProps {
@@ -31,7 +27,7 @@ interface EditorProps {
   hiddenBlockIds?: Set<string>;
 }
 
-export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, collapsedBlockIds, onToggleCollapse, hiddenBlockIds }: EditorProps) {
+export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, collapsedBlockIds, onToggleCollapse, hiddenBlockIds }: EditorProps): JSX.Element {
   const [focusedId, setFocusedId] = useState<string | null>(blocks[0]?.id || null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const pendingFocusRef = useRef<string | null>(null);
