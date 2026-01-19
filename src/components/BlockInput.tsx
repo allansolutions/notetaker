@@ -139,6 +139,14 @@ export function BlockInput({
       return;
     }
 
+    // Cmd+Return to toggle todo done state
+    if (e.metaKey && e.key === 'Enter' && (block.type === 'todo' || block.type === 'todo-checked')) {
+      e.preventDefault();
+      const newType = block.type === 'todo' ? 'todo-checked' : 'todo';
+      onUpdate(block.id, block.content, newType);
+      return;
+    }
+
     if (e.key === 'Enter') {
       e.preventDefault();
       onEnter(block.id);
@@ -175,6 +183,14 @@ export function BlockInput({
   const handleWrapperKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     // Only handle when selected (not editing)
     if (!isSelected) return;
+
+    // Cmd+Return to toggle todo done state when selected
+    if (e.metaKey && e.key === 'Enter' && (block.type === 'todo' || block.type === 'todo-checked')) {
+      e.preventDefault();
+      const newType = block.type === 'todo' ? 'todo-checked' : 'todo';
+      onUpdate(block.id, block.content, newType);
+      return;
+    }
 
     if (e.key === 'Enter') {
       e.preventDefault();

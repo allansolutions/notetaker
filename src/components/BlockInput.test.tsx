@@ -273,6 +273,38 @@ describe('BlockInput', () => {
     });
   });
 
+  describe('todo keyboard toggle', () => {
+    it('toggles todo to todo-checked with Cmd+Enter', async () => {
+      const props = createMockProps({ type: 'todo', content: 'Task' });
+      render(<BlockInput {...props} isFocused={true} />);
+
+      const input = document.querySelector('.block-input');
+      fireEvent.keyDown(input!, { key: 'Enter', metaKey: true });
+
+      expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Task', 'todo-checked');
+    });
+
+    it('toggles todo-checked to todo with Cmd+Enter', async () => {
+      const props = createMockProps({ type: 'todo-checked', content: 'Done task' });
+      render(<BlockInput {...props} isFocused={true} />);
+
+      const input = document.querySelector('.block-input');
+      fireEvent.keyDown(input!, { key: 'Enter', metaKey: true });
+
+      expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Done task', 'todo');
+    });
+
+    it('toggles todo when selected with Cmd+Enter', async () => {
+      const props = createMockProps({ type: 'todo', content: 'Task' });
+      render(<BlockInput {...props} isSelected={true} />);
+
+      const wrapper = document.querySelector('.block-wrapper');
+      fireEvent.keyDown(wrapper!, { key: 'Enter', metaKey: true });
+
+      expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Task', 'todo-checked');
+    });
+  });
+
   describe('divider block', () => {
     it('renders divider correctly', () => {
       const props = createMockProps({ type: 'divider', content: '' });
