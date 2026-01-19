@@ -244,7 +244,7 @@ describe('Outline', () => {
       });
     });
 
-    it('calls onUpdateTodoMetadata when schedule checkbox is clicked', () => {
+    it('calls onUpdateTodoMetadata with startTime and duration when schedule checkbox is clicked', () => {
       const onUpdateTodoMetadata = vi.fn();
       const blocks = [createBlock('1', 'todo', 'Task')];
       renderWithTheme(
@@ -259,6 +259,8 @@ describe('Outline', () => {
       fireEvent.click(checkbox);
       expect(onUpdateTodoMetadata).toHaveBeenCalledWith('1', {
         scheduled: true,
+        startTime: expect.any(Number),
+        duration: 60,
       });
     });
 

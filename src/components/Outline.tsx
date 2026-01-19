@@ -1,5 +1,12 @@
-import { Block, TodoMetadata, TodoImportance } from '../types';
+import {
+  Block,
+  TodoMetadata,
+  TodoImportance,
+  DEFAULT_DURATION,
+  SNAP_INTERVAL,
+} from '../types';
 import { ThemeToggle } from './ThemeToggle';
+import { Agenda } from './Agenda';
 
 interface OutlineProps {
   blocks: Block[];
@@ -15,6 +22,13 @@ const IMPORTANCE_OPTIONS: { value: TodoImportance; label: string }[] = [
   { value: 'mid', label: 'Mid' },
   { value: 'low', label: 'Low' },
 ];
+
+function getNextTimeSlot(): number {
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  // Round up to next SNAP_INTERVAL
+  return Math.ceil(minutes / SNAP_INTERVAL) * SNAP_INTERVAL;
+}
 
 function EyeIcon({ visible }: { visible: boolean }) {
   if (visible) {
@@ -139,11 +153,22 @@ export function Outline({
                       <input
                         type="checkbox"
                         checked={metadata.scheduled || false}
-                        onChange={(e) =>
-                          onUpdateTodoMetadata(block.id, {
-                            scheduled: e.target.checked,
-                          })
-                        }
+                        onChange={(e) => {
+                          const scheduled = e.target.checked;
+                          if (scheduled) {
+                            // Set default startTime and duration when scheduling
+                            onUpdateTodoMetadata(block.id, {
+                              scheduled: true,
+                              startTime:
+                                metadata.startTime ?? getNextTimeSlot(),
+                              duration: metadata.duration ?? DEFAULT_DURATION,
+                            });
+                          } else {
+                            onUpdateTodoMetadata(block.id, {
+                              scheduled: false,
+                            });
+                          }
+                        }}
                         onClick={(e) => e.stopPropagation()}
                         className="cursor-pointer"
                       />
@@ -176,6 +201,12 @@ export function Outline({
           </table>
         )}
       </div>
+
+      <Agenda
+        blocks={blocks}
+        todoMetadata={todoMetadata}
+        onUpdateTodoMetadata={onUpdateTodoMetadata}
+      />
     </div>
   );
 }
