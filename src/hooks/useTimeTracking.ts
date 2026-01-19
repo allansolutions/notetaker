@@ -106,6 +106,7 @@ export function useTimeTracking({
     };
     currentSessionRef.current = session;
     saveActiveSession(session);
+    setElapsedMs(0); // Reset elapsed time to avoid stale values from previous sessions
     setIsActive(true);
   }, [saveActiveSession]);
 
