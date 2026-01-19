@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Editor, createBlock } from './components/Editor';
 import { Outline } from './components/Outline';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -7,6 +7,10 @@ import { Block } from './types';
 import './styles/main.css';
 
 const STORAGE_KEY = 'notetaker-blocks';
+const SIDEBAR_WIDTH_KEY = 'notetaker-sidebar-width';
+const DEFAULT_SIDEBAR_WIDTH = 240;
+const MIN_SIDEBAR_WIDTH = 180;
+const MAX_SIDEBAR_WIDTH = 500;
 
 function App() {
   const [blocks, setBlocks] = useLocalStorage<Block[]>(STORAGE_KEY, [
@@ -17,6 +21,48 @@ function App() {
     new Set()
   );
   const [hiddenBlockIds, setHiddenBlockIds] = useState<Set<string>>(new Set());
+  const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
+    SIDEBAR_WIDTH_KEY,
+    DEFAULT_SIDEBAR_WIDTH
+  );
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const delta = resizeRef.current.startX - e.clientX;
+      const newWidth = Math.min(
+        MAX_SIDEBAR_WIDTH,
+        Math.max(MIN_SIDEBAR_WIDTH, resizeRef.current.startWidth + delta)
+      );
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      resizeRef.current = null;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setSidebarWidth]);
+
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      resizeRef.current = { startX: e.clientX, startWidth: sidebarWidth };
+      setIsResizing(true);
+    },
+    [sidebarWidth]
+  );
 
   const handleNavigate = useCallback((id: string) => {
     setNavigateToId(id);
@@ -52,7 +98,9 @@ function App() {
 
   return (
     <ThemeProvider>
-      <div className="flex min-h-screen">
+      <div
+        className={`flex min-h-screen ${isResizing ? 'select-none cursor-col-resize' : ''}`}
+      >
         <div className="flex-1 max-w-[var(--width-content)] mx-auto py-20 px-24">
           <Editor
             blocks={blocks}
@@ -64,13 +112,22 @@ function App() {
             hiddenBlockIds={hiddenBlockIds}
           />
         </div>
-        <div className="w-[var(--width-sidebar)] shrink-0 border-l border-border bg-surface-alt sticky top-0 h-screen overflow-y-auto">
-          <Outline
-            blocks={blocks}
-            onNavigate={handleNavigate}
-            hiddenBlockIds={hiddenBlockIds}
-            onToggleVisibility={handleToggleVisibility}
+        <div
+          className="shrink-0 bg-surface-alt sticky top-0 h-screen overflow-y-auto flex"
+          style={{ width: sidebarWidth }}
+        >
+          <div
+            onMouseDown={handleResizeStart}
+            className="w-1 shrink-0 cursor-col-resize border-l border-border hover:bg-accent-subtle active:bg-accent-subtle transition-colors"
           />
+          <div className="flex-1 overflow-y-auto">
+            <Outline
+              blocks={blocks}
+              onNavigate={handleNavigate}
+              hiddenBlockIds={hiddenBlockIds}
+              onToggleVisibility={handleToggleVisibility}
+            />
+          </div>
         </div>
       </div>
     </ThemeProvider>
