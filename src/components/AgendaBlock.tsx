@@ -100,15 +100,21 @@ export function AgendaBlock({
   return (
     <div
       ref={setNodeRef}
-      className={`absolute left-12 right-1 bg-accent rounded px-2 py-1 text-xs text-primary overflow-hidden select-none ${
-        isResizing ? '' : 'cursor-move'
-      }`}
+      className="absolute left-12 right-1 bg-accent rounded text-xs text-primary overflow-hidden select-none"
       style={style}
       data-testid={`agenda-block-${block.id}`}
-      {...listeners}
       {...attributes}
     >
-      <div className="truncate font-medium">{block.content || 'Untitled'}</div>
+      {/* Drag handle - fills block except resize area */}
+      <div
+        className="absolute inset-0 bottom-2 px-2 py-1 cursor-move"
+        {...listeners}
+      >
+        <div className="truncate font-medium">
+          {block.content || 'Untitled'}
+        </div>
+      </div>
+      {/* Resize handle - bottom edge only */}
       <div
         role="slider"
         aria-label="Resize duration"
