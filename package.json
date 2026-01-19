@@ -25,6 +25,9 @@
     "react-dom": "^18.3.1",
     "tailwindcss": "^4.1.18"
   },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,md}": "prettier --write"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@playwright/test": "^1.57.0",
@@ -42,6 +45,7 @@
     "globals": "^17.0.0",
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
+    "lint-staged": "^16.2.7",
     "playwright": "^1.57.0",
     "prettier": "^3.8.0",
     "typescript": "~5.6.2",
