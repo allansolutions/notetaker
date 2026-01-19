@@ -113,10 +113,12 @@ function App() {
           />
         </div>
         <div
+          data-testid="sidebar"
           className="shrink-0 bg-surface-alt sticky top-0 h-screen overflow-y-auto flex"
           style={{ width: sidebarWidth }}
         >
           <div
+            data-testid="sidebar-resize-handle"
             onMouseDown={handleResizeStart}
             className="w-1 shrink-0 cursor-col-resize border-l border-border hover:bg-accent-subtle active:bg-accent-subtle transition-colors"
           />
