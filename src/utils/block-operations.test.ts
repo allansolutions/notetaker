@@ -3,6 +3,7 @@ import {
   moveBlockUp,
   moveBlockDown,
   getNumberedIndex,
+  getShownBlocks,
   getVisibleBlocks,
   insertBlockAfter,
   deleteBlock,
@@ -143,6 +144,71 @@ describe('getNumberedIndex', () => {
     ];
     expect(getNumberedIndex(blocks, 1)).toBe(2);
     expect(getNumberedIndex(blocks, 3)).toBe(1);
+  });
+});
+
+describe('getShownBlocks', () => {
+  it('returns all blocks when nothing is hidden', () => {
+    const blocks = [makeBlock('1'), makeBlock('2')];
+    expect(getShownBlocks(blocks, new Set())).toBe(blocks);
+  });
+
+  it('returns all blocks when hiddenBlockIds is undefined', () => {
+    const blocks = [makeBlock('1'), makeBlock('2')];
+    expect(getShownBlocks(blocks, undefined)).toBe(blocks);
+  });
+
+  it('completely hides H1 and its content until next H1', () => {
+    const blocks = [
+      makeBlock('h1-1', 'h1', 'Section 1'),
+      makeBlock('p1', 'paragraph', 'Content 1'),
+      makeBlock('h1-2', 'h1', 'Section 2'),
+      makeBlock('p2', 'paragraph', 'Content 2'),
+    ];
+    const result = getShownBlocks(blocks, new Set(['h1-1']));
+    expect(result.map(b => b.id)).toEqual(['h1-2', 'p2']);
+  });
+
+  it('hides the H1 block itself when hidden', () => {
+    const blocks = [
+      makeBlock('h1-1', 'h1'),
+      makeBlock('p1', 'paragraph'),
+    ];
+    const result = getShownBlocks(blocks, new Set(['h1-1']));
+    expect(result).toEqual([]);
+  });
+
+  it('handles multiple hidden sections', () => {
+    const blocks = [
+      makeBlock('h1-1', 'h1'),
+      makeBlock('p1', 'paragraph'),
+      makeBlock('h1-2', 'h1'),
+      makeBlock('p2', 'paragraph'),
+      makeBlock('h1-3', 'h1'),
+      makeBlock('p3', 'paragraph'),
+    ];
+    const result = getShownBlocks(blocks, new Set(['h1-1', 'h1-3']));
+    expect(result.map(b => b.id)).toEqual(['h1-2', 'p2']);
+  });
+
+  it('shows blocks before first H1 when first H1 is hidden', () => {
+    const blocks = [
+      makeBlock('p0', 'paragraph'),
+      makeBlock('h1-1', 'h1'),
+      makeBlock('p1', 'paragraph'),
+    ];
+    const result = getShownBlocks(blocks, new Set(['h1-1']));
+    expect(result.map(b => b.id)).toEqual(['p0']);
+  });
+
+  it('handles consecutive H1s with first hidden', () => {
+    const blocks = [
+      makeBlock('h1-1', 'h1'),
+      makeBlock('h1-2', 'h1'),
+      makeBlock('p1', 'paragraph'),
+    ];
+    const result = getShownBlocks(blocks, new Set(['h1-1']));
+    expect(result.map(b => b.id)).toEqual(['h1-2', 'p1']);
   });
 });
 

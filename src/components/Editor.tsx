@@ -5,6 +5,7 @@ import { BlockInput } from './BlockInput';
 import {
   deleteBlock as deleteBlockUtil,
   getNumberedIndex,
+  getShownBlocks,
   getVisibleBlocks,
   insertBlockAfter as insertBlockAfterUtil,
   moveBlockDown,
@@ -27,9 +28,10 @@ interface EditorProps {
   onNavigateComplete?: () => void;
   collapsedBlockIds?: Set<string>;
   onToggleCollapse?: (id: string) => void;
+  hiddenBlockIds?: Set<string>;
 }
 
-export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, collapsedBlockIds, onToggleCollapse }: EditorProps) {
+export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, collapsedBlockIds, onToggleCollapse, hiddenBlockIds }: EditorProps) {
   const [focusedId, setFocusedId] = useState<string | null>(blocks[0]?.id || null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const pendingFocusRef = useRef<string | null>(null);
@@ -116,7 +118,9 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
     setBlocks(prev => moveBlockDown(prev, id));
   }, [setBlocks]);
 
-  const visibleBlocks = getVisibleBlocks(blocks, collapsedBlockIds);
+  // First filter out completely hidden sections, then apply collapse logic
+  const shownBlocks = getShownBlocks(blocks, hiddenBlockIds);
+  const visibleBlocks = getVisibleBlocks(shownBlocks, collapsedBlockIds);
 
   return (
     <div className="editor">

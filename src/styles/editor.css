@@ -83,34 +83,38 @@ body {
   cursor: pointer;
 }
 
-.outline-item-collapsed {
-  opacity: 0.7;
-}
-
-.outline-collapse-toggle {
+.outline-visibility-toggle {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   background: transparent;
   color: #9b9a97;
   cursor: pointer;
   border-radius: 4px;
-  transition: transform 0.15s ease, color 0.15s ease;
-  transform: rotate(90deg);
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-.outline-collapse-toggle.collapsed {
-  transform: rotate(0deg);
+.outline-item:hover .outline-visibility-toggle {
+  opacity: 1;
 }
 
-.outline-collapse-toggle:hover {
+.outline-item-hidden .outline-visibility-toggle {
+  opacity: 1;
+}
+
+.outline-visibility-toggle:hover {
   background-color: rgba(55, 53, 47, 0.08);
   color: #37352f;
+}
+
+.outline-item-hidden {
+  opacity: 0.5;
 }
 
 .outline-h1 {

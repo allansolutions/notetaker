@@ -39,6 +39,28 @@ export function getNumberedIndex(blocks: Block[], index: number): number {
 }
 
 /**
+ * Filters out blocks in hidden H1 sections.
+ * Both the H1 and all content until the next H1 are completely hidden.
+ */
+export function getShownBlocks(blocks: Block[], hiddenBlockIds: Set<string> | undefined): Block[] {
+  if (!hiddenBlockIds || hiddenBlockIds.size === 0) return blocks;
+
+  const result: Block[] = [];
+  let isInHiddenSection = false;
+
+  for (const block of blocks) {
+    if (block.type === 'h1') {
+      isInHiddenSection = hiddenBlockIds.has(block.id);
+    }
+    if (!isInHiddenSection) {
+      result.push(block);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Filters out blocks in collapsed H1 sections.
  * The H1 itself is always visible, but content until the next H1 is hidden.
  */

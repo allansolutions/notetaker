@@ -13,8 +13,8 @@ describe('Outline', () => {
   const defaultProps = {
     blocks: [] as Block[],
     onNavigate: vi.fn(),
-    collapsedBlockIds: new Set<string>(),
-    onToggleCollapse: vi.fn(),
+    hiddenBlockIds: new Set<string>(),
+    onToggleVisibility: vi.fn(),
   };
 
   it('renders outline header', () => {
@@ -64,41 +64,38 @@ describe('Outline', () => {
     expect(onNavigate).toHaveBeenCalledWith('1');
   });
 
-  it('calls onToggleCollapse when collapse button is clicked', () => {
-    const onToggleCollapse = vi.fn();
+  it('calls onToggleVisibility when visibility button is clicked', () => {
+    const onToggleVisibility = vi.fn();
     const blocks = [createBlock('1', 'h1', 'Section')];
     render(
       <Outline
         {...defaultProps}
         blocks={blocks}
-        onToggleCollapse={onToggleCollapse}
+        onToggleVisibility={onToggleVisibility}
       />
     );
 
-    const toggleButton = document.querySelector('.outline-collapse-toggle');
+    const toggleButton = document.querySelector('.outline-visibility-toggle');
     fireEvent.click(toggleButton!);
-    expect(onToggleCollapse).toHaveBeenCalledWith('1');
+    expect(onToggleVisibility).toHaveBeenCalledWith('1');
   });
 
-  it('adds collapsed class when block is collapsed', () => {
+  it('adds hidden class when block is hidden', () => {
     const blocks = [createBlock('1', 'h1', 'Section')];
-    const collapsedIds = new Set(['1']);
+    const hiddenIds = new Set(['1']);
     render(
-      <Outline {...defaultProps} blocks={blocks} collapsedBlockIds={collapsedIds} />
+      <Outline {...defaultProps} blocks={blocks} hiddenBlockIds={hiddenIds} />
     );
 
     const item = document.querySelector('.outline-item');
-    expect(item?.classList.contains('outline-item-collapsed')).toBe(true);
-
-    const toggle = document.querySelector('.outline-collapse-toggle');
-    expect(toggle?.classList.contains('collapsed')).toBe(true);
+    expect(item?.classList.contains('outline-item-hidden')).toBe(true);
   });
 
-  it('does not add collapsed class when block is not collapsed', () => {
+  it('does not add hidden class when block is visible', () => {
     const blocks = [createBlock('1', 'h1', 'Section')];
     render(<Outline {...defaultProps} blocks={blocks} />);
 
     const item = document.querySelector('.outline-item');
-    expect(item?.classList.contains('outline-item-collapsed')).toBe(false);
+    expect(item?.classList.contains('outline-item-hidden')).toBe(false);
   });
 });

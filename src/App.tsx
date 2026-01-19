@@ -13,6 +13,7 @@ function App() {
   ]);
   const [navigateToId, setNavigateToId] = useState<string | null>(null);
   const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(new Set());
+  const [hiddenBlockIds, setHiddenBlockIds] = useState<Set<string>>(new Set());
 
   const handleNavigate = useCallback((id: string) => {
     setNavigateToId(id);
@@ -34,6 +35,18 @@ function App() {
     });
   }, []);
 
+  const handleToggleVisibility = useCallback((id: string) => {
+    setHiddenBlockIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <div className="app">
       <div className="app-main">
@@ -44,14 +57,15 @@ function App() {
           onNavigateComplete={handleNavigateComplete}
           collapsedBlockIds={collapsedBlockIds}
           onToggleCollapse={handleToggleCollapse}
+          hiddenBlockIds={hiddenBlockIds}
         />
       </div>
       <div className="app-sidebar">
         <Outline
           blocks={blocks}
           onNavigate={handleNavigate}
-          collapsedBlockIds={collapsedBlockIds}
-          onToggleCollapse={handleToggleCollapse}
+          hiddenBlockIds={hiddenBlockIds}
+          onToggleVisibility={handleToggleVisibility}
         />
       </div>
     </div>
