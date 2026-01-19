@@ -44,6 +44,15 @@ When adding or updating important functionality, always create or update corresp
 
 When making significant changes to user interactions, DOM structure, or CSS class names used as test selectors, update the Playwright e2e tests in `tests/*.spec.ts`. The e2e tests verify keyboard shortcuts, block selection, and block movement from a user's perspective.
 
+## Code Quality
+
+Before using `eslint-disable` comments, think hard about whether there's a better approach. These comments are often a sign of taking shortcuts rather than solving the underlying problem properly. For example:
+
+- Instead of disabling accessibility rules on click handlers, use proper semantic elements like `<button>` or native `<dialog>`
+- Instead of disabling React hooks rules, restructure the code to follow the rules of hooks
+
+Only use `eslint-disable` when you've genuinely evaluated alternatives and determined it's the right choice.
+
 ## Tools
 
 Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
