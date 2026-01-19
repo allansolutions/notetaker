@@ -125,21 +125,16 @@ export function AgendaBlock({
         className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-black/10 focus:bg-black/10 focus:outline-none"
         onMouseDown={handleResizeStart}
         onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            const newDuration = Math.min(
-              AGENDA_END_HOUR * 60 - (metadata.startTime ?? 0),
-              duration + SNAP_INTERVAL
-            );
-            onUpdateMetadata({ ...metadata, duration: newDuration });
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            const newDuration = Math.max(
-              MIN_DURATION,
-              duration - SNAP_INTERVAL
-            );
-            onUpdateMetadata({ ...metadata, duration: newDuration });
-          }
+          if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+          e.preventDefault();
+
+          const maxDuration = AGENDA_END_HOUR * 60 - (metadata.startTime ?? 0);
+          const delta = e.key === 'ArrowDown' ? SNAP_INTERVAL : -SNAP_INTERVAL;
+          const newDuration = Math.max(
+            MIN_DURATION,
+            Math.min(maxDuration, duration + delta)
+          );
+          onUpdateMetadata({ ...metadata, duration: newDuration });
         }}
         data-testid={`agenda-block-resize-${block.id}`}
       />

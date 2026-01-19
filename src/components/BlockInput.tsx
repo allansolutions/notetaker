@@ -210,8 +210,9 @@ export function BlockInput({
   };
 
   const handleWrapperKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    // Only handle when selected (not editing)
     if (!isSelected) return;
+
+    e.preventDefault();
 
     // Cmd+Return to toggle todo done state when selected
     if (
@@ -219,49 +220,35 @@ export function BlockInput({
       e.key === 'Enter' &&
       (block.type === 'todo' || block.type === 'todo-checked')
     ) {
-      e.preventDefault();
       const newType = block.type === 'todo' ? 'todo-checked' : 'todo';
       onUpdate(block.id, block.content, newType);
       return;
     }
 
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onEnterEdit(block.id);
-      return;
-    }
-
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      return;
-    }
-
-    if (e.metaKey && e.shiftKey && e.key === 'ArrowUp') {
-      e.preventDefault();
-      onMoveUp(block.id);
-      return;
-    }
-    if (e.metaKey && e.shiftKey && e.key === 'ArrowDown') {
-      e.preventDefault();
-      onMoveDown(block.id);
-      return;
-    }
-
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      onArrowUp(block.id);
-      return;
-    }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      onArrowDown(block.id);
-      return;
-    }
-
-    if (e.key === 'Backspace' || e.key === 'Delete') {
-      e.preventDefault();
-      onBackspace(block.id);
-      return;
+    switch (e.key) {
+      case 'Enter':
+        onEnterEdit(block.id);
+        break;
+      case 'Escape':
+        break;
+      case 'ArrowUp':
+        if (e.metaKey && e.shiftKey) {
+          onMoveUp(block.id);
+        } else {
+          onArrowUp(block.id);
+        }
+        break;
+      case 'ArrowDown':
+        if (e.metaKey && e.shiftKey) {
+          onMoveDown(block.id);
+        } else {
+          onArrowDown(block.id);
+        }
+        break;
+      case 'Backspace':
+      case 'Delete':
+        onBackspace(block.id);
+        break;
     }
   };
 
@@ -287,18 +274,21 @@ export function BlockInput({
         data-block-id={block.id}
         onClick={() => onFocus(block.id)}
         onKeyDown={(e) => {
-          if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            onArrowUp(block.id);
-          } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            onArrowDown(block.id);
-          } else if (e.key === 'Backspace' || e.key === 'Delete') {
-            e.preventDefault();
-            onBackspace(block.id);
-          } else if (e.key === 'Enter') {
-            e.preventDefault();
-            onEnter(block.id);
+          e.preventDefault();
+          switch (e.key) {
+            case 'ArrowUp':
+              onArrowUp(block.id);
+              break;
+            case 'ArrowDown':
+              onArrowDown(block.id);
+              break;
+            case 'Backspace':
+            case 'Delete':
+              onBackspace(block.id);
+              break;
+            case 'Enter':
+              onEnter(block.id);
+              break;
           }
         }}
         tabIndex={0}

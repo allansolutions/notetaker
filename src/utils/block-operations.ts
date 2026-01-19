@@ -130,11 +130,10 @@ export function insertBlockAfter(
   }
 
   // Continue list types, or create paragraph for others
-  const newType = LIST_TYPES.includes(currentBlock.type)
-    ? currentBlock.type === 'todo-checked'
-      ? 'todo'
-      : currentBlock.type
-    : 'paragraph';
+  let newType: BlockType = 'paragraph';
+  if (LIST_TYPES.includes(currentBlock.type)) {
+    newType = currentBlock.type === 'todo-checked' ? 'todo' : currentBlock.type;
+  }
 
   const newBlock = createBlock(newType);
   const newBlocks = [...blocks];

@@ -76,30 +76,29 @@ function App() {
     setNavigateToId(null);
   }, []);
 
-  const toggleSetItem = useCallback(
-    (setter: React.Dispatch<React.SetStateAction<Set<string>>>) =>
-      (id: string) => {
-        setter((prev) => {
-          const next = new Set(prev);
-          if (next.has(id)) {
-            next.delete(id);
-          } else {
-            next.add(id);
-          }
-          return next;
-        });
-      },
-    []
-  );
+  const handleToggleCollapse = useCallback((id: string) => {
+    setCollapsedBlockIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
-  const handleToggleCollapse = useCallback(
-    (id: string) => toggleSetItem(setCollapsedBlockIds)(id),
-    [toggleSetItem]
-  );
-  const handleToggleVisibility = useCallback(
-    (id: string) => toggleSetItem(setHiddenBlockIds)(id),
-    [toggleSetItem]
-  );
+  const handleToggleVisibility = useCallback((id: string) => {
+    setHiddenBlockIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   const handleUpdateTodoMetadata = useCallback(
     (blockId: string, metadata: TodoMetadata) => {

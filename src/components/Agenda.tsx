@@ -34,10 +34,13 @@ export function Agenda({
     (_, i) => AGENDA_START_HOUR + i
   );
 
+  const isTodoBlock = (type: string): boolean =>
+    type === 'todo' || type === 'todo-checked';
+
   const scheduledTodos = blocks.filter((block) => {
     const metadata = todoMetadata[block.id];
     return (
-      (block.type === 'todo' || block.type === 'todo-checked') &&
+      isTodoBlock(block.type) &&
       metadata?.scheduled &&
       metadata.startTime !== undefined
     );
