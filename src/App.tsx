@@ -13,7 +13,9 @@ function App() {
     createBlock(),
   ]);
   const [navigateToId, setNavigateToId] = useState<string | null>(null);
-  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(new Set());
+  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(
+    new Set()
+  );
   const [hiddenBlockIds, setHiddenBlockIds] = useState<Set<string>>(new Set());
 
   const handleNavigate = useCallback((id: string) => {
@@ -25,22 +27,28 @@ function App() {
   }, []);
 
   const toggleSetItem = useCallback(
-    (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (id: string) => {
-      setter(prev => {
-        const next = new Set(prev);
-        if (next.has(id)) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-        return next;
-      });
-    },
+    (setter: React.Dispatch<React.SetStateAction<Set<string>>>) =>
+      (id: string) => {
+        setter((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) {
+            next.delete(id);
+          } else {
+            next.add(id);
+          }
+          return next;
+        });
+      },
     []
   );
 
-  const handleToggleCollapse = useCallback(toggleSetItem(setCollapsedBlockIds), [toggleSetItem]);
-  const handleToggleVisibility = useCallback(toggleSetItem(setHiddenBlockIds), [toggleSetItem]);
+  const handleToggleCollapse = useCallback(
+    toggleSetItem(setCollapsedBlockIds),
+    [toggleSetItem]
+  );
+  const handleToggleVisibility = useCallback(toggleSetItem(setHiddenBlockIds), [
+    toggleSetItem,
+  ]);
 
   return (
     <ThemeProvider>

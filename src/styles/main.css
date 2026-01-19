@@ -1,38 +1,40 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   /* ===== SEMANTIC COLORS ===== */
-  --color-primary: #37352f;        /* Main text */
-  --color-muted: #9b9a97;          /* Secondary text, placeholders */
-  --color-inverted: #ffffff;       /* Text on accent backgrounds */
+  --color-primary: #37352f; /* Main text */
+  --color-muted: #9b9a97; /* Secondary text, placeholders */
+  --color-inverted: #ffffff; /* Text on accent backgrounds */
 
-  --color-surface: #ffffff;        /* Main background */
-  --color-surface-alt: #fbfbfa;    /* Sidebar background */
+  --color-surface: #ffffff; /* Main background */
+  --color-surface-alt: #fbfbfa; /* Sidebar background */
   --color-surface-raised: #f7f6f3; /* Code blocks, elevated surfaces */
 
-  --color-border: #e0e0e0;         /* Default borders */
-  --color-accent: #2eaadc;         /* Interactive accent (checkboxes, focus) */
-  --color-accent-subtle: oklch(0.65 0.15 230 / 0.14);  /* Selection background */
-  --color-accent-ring: oklch(0.65 0.15 230 / 0.5);     /* Focus ring */
+  --color-border: #e0e0e0; /* Default borders */
+  --color-accent: #2eaadc; /* Interactive accent (checkboxes, focus) */
+  --color-accent-subtle: oklch(0.65 0.15 230 / 0.14); /* Selection background */
+  --color-accent-ring: oklch(0.65 0.15 230 / 0.5); /* Focus ring */
 
-  --color-hover: oklch(0.23 0.02 70 / 0.08);   /* Hover overlay */
+  --color-hover: oklch(0.23 0.02 70 / 0.08); /* Hover overlay */
   --color-focus-bg: oklch(0.23 0.02 70 / 0.03); /* Focus background */
 
   /* ===== TYPOGRAPHY ===== */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-               Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  --font-mono: 'SFMono-Regular', Menlo, Consolas, 'PT Mono',
-               'Liberation Mono', Courier, monospace;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-mono:
+    'SFMono-Regular', Menlo, Consolas, 'PT Mono', 'Liberation Mono', Courier,
+    monospace;
 
   /* Type scale (based on 1rem = 16px) */
-  --text-h1: 1.875rem;      /* 30px */
-  --text-h2: 1.5rem;        /* 24px */
-  --text-h3: 1.25rem;       /* 20px */
-  --text-body: 1rem;        /* 16px */
-  --text-small: 0.875rem;   /* 14px */
-  --text-xs: 0.75rem;       /* 12px */
+  --text-h1: 1.875rem; /* 30px */
+  --text-h2: 1.5rem; /* 24px */
+  --text-h3: 1.25rem; /* 20px */
+  --text-body: 1rem; /* 16px */
+  --text-small: 0.875rem; /* 14px */
+  --text-xs: 0.75rem; /* 12px */
 
   /* Line heights */
   --leading-tight: 1.3;
@@ -42,15 +44,15 @@
   /* 4px base rhythm */
   --spacing-px: 1px;
   --spacing-0: 0;
-  --spacing-1: 0.25rem;   /* 4px */
-  --spacing-2: 0.5rem;    /* 8px */
-  --spacing-3: 0.75rem;   /* 12px */
-  --spacing-4: 1rem;      /* 16px */
-  --spacing-6: 1.5rem;    /* 24px */
-  --spacing-8: 2rem;      /* 32px */
-  --spacing-12: 3rem;     /* 48px */
-  --spacing-20: 5rem;     /* 80px */
-  --spacing-24: 6rem;     /* 96px */
+  --spacing-1: 0.25rem; /* 4px */
+  --spacing-2: 0.5rem; /* 8px */
+  --spacing-3: 0.75rem; /* 12px */
+  --spacing-4: 1rem; /* 16px */
+  --spacing-6: 1.5rem; /* 24px */
+  --spacing-8: 2rem; /* 32px */
+  --spacing-12: 3rem; /* 48px */
+  --spacing-20: 5rem; /* 80px */
+  --spacing-24: 6rem; /* 96px */
 
   /* Layout containers */
   --width-content: 900px;

@@ -13,7 +13,10 @@ import {
 } from '../utils/block-operations';
 import { generateId } from '../utils/markdown';
 
-export function createBlock(type: BlockType = 'paragraph', content = ''): Block {
+export function createBlock(
+  type: BlockType = 'paragraph',
+  content = ''
+): Block {
   return { id: generateId(), type, content };
 }
 
@@ -27,8 +30,18 @@ interface EditorProps {
   hiddenBlockIds?: Set<string>;
 }
 
-export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, collapsedBlockIds, onToggleCollapse, hiddenBlockIds }: EditorProps): JSX.Element {
-  const [focusedId, setFocusedId] = useState<string | null>(blocks[0]?.id || null);
+export function Editor({
+  blocks,
+  setBlocks,
+  navigateToId,
+  onNavigateComplete,
+  collapsedBlockIds,
+  onToggleCollapse,
+  hiddenBlockIds,
+}: EditorProps): JSX.Element {
+  const [focusedId, setFocusedId] = useState<string | null>(
+    blocks[0]?.id || null
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const pendingFocusRef = useRef<string | null>(null);
 
@@ -41,8 +54,14 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
   }, [blocks]);
 
   // Compute visible blocks for navigation and rendering
-  const shownBlocks = useMemo(() => getShownBlocks(blocks, hiddenBlockIds), [blocks, hiddenBlockIds]);
-  const visibleBlocks = useMemo(() => getVisibleBlocks(shownBlocks, collapsedBlockIds), [shownBlocks, collapsedBlockIds]);
+  const shownBlocks = useMemo(
+    () => getShownBlocks(blocks, hiddenBlockIds),
+    [blocks, hiddenBlockIds]
+  );
+  const visibleBlocks = useMemo(
+    () => getVisibleBlocks(shownBlocks, collapsedBlockIds),
+    [shownBlocks, collapsedBlockIds]
+  );
 
   // Handle navigation from outline
   useEffect(() => {
@@ -50,7 +69,9 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
       setFocusedId(navigateToId);
       setSelectedId(null);
       // Scroll the block into view
-      const element = document.querySelector(`[data-block-id="${navigateToId}"]`);
+      const element = document.querySelector(
+        `[data-block-id="${navigateToId}"]`
+      );
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -58,47 +79,62 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
     }
   }, [navigateToId, onNavigateComplete]);
 
-  const updateBlock = useCallback((id: string, content: string, type: BlockType) => {
-    setBlocks(prev =>
-      prev.map(block =>
-        block.id === id ? { ...block, content, type } : block
-      )
-    );
-  }, [setBlocks]);
+  const updateBlock = useCallback(
+    (id: string, content: string, type: BlockType) => {
+      setBlocks((prev) =>
+        prev.map((block) =>
+          block.id === id ? { ...block, content, type } : block
+        )
+      );
+    },
+    [setBlocks]
+  );
 
-  const insertBlockAfter = useCallback((id: string) => {
-    setBlocks(prev => {
-      const result = insertBlockAfterUtil(prev, id, createBlock);
-      if (result.newBlockId) {
-        pendingFocusRef.current = result.newBlockId;
+  const insertBlockAfter = useCallback(
+    (id: string) => {
+      setBlocks((prev) => {
+        const result = insertBlockAfterUtil(prev, id, createBlock);
+        if (result.newBlockId) {
+          pendingFocusRef.current = result.newBlockId;
+        }
+        return result.blocks;
+      });
+    },
+    [setBlocks]
+  );
+
+  const deleteBlock = useCallback(
+    (id: string) => {
+      setBlocks((prev) => {
+        const result = deleteBlockUtil(prev, id);
+        if (result.focusBlockId) {
+          setFocusedId(result.focusBlockId);
+        }
+        return result.blocks;
+      });
+    },
+    [setBlocks]
+  );
+
+  const focusPreviousBlock = useCallback(
+    (id: string) => {
+      const index = visibleBlocks.findIndex((b) => b.id === id);
+      if (index > 0) {
+        setFocusedId(visibleBlocks[index - 1].id);
       }
-      return result.blocks;
-    });
-  }, [setBlocks]);
+    },
+    [visibleBlocks]
+  );
 
-  const deleteBlock = useCallback((id: string) => {
-    setBlocks(prev => {
-      const result = deleteBlockUtil(prev, id);
-      if (result.focusBlockId) {
-        setFocusedId(result.focusBlockId);
+  const focusNextBlock = useCallback(
+    (id: string) => {
+      const index = visibleBlocks.findIndex((b) => b.id === id);
+      if (index < visibleBlocks.length - 1) {
+        setFocusedId(visibleBlocks[index + 1].id);
       }
-      return result.blocks;
-    });
-  }, [setBlocks]);
-
-  const focusPreviousBlock = useCallback((id: string) => {
-    const index = visibleBlocks.findIndex(b => b.id === id);
-    if (index > 0) {
-      setFocusedId(visibleBlocks[index - 1].id);
-    }
-  }, [visibleBlocks]);
-
-  const focusNextBlock = useCallback((id: string) => {
-    const index = visibleBlocks.findIndex(b => b.id === id);
-    if (index < visibleBlocks.length - 1) {
-      setFocusedId(visibleBlocks[index + 1].id);
-    }
-  }, [visibleBlocks]);
+    },
+    [visibleBlocks]
+  );
 
   const selectBlock = useCallback((id: string) => {
     setSelectedId(id);
@@ -110,18 +146,24 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
     setFocusedId(id);
   }, []);
 
-  const handleMoveUp = useCallback((id: string) => {
-    setBlocks(prev => moveBlockUp(prev, id));
-  }, [setBlocks]);
+  const handleMoveUp = useCallback(
+    (id: string) => {
+      setBlocks((prev) => moveBlockUp(prev, id));
+    },
+    [setBlocks]
+  );
 
-  const handleMoveDown = useCallback((id: string) => {
-    setBlocks(prev => moveBlockDown(prev, id));
-  }, [setBlocks]);
+  const handleMoveDown = useCallback(
+    (id: string) => {
+      setBlocks((prev) => moveBlockDown(prev, id));
+    },
+    [setBlocks]
+  );
 
   return (
     <div className="w-full">
       {visibleBlocks.map((block) => {
-        const originalIndex = blocks.findIndex(b => b.id === block.id);
+        const originalIndex = blocks.findIndex((b) => b.id === block.id);
         return (
           <BlockInput
             key={block.id}
@@ -139,7 +181,9 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
             onMoveUp={handleMoveUp}
             onMoveDown={handleMoveDown}
             numberedIndex={getNumberedIndex(blocks, originalIndex)}
-            isCollapsed={block.type === 'h1' && collapsedBlockIds?.has(block.id)}
+            isCollapsed={
+              block.type === 'h1' && collapsedBlockIds?.has(block.id)
+            }
             onToggleCollapse={onToggleCollapse}
           />
         );

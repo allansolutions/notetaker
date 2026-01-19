@@ -164,7 +164,11 @@ export function BlockInput({
     }
 
     // Cmd+Return to toggle todo done state
-    if (e.metaKey && e.key === 'Enter' && (block.type === 'todo' || block.type === 'todo-checked')) {
+    if (
+      e.metaKey &&
+      e.key === 'Enter' &&
+      (block.type === 'todo' || block.type === 'todo-checked')
+    ) {
       e.preventDefault();
       const newType = block.type === 'todo' ? 'todo-checked' : 'todo';
       onUpdate(block.id, block.content, newType);
@@ -209,7 +213,11 @@ export function BlockInput({
     if (!isSelected) return;
 
     // Cmd+Return to toggle todo done state when selected
-    if (e.metaKey && e.key === 'Enter' && (block.type === 'todo' || block.type === 'todo-checked')) {
+    if (
+      e.metaKey &&
+      e.key === 'Enter' &&
+      (block.type === 'todo' || block.type === 'todo-checked')
+    ) {
       e.preventDefault();
       const newType = block.type === 'todo' ? 'todo-checked' : 'todo';
       onUpdate(block.id, block.content, newType);
@@ -262,7 +270,8 @@ export function BlockInput({
   };
 
   const getClassName = () => {
-    const baseClass = 'block-input w-full outline-none border-none py-[3px] px-0.5 min-h-[1.5em] whitespace-pre-wrap break-words focus:bg-focus-bg focus:rounded-sm';
+    const baseClass =
+      'block-input w-full outline-none border-none py-[3px] px-0.5 min-h-[1.5em] whitespace-pre-wrap break-words focus:bg-focus-bg focus:rounded-sm';
     return `${baseClass} ${blockTypeClasses[block.type]}`;
   };
 
@@ -315,19 +324,35 @@ export function BlockInput({
           </span>
         );
       case 'bullet':
-        return <span className="shrink-0 select-none text-primary w-6 h-6 flex items-center justify-center text-[1.4em] leading-none">•</span>;
+        return (
+          <span className="shrink-0 select-none text-primary w-6 h-6 flex items-center justify-center text-[1.4em] leading-none">
+            •
+          </span>
+        );
       case 'numbered':
-        return <span className="shrink-0 select-none text-primary w-7 pt-[3px] pr-1 text-right">{numberedIndex}.</span>;
+        return (
+          <span className="shrink-0 select-none text-primary w-7 pt-[3px] pr-1 text-right">
+            {numberedIndex}.
+          </span>
+        );
       case 'todo':
         return (
-          <span className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer" onClick={handleTodoClick}>
+          <span
+            className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer"
+            onClick={handleTodoClick}
+          >
             <span className="size-4 border-2 border-primary rounded-sm flex items-center justify-center text-xs transition-all duration-fast hover:bg-hover" />
           </span>
         );
       case 'todo-checked':
         return (
-          <span className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer" onClick={handleTodoClick}>
-            <span className="size-4 border-2 border-accent bg-accent rounded-sm flex items-center justify-center text-xs transition-all duration-fast text-inverted">✓</span>
+          <span
+            className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer"
+            onClick={handleTodoClick}
+          >
+            <span className="size-4 border-2 border-accent bg-accent rounded-sm flex items-center justify-center text-xs transition-all duration-fast text-inverted">
+              ✓
+            </span>
           </span>
         );
       case 'quote':
@@ -338,7 +363,9 @@ export function BlockInput({
   };
 
   const prefix = renderPrefix();
-  const selectedClass = isSelected ? ' bg-accent-subtle rounded-sm ring-2 ring-accent-ring ring-inset' : '';
+  const selectedClass = isSelected
+    ? ' bg-accent-subtle rounded-sm ring-2 ring-accent-ring ring-inset'
+    : '';
 
   const handleWrapperClick = () => {
     if (isSelected) {
@@ -347,7 +374,8 @@ export function BlockInput({
   };
 
   const getWrapperClasses = (): string => {
-    const baseClasses = wrapperBaseClasses[block.type] ?? 'flex items-center my-px';
+    const baseClasses =
+      wrapperBaseClasses[block.type] ?? 'flex items-center my-px';
     return baseClasses + selectedClass;
   };
 

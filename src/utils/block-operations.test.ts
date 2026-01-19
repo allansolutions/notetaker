@@ -10,7 +10,11 @@ import {
 } from './block-operations';
 import { Block, BlockType } from '../types';
 
-const makeBlock = (id: string, type: Block['type'] = 'paragraph', content = ''): Block => ({
+const makeBlock = (
+  id: string,
+  type: Block['type'] = 'paragraph',
+  content = ''
+): Block => ({
   id,
   type,
   content,
@@ -20,7 +24,7 @@ describe('moveBlockUp', () => {
   it('swaps block with previous block', () => {
     const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
     const result = moveBlockUp(blocks, '2');
-    expect(result.map(b => b.id)).toEqual(['2', '1', '3']);
+    expect(result.map((b) => b.id)).toEqual(['2', '1', '3']);
   });
 
   it('returns same array when first block tries to move up', () => {
@@ -44,14 +48,14 @@ describe('moveBlockUp', () => {
   it('handles moving second block to first position', () => {
     const blocks = [makeBlock('1'), makeBlock('2')];
     const result = moveBlockUp(blocks, '2');
-    expect(result.map(b => b.id)).toEqual(['2', '1']);
+    expect(result.map((b) => b.id)).toEqual(['2', '1']);
   });
 
   it('does not mutate original array', () => {
     const blocks = [makeBlock('1'), makeBlock('2')];
     const original = [...blocks];
     moveBlockUp(blocks, '2');
-    expect(blocks.map(b => b.id)).toEqual(original.map(b => b.id));
+    expect(blocks.map((b) => b.id)).toEqual(original.map((b) => b.id));
   });
 });
 
@@ -59,7 +63,7 @@ describe('moveBlockDown', () => {
   it('swaps block with next block', () => {
     const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
     const result = moveBlockDown(blocks, '2');
-    expect(result.map(b => b.id)).toEqual(['1', '3', '2']);
+    expect(result.map((b) => b.id)).toEqual(['1', '3', '2']);
   });
 
   it('returns same array when last block tries to move down', () => {
@@ -83,14 +87,14 @@ describe('moveBlockDown', () => {
   it('handles moving first block to second position', () => {
     const blocks = [makeBlock('1'), makeBlock('2')];
     const result = moveBlockDown(blocks, '1');
-    expect(result.map(b => b.id)).toEqual(['2', '1']);
+    expect(result.map((b) => b.id)).toEqual(['2', '1']);
   });
 
   it('does not mutate original array', () => {
     const blocks = [makeBlock('1'), makeBlock('2')];
     const original = [...blocks];
     moveBlockDown(blocks, '1');
-    expect(blocks.map(b => b.id)).toEqual(original.map(b => b.id));
+    expect(blocks.map((b) => b.id)).toEqual(original.map((b) => b.id));
   });
 });
 
@@ -166,14 +170,11 @@ describe('getShownBlocks', () => {
       makeBlock('p2', 'paragraph', 'Content 2'),
     ];
     const result = getShownBlocks(blocks, new Set(['h1-1']));
-    expect(result.map(b => b.id)).toEqual(['h1-2', 'p2']);
+    expect(result.map((b) => b.id)).toEqual(['h1-2', 'p2']);
   });
 
   it('hides the H1 block itself when hidden', () => {
-    const blocks = [
-      makeBlock('h1-1', 'h1'),
-      makeBlock('p1', 'paragraph'),
-    ];
+    const blocks = [makeBlock('h1-1', 'h1'), makeBlock('p1', 'paragraph')];
     const result = getShownBlocks(blocks, new Set(['h1-1']));
     expect(result).toEqual([]);
   });
@@ -188,7 +189,7 @@ describe('getShownBlocks', () => {
       makeBlock('p3', 'paragraph'),
     ];
     const result = getShownBlocks(blocks, new Set(['h1-1', 'h1-3']));
-    expect(result.map(b => b.id)).toEqual(['h1-2', 'p2']);
+    expect(result.map((b) => b.id)).toEqual(['h1-2', 'p2']);
   });
 
   it('shows blocks before first H1 when first H1 is hidden', () => {
@@ -198,7 +199,7 @@ describe('getShownBlocks', () => {
       makeBlock('p1', 'paragraph'),
     ];
     const result = getShownBlocks(blocks, new Set(['h1-1']));
-    expect(result.map(b => b.id)).toEqual(['p0']);
+    expect(result.map((b) => b.id)).toEqual(['p0']);
   });
 
   it('handles consecutive H1s with first hidden', () => {
@@ -208,7 +209,7 @@ describe('getShownBlocks', () => {
       makeBlock('p1', 'paragraph'),
     ];
     const result = getShownBlocks(blocks, new Set(['h1-1']));
-    expect(result.map(b => b.id)).toEqual(['h1-2', 'p1']);
+    expect(result.map((b) => b.id)).toEqual(['h1-2', 'p1']);
   });
 });
 
@@ -231,16 +232,13 @@ describe('getVisibleBlocks', () => {
       makeBlock('p2', 'paragraph', 'Content 2'),
     ];
     const result = getVisibleBlocks(blocks, new Set(['h1-1']));
-    expect(result.map(b => b.id)).toEqual(['h1-1', 'h1-2', 'p2']);
+    expect(result.map((b) => b.id)).toEqual(['h1-1', 'h1-2', 'p2']);
   });
 
   it('always shows the H1 block itself', () => {
-    const blocks = [
-      makeBlock('h1-1', 'h1'),
-      makeBlock('p1', 'paragraph'),
-    ];
+    const blocks = [makeBlock('h1-1', 'h1'), makeBlock('p1', 'paragraph')];
     const result = getVisibleBlocks(blocks, new Set(['h1-1']));
-    expect(result.map(b => b.id)).toEqual(['h1-1']);
+    expect(result.map((b) => b.id)).toEqual(['h1-1']);
   });
 
   it('handles multiple collapsed sections', () => {
@@ -253,7 +251,7 @@ describe('getVisibleBlocks', () => {
       makeBlock('p3', 'paragraph'),
     ];
     const result = getVisibleBlocks(blocks, new Set(['h1-1', 'h1-3']));
-    expect(result.map(b => b.id)).toEqual(['h1-1', 'h1-2', 'p2', 'h1-3']);
+    expect(result.map((b) => b.id)).toEqual(['h1-1', 'h1-2', 'p2', 'h1-3']);
   });
 
   it('handles blocks before first H1', () => {
@@ -263,7 +261,7 @@ describe('getVisibleBlocks', () => {
       makeBlock('p1', 'paragraph'),
     ];
     const result = getVisibleBlocks(blocks, new Set(['h1-1']));
-    expect(result.map(b => b.id)).toEqual(['p0', 'h1-1']);
+    expect(result.map((b) => b.id)).toEqual(['p0', 'h1-1']);
   });
 
   it('handles consecutive H1s', () => {
@@ -273,7 +271,7 @@ describe('getVisibleBlocks', () => {
       makeBlock('p1', 'paragraph'),
     ];
     const result = getVisibleBlocks(blocks, new Set(['h1-1']));
-    expect(result.map(b => b.id)).toEqual(['h1-1', 'h1-2', 'p1']);
+    expect(result.map((b) => b.id)).toEqual(['h1-1', 'h1-2', 'p1']);
   });
 });
 
@@ -359,7 +357,7 @@ describe('deleteBlock', () => {
   it('removes block and returns previous block id to focus', () => {
     const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
     const result = deleteBlock(blocks, '2');
-    expect(result.blocks.map(b => b.id)).toEqual(['1', '3']);
+    expect(result.blocks.map((b) => b.id)).toEqual(['1', '3']);
     expect(result.focusBlockId).toBe('1');
   });
 
@@ -373,14 +371,14 @@ describe('deleteBlock', () => {
   it('focuses first block when deleting first block', () => {
     const blocks = [makeBlock('1'), makeBlock('2')];
     const result = deleteBlock(blocks, '1');
-    expect(result.blocks.map(b => b.id)).toEqual(['2']);
+    expect(result.blocks.map((b) => b.id)).toEqual(['2']);
     expect(result.focusBlockId).toBe('2');
   });
 
   it('focuses previous block when deleting last block', () => {
     const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
     const result = deleteBlock(blocks, '3');
-    expect(result.blocks.map(b => b.id)).toEqual(['1', '2']);
+    expect(result.blocks.map((b) => b.id)).toEqual(['1', '2']);
     expect(result.focusBlockId).toBe('2');
   });
 
@@ -395,6 +393,6 @@ describe('deleteBlock', () => {
     const blocks = [makeBlock('1'), makeBlock('2')];
     const original = [...blocks];
     deleteBlock(blocks, '2');
-    expect(blocks.map(b => b.id)).toEqual(original.map(b => b.id));
+    expect(blocks.map((b) => b.id)).toEqual(original.map((b) => b.id));
   });
 });

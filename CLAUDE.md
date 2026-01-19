@@ -18,6 +18,7 @@ This is a Notion-style block-based note editor built with React, TypeScript, and
 The editor uses a block-based architecture where each piece of content is a `Block` with an id, type, and content. Block types include: paragraph, h1-h3, bullet, numbered, todo/todo-checked, quote, code, and divider.
 
 **Key files:**
+
 - `src/types.ts` - Block and Document type definitions
 - `src/utils/markdown.ts` - Markdown prefix detection and parsing (e.g., typing "# " converts to h1)
 - `src/components/Editor.tsx` - Main editor managing block state and operations

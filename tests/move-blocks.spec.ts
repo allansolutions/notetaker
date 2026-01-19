@@ -26,7 +26,10 @@ test.describe('Move Blocks with Cmd+Shift+Arrow', () => {
     await typeInNewBlock(page, 'Second block');
 
     // Take screenshot to debug
-    await page.screenshot({ path: 'test-results/two-blocks-created.png', fullPage: true });
+    await page.screenshot({
+      path: 'test-results/two-blocks-created.png',
+      fullPage: true,
+    });
 
     // Go back to first block and select it
     const blocks = page.locator('.block-input');
@@ -43,7 +46,10 @@ test.describe('Move Blocks with Cmd+Shift+Arrow', () => {
     await page.keyboard.press('Meta+Shift+ArrowDown');
     await page.waitForTimeout(100);
 
-    await page.screenshot({ path: 'test-results/after-move-down.png', fullPage: true });
+    await page.screenshot({
+      path: 'test-results/after-move-down.png',
+      fullPage: true,
+    });
 
     // Now "First block" should be second
     const blockTexts = await blocks.allTextContents();
@@ -88,7 +94,10 @@ test.describe('Move Blocks with Cmd+Shift+Arrow', () => {
     await page.keyboard.press('Enter');
     await typeInNewBlock(page, 'Block C');
 
-    await page.screenshot({ path: 'test-results/before-move.png', fullPage: true });
+    await page.screenshot({
+      path: 'test-results/before-move.png',
+      fullPage: true,
+    });
 
     // Go to Block B and select it
     const blocks = page.locator('.block-input');
@@ -97,13 +106,19 @@ test.describe('Move Blocks with Cmd+Shift+Arrow', () => {
     await page.keyboard.press('Meta+e');
     await page.waitForTimeout(100);
 
-    await page.screenshot({ path: 'test-results/block-b-selected.png', fullPage: true });
+    await page.screenshot({
+      path: 'test-results/block-b-selected.png',
+      fullPage: true,
+    });
 
     // Move Block B up
     await page.keyboard.press('Meta+Shift+ArrowUp');
     await page.waitForTimeout(100);
 
-    await page.screenshot({ path: 'test-results/after-move-up.png', fullPage: true });
+    await page.screenshot({
+      path: 'test-results/after-move-up.png',
+      fullPage: true,
+    });
 
     // Verify order
     const blockTexts = await blocks.allTextContents();

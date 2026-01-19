@@ -48,6 +48,7 @@ Create a well-structured git commit for the current changes.
    - Use bullet points for multiple items
 
 4. **Commit using HEREDOC format** for proper formatting:
+
    ```bash
    git commit -m "$(cat <<'EOF'
    type(scope): subject line here
@@ -64,11 +65,13 @@ Create a well-structured git commit for the current changes.
 ## Examples
 
 **Simple feature:**
+
 ```
 feat(editor): add keyboard shortcut for block selection
 ```
 
 **Bug fix with context:**
+
 ```
 fix(storage): prevent data loss on rapid typing
 
@@ -77,6 +80,7 @@ when the user navigated away immediately after typing.
 ```
 
 **Refactor:**
+
 ```
 refactor(blocks): extract type detection into utility function
 ```

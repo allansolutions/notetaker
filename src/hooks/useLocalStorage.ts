@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
+export function useLocalStorage<T>(
+  key: string,
+  initialValue: T
+): [T, (value: T | ((prev: T) => T)) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key);
@@ -13,7 +16,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
   const timeoutRef = useRef<number | null>(null);
 
   const setValue = useCallback((value: T | ((prev: T) => T)) => {
-    setStoredValue(prev => value instanceof Function ? value(prev) : value);
+    setStoredValue((prev) => (value instanceof Function ? value(prev) : value));
   }, []);
 
   // Debounced save to localStorage

@@ -5,10 +5,13 @@ import { Block, BlockType } from '../types';
  * Returns the original array if the block is already first.
  */
 export function moveBlockUp(blocks: Block[], id: string): Block[] {
-  const index = blocks.findIndex(b => b.id === id);
+  const index = blocks.findIndex((b) => b.id === id);
   if (index <= 0) return blocks;
   const newBlocks = [...blocks];
-  [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
+  [newBlocks[index - 1], newBlocks[index]] = [
+    newBlocks[index],
+    newBlocks[index - 1],
+  ];
   return newBlocks;
 }
 
@@ -17,10 +20,13 @@ export function moveBlockUp(blocks: Block[], id: string): Block[] {
  * Returns the original array if the block is already last.
  */
 export function moveBlockDown(blocks: Block[], id: string): Block[] {
-  const index = blocks.findIndex(b => b.id === id);
+  const index = blocks.findIndex((b) => b.id === id);
   if (index < 0 || index >= blocks.length - 1) return blocks;
   const newBlocks = [...blocks];
-  [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
+  [newBlocks[index], newBlocks[index + 1]] = [
+    newBlocks[index + 1],
+    newBlocks[index],
+  ];
   return newBlocks;
 }
 
@@ -42,7 +48,10 @@ export function getNumberedIndex(blocks: Block[], index: number): number {
  * Filters out blocks in hidden H1 sections.
  * Both the H1 and all content until the next H1 are completely hidden.
  */
-export function getShownBlocks(blocks: Block[], hiddenBlockIds: Set<string> | undefined): Block[] {
+export function getShownBlocks(
+  blocks: Block[],
+  hiddenBlockIds: Set<string> | undefined
+): Block[] {
   if (!hiddenBlockIds || hiddenBlockIds.size === 0) return blocks;
 
   const result: Block[] = [];
@@ -64,7 +73,10 @@ export function getShownBlocks(blocks: Block[], hiddenBlockIds: Set<string> | un
  * Filters out blocks in collapsed H1 sections.
  * The H1 itself is always visible, but content until the next H1 is hidden.
  */
-export function getVisibleBlocks(blocks: Block[], collapsedBlockIds: Set<string> | undefined): Block[] {
+export function getVisibleBlocks(
+  blocks: Block[],
+  collapsedBlockIds: Set<string> | undefined
+): Block[] {
   if (!collapsedBlockIds || collapsedBlockIds.size === 0) return blocks;
 
   const result: Block[] = [];
@@ -102,7 +114,7 @@ export function insertBlockAfter(
   id: string,
   createBlock: (type?: BlockType, content?: string) => Block
 ): InsertBlockResult {
-  const index = blocks.findIndex(b => b.id === id);
+  const index = blocks.findIndex((b) => b.id === id);
   if (index < 0) return { blocks, newBlockId: null };
 
   const currentBlock = blocks[index];
@@ -110,7 +122,7 @@ export function insertBlockAfter(
   // If it's a list type and empty, convert to paragraph instead of continuing list
   if (LIST_TYPES.includes(currentBlock.type) && currentBlock.content === '') {
     return {
-      blocks: blocks.map(b =>
+      blocks: blocks.map((b) =>
         b.id === id ? { ...b, type: 'paragraph' as BlockType } : b
       ),
       newBlockId: null,
@@ -119,7 +131,9 @@ export function insertBlockAfter(
 
   // Continue list types, or create paragraph for others
   const newType = LIST_TYPES.includes(currentBlock.type)
-    ? (currentBlock.type === 'todo-checked' ? 'todo' : currentBlock.type)
+    ? currentBlock.type === 'todo-checked'
+      ? 'todo'
+      : currentBlock.type
     : 'paragraph';
 
   const newBlock = createBlock(newType);
@@ -143,10 +157,10 @@ export function deleteBlock(blocks: Block[], id: string): DeleteBlockResult {
     return { blocks, focusBlockId: null };
   }
 
-  const index = blocks.findIndex(b => b.id === id);
+  const index = blocks.findIndex((b) => b.id === id);
   if (index < 0) return { blocks, focusBlockId: null };
 
-  const newBlocks = blocks.filter(b => b.id !== id);
+  const newBlocks = blocks.filter((b) => b.id !== id);
   const prevBlock = newBlocks[Math.max(0, index - 1)];
 
   return {

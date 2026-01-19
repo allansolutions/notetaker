@@ -78,7 +78,11 @@ describe('BlockInput', () => {
       render(<BlockInput {...props} isFocused={true} />);
 
       const input = document.querySelector('.block-input');
-      fireEvent.keyDown(input!, { key: 'ArrowUp', metaKey: true, shiftKey: true });
+      fireEvent.keyDown(input!, {
+        key: 'ArrowUp',
+        metaKey: true,
+        shiftKey: true,
+      });
 
       expect(props.onMoveUp).toHaveBeenCalledWith('test-1');
     });
@@ -88,7 +92,11 @@ describe('BlockInput', () => {
       render(<BlockInput {...props} isFocused={true} />);
 
       const input = document.querySelector('.block-input');
-      fireEvent.keyDown(input!, { key: 'ArrowDown', metaKey: true, shiftKey: true });
+      fireEvent.keyDown(input!, {
+        key: 'ArrowDown',
+        metaKey: true,
+        shiftKey: true,
+      });
 
       expect(props.onMoveDown).toHaveBeenCalledWith('test-1');
     });
@@ -124,7 +132,11 @@ describe('BlockInput', () => {
 
       fireEvent.keyDown(input!, { key: 'Backspace' });
 
-      expect(props.onUpdate).toHaveBeenCalledWith('test-1', '- item', 'paragraph');
+      expect(props.onUpdate).toHaveBeenCalledWith(
+        'test-1',
+        '- item',
+        'paragraph'
+      );
     });
   });
 
@@ -175,7 +187,11 @@ describe('BlockInput', () => {
       render(<BlockInput {...props} isSelected={true} />);
 
       const wrapper = document.querySelector('[data-block-id="test-1"]');
-      fireEvent.keyDown(wrapper!, { key: 'ArrowUp', metaKey: true, shiftKey: true });
+      fireEvent.keyDown(wrapper!, {
+        key: 'ArrowUp',
+        metaKey: true,
+        shiftKey: true,
+      });
 
       expect(props.onMoveUp).toHaveBeenCalledWith('test-1');
     });
@@ -185,7 +201,11 @@ describe('BlockInput', () => {
       render(<BlockInput {...props} isSelected={true} />);
 
       const wrapper = document.querySelector('[data-block-id="test-1"]');
-      fireEvent.keyDown(wrapper!, { key: 'ArrowDown', metaKey: true, shiftKey: true });
+      fireEvent.keyDown(wrapper!, {
+        key: 'ArrowDown',
+        metaKey: true,
+        shiftKey: true,
+      });
 
       expect(props.onMoveDown).toHaveBeenCalledWith('test-1');
     });
@@ -227,17 +247,25 @@ describe('BlockInput', () => {
       render(<BlockInput {...props} />);
 
       // Find the todo prefix span that contains the checkbox
-      const checkbox = document.querySelector('[data-block-id="test-1"] > span');
+      const checkbox = document.querySelector(
+        '[data-block-id="test-1"] > span'
+      );
       fireEvent.click(checkbox!);
 
-      expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Task', 'todo-checked');
+      expect(props.onUpdate).toHaveBeenCalledWith(
+        'test-1',
+        'Task',
+        'todo-checked'
+      );
     });
 
     it('toggles todo-checked to todo when checkbox clicked', async () => {
       const props = createMockProps({ type: 'todo-checked', content: 'Done' });
       render(<BlockInput {...props} />);
 
-      const checkbox = document.querySelector('[data-block-id="test-1"] > span');
+      const checkbox = document.querySelector(
+        '[data-block-id="test-1"] > span'
+      );
       fireEvent.click(checkbox!);
 
       expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Done', 'todo');
@@ -283,17 +311,28 @@ describe('BlockInput', () => {
       const input = document.querySelector('.block-input');
       fireEvent.keyDown(input!, { key: 'Enter', metaKey: true });
 
-      expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Task', 'todo-checked');
+      expect(props.onUpdate).toHaveBeenCalledWith(
+        'test-1',
+        'Task',
+        'todo-checked'
+      );
     });
 
     it('toggles todo-checked to todo with Cmd+Enter', async () => {
-      const props = createMockProps({ type: 'todo-checked', content: 'Done task' });
+      const props = createMockProps({
+        type: 'todo-checked',
+        content: 'Done task',
+      });
       render(<BlockInput {...props} isFocused={true} />);
 
       const input = document.querySelector('.block-input');
       fireEvent.keyDown(input!, { key: 'Enter', metaKey: true });
 
-      expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Done task', 'todo');
+      expect(props.onUpdate).toHaveBeenCalledWith(
+        'test-1',
+        'Done task',
+        'todo'
+      );
     });
 
     it('toggles todo when selected with Cmd+Enter', async () => {
@@ -303,7 +342,11 @@ describe('BlockInput', () => {
       const wrapper = document.querySelector('[data-block-id="test-1"]');
       fireEvent.keyDown(wrapper!, { key: 'Enter', metaKey: true });
 
-      expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Task', 'todo-checked');
+      expect(props.onUpdate).toHaveBeenCalledWith(
+        'test-1',
+        'Task',
+        'todo-checked'
+      );
     });
   });
 
@@ -473,7 +516,11 @@ describe('BlockInput', () => {
       input!.textContent = 'hello';
       fireEvent.input(input!);
 
-      expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'hello', 'paragraph');
+      expect(props.onUpdate).toHaveBeenCalledWith(
+        'test-1',
+        'hello',
+        'paragraph'
+      );
     });
 
     it('detects and converts paragraph to h1 when typing "# "', async () => {
@@ -517,7 +564,11 @@ describe('BlockInput', () => {
       input!.textContent = '- should not convert';
       fireEvent.input(input!);
 
-      expect(props.onUpdate).toHaveBeenCalledWith('test-1', '- should not convert', 'h1');
+      expect(props.onUpdate).toHaveBeenCalledWith(
+        'test-1',
+        '- should not convert',
+        'h1'
+      );
     });
   });
 
@@ -539,7 +590,9 @@ describe('BlockInput', () => {
       render(<BlockInput {...props} />);
 
       const input = document.querySelector('.block-input');
-      expect(input?.getAttribute('data-placeholder')).toBe("Type '/' for commands...");
+      expect(input?.getAttribute('data-placeholder')).toBe(
+        "Type '/' for commands..."
+      );
     });
 
     it('sets placeholder for code blocks', () => {

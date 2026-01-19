@@ -16,18 +16,24 @@ describe('useLocalStorage', () => {
   });
 
   it('returns initial value when localStorage is empty', () => {
-    const { result } = renderHook(() => useLocalStorage(STORAGE_KEY, 'initial'));
+    const { result } = renderHook(() =>
+      useLocalStorage(STORAGE_KEY, 'initial')
+    );
     expect(result.current[0]).toBe('initial');
   });
 
   it('returns stored value from localStorage', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify('stored-value'));
-    const { result } = renderHook(() => useLocalStorage(STORAGE_KEY, 'initial'));
+    const { result } = renderHook(() =>
+      useLocalStorage(STORAGE_KEY, 'initial')
+    );
     expect(result.current[0]).toBe('stored-value');
   });
 
   it('updates value when setValue is called', () => {
-    const { result } = renderHook(() => useLocalStorage(STORAGE_KEY, 'initial'));
+    const { result } = renderHook(() =>
+      useLocalStorage(STORAGE_KEY, 'initial')
+    );
 
     act(() => {
       result.current[1]('new-value');
@@ -47,7 +53,9 @@ describe('useLocalStorage', () => {
   });
 
   it('saves to localStorage after debounce', async () => {
-    const { result } = renderHook(() => useLocalStorage(STORAGE_KEY, 'initial'));
+    const { result } = renderHook(() =>
+      useLocalStorage(STORAGE_KEY, 'initial')
+    );
 
     act(() => {
       result.current[1]('new-value');
@@ -69,7 +77,9 @@ describe('useLocalStorage', () => {
   });
 
   it('cancels previous save on rapid updates', () => {
-    const { result } = renderHook(() => useLocalStorage(STORAGE_KEY, 'initial'));
+    const { result } = renderHook(() =>
+      useLocalStorage(STORAGE_KEY, 'initial')
+    );
 
     // Make rapid updates
     act(() => {
@@ -124,7 +134,9 @@ describe('useLocalStorage', () => {
 
   it('returns initial value when localStorage has invalid JSON', () => {
     localStorage.setItem(STORAGE_KEY, 'invalid-json{');
-    const { result } = renderHook(() => useLocalStorage(STORAGE_KEY, 'fallback'));
+    const { result } = renderHook(() =>
+      useLocalStorage(STORAGE_KEY, 'fallback')
+    );
     expect(result.current[0]).toBe('fallback');
   });
 
@@ -137,7 +149,9 @@ describe('useLocalStorage', () => {
       throw new Error('Storage full');
     });
 
-    const { result } = renderHook(() => useLocalStorage(STORAGE_KEY, 'initial'));
+    const { result } = renderHook(() =>
+      useLocalStorage(STORAGE_KEY, 'initial')
+    );
 
     act(() => {
       result.current[1]('new-value');

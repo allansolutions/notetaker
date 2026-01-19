@@ -8,7 +8,11 @@ const renderWithTheme = (ui: React.ReactElement) => {
   return render(<ThemeProvider>{ui}</ThemeProvider>);
 };
 
-const createBlock = (id: string, type: Block['type'], content: string): Block => ({
+const createBlock = (
+  id: string,
+  type: Block['type'],
+  content: string
+): Block => ({
   id,
   type,
   content,
@@ -63,7 +67,9 @@ describe('Outline', () => {
   it('calls onNavigate when H1 text is clicked', () => {
     const onNavigate = vi.fn();
     const blocks = [createBlock('1', 'h1', 'Section')];
-    renderWithTheme(<Outline {...defaultProps} blocks={blocks} onNavigate={onNavigate} />);
+    renderWithTheme(
+      <Outline {...defaultProps} blocks={blocks} onNavigate={onNavigate} />
+    );
 
     fireEvent.click(screen.getByText('Section'));
     expect(onNavigate).toHaveBeenCalledWith('1');

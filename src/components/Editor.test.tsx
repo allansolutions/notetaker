@@ -32,7 +32,9 @@ describe('createBlock', () => {
 
 describe('Editor', () => {
   let blocks: Block[];
-  let setBlocks: ReturnType<typeof vi.fn<(value: SetStateAction<Block[]>) => void>>;
+  let setBlocks: ReturnType<
+    typeof vi.fn<(value: SetStateAction<Block[]>) => void>
+  >;
 
   beforeEach(() => {
     blocks = [
@@ -62,7 +64,8 @@ describe('Editor', () => {
       expect(setBlocks).toHaveBeenCalled();
       // Verify the updater was called and blocks were swapped
       const lastCall = setBlocks.mock.calls[setBlocks.mock.calls.length - 1][0];
-      const result = typeof lastCall === 'function' ? lastCall(blocks) : lastCall;
+      const result =
+        typeof lastCall === 'function' ? lastCall(blocks) : lastCall;
       expect(result[0].content).toBe('Second block');
       expect(result[1].content).toBe('First block');
     });
@@ -80,7 +83,8 @@ describe('Editor', () => {
       const calls = setBlocks.mock.calls.slice(callCountBefore);
       if (calls.length > 0) {
         const lastCall = calls[calls.length - 1][0];
-        const result = typeof lastCall === 'function' ? lastCall(blocks) : lastCall;
+        const result =
+          typeof lastCall === 'function' ? lastCall(blocks) : lastCall;
         expect(result).toEqual(blocks);
       }
     });
@@ -97,7 +101,8 @@ describe('Editor', () => {
 
       expect(setBlocks).toHaveBeenCalled();
       const lastCall = setBlocks.mock.calls[setBlocks.mock.calls.length - 1][0];
-      const result = typeof lastCall === 'function' ? lastCall(blocks) : lastCall;
+      const result =
+        typeof lastCall === 'function' ? lastCall(blocks) : lastCall;
       expect(result[1].content).toBe('Third block');
       expect(result[2].content).toBe('Second block');
     });
@@ -114,7 +119,8 @@ describe('Editor', () => {
       const calls = setBlocks.mock.calls.slice(callCountBefore);
       if (calls.length > 0) {
         const lastCall = calls[calls.length - 1][0];
-        const result = typeof lastCall === 'function' ? lastCall(blocks) : lastCall;
+        const result =
+          typeof lastCall === 'function' ? lastCall(blocks) : lastCall;
         expect(result).toEqual(blocks);
       }
     });
@@ -122,7 +128,9 @@ describe('Editor', () => {
 
   describe('deleteBlock', () => {
     it('prevents deletion of last remaining block', async () => {
-      const singleBlock = [{ id: '1', type: 'paragraph' as const, content: 'Only block' }];
+      const singleBlock = [
+        { id: '1', type: 'paragraph' as const, content: 'Only block' },
+      ];
       const setSingleBlocks = vi.fn((updater) => {
         if (typeof updater === 'function') {
           return updater(singleBlock);
@@ -141,7 +149,8 @@ describe('Editor', () => {
       // Should not delete - verify updater returns same array
       const calls = setSingleBlocks.mock.calls;
       for (const call of calls) {
-        const result = typeof call[0] === 'function' ? call[0](singleBlock) : call[0];
+        const result =
+          typeof call[0] === 'function' ? call[0](singleBlock) : call[0];
         expect(result.length).toBeGreaterThanOrEqual(1);
       }
     });
@@ -174,9 +183,7 @@ describe('Editor', () => {
     });
 
     it('converts empty bullet to paragraph on Enter', async () => {
-      const bulletBlocks = [
-        { id: '1', type: 'bullet' as const, content: '' },
-      ];
+      const bulletBlocks = [{ id: '1', type: 'bullet' as const, content: '' }];
       let currentBlocks = bulletBlocks;
       const setBulletBlocks = vi.fn((updater) => {
         if (typeof updater === 'function') {
@@ -190,7 +197,9 @@ describe('Editor', () => {
 
       // Need to focus the contentEditable directly (not the wrapper)
       // since there's no text to click on in an empty block
-      const contentEditable = document.querySelector('[data-block-id="1"] .block-input');
+      const contentEditable = document.querySelector(
+        '[data-block-id="1"] .block-input'
+      );
       expect(contentEditable).toBeTruthy();
       (contentEditable as HTMLElement).focus();
       await user.keyboard('{Enter}');
@@ -316,7 +325,9 @@ describe('Editor', () => {
 
       // Wait for focus effect to run (setTimeout(0) in BlockInput)
       await vi.waitFor(() => {
-        const firstBlockInput = document.querySelector('[data-block-id="1"] .block-input');
+        const firstBlockInput = document.querySelector(
+          '[data-block-id="1"] .block-input'
+        );
         expect(document.activeElement).toBe(firstBlockInput);
       });
     });
@@ -331,7 +342,9 @@ describe('Editor', () => {
 
       // First block should still be focused (no previous block)
       await vi.waitFor(() => {
-        const firstBlockInput = document.querySelector('[data-block-id="1"] .block-input');
+        const firstBlockInput = document.querySelector(
+          '[data-block-id="1"] .block-input'
+        );
         expect(document.activeElement).toBe(firstBlockInput);
       });
     });
@@ -348,7 +361,9 @@ describe('Editor', () => {
 
       // Wait for focus effect to run
       await vi.waitFor(() => {
-        const secondBlockInput = document.querySelector('[data-block-id="2"] .block-input');
+        const secondBlockInput = document.querySelector(
+          '[data-block-id="2"] .block-input'
+        );
         expect(document.activeElement).toBe(secondBlockInput);
       });
     });
@@ -363,7 +378,9 @@ describe('Editor', () => {
 
       // Third block should still be focused (no next block)
       await vi.waitFor(() => {
-        const thirdBlockInput = document.querySelector('[data-block-id="3"] .block-input');
+        const thirdBlockInput = document.querySelector(
+          '[data-block-id="3"] .block-input'
+        );
         expect(document.activeElement).toBe(thirdBlockInput);
       });
     });

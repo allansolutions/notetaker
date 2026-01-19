@@ -26,16 +26,20 @@ test.describe('Block Selection', () => {
 
     // Check if the bg-accent-subtle class is applied (selection styling)
     const wrapper = page.locator('[data-block-id]').first();
-    const hasSelectedClass = await wrapper.evaluate(el => el.classList.contains('bg-accent-subtle'));
+    const hasSelectedClass = await wrapper.evaluate((el) =>
+      el.classList.contains('bg-accent-subtle')
+    );
 
     console.log('Has bg-accent-subtle class:', hasSelectedClass);
 
     // Get the wrapper's classes for debugging
-    const wrapperClasses = await wrapper.evaluate(el => el.className);
+    const wrapperClasses = await wrapper.evaluate((el) => el.className);
     console.log('Wrapper classes:', wrapperClasses);
 
     // Check if input is still focused
-    const inputStillFocused = await blockInput.evaluate(el => document.activeElement === el);
+    const inputStillFocused = await blockInput.evaluate(
+      (el) => document.activeElement === el
+    );
     console.log('Input still focused:', inputStillFocused);
 
     // Check what element has focus
@@ -44,7 +48,7 @@ test.describe('Block Selection', () => {
       return {
         tagName: el?.tagName,
         className: el?.className,
-        id: el?.id
+        id: el?.id,
       };
     });
     console.log('Focused element:', focusedElement);
@@ -66,12 +70,16 @@ test.describe('Block Selection', () => {
     await page.waitForTimeout(100);
 
     // The input should be focused again
-    const inputFocused = await blockInput.evaluate(el => document.activeElement === el);
+    const inputFocused = await blockInput.evaluate(
+      (el) => document.activeElement === el
+    );
     console.log('Input focused after Enter:', inputFocused);
 
     // Check if selected class is removed
     const wrapper = page.locator('[data-block-id]').first();
-    const hasSelectedClass = await wrapper.evaluate(el => el.classList.contains('bg-accent-subtle'));
+    const hasSelectedClass = await wrapper.evaluate((el) =>
+      el.classList.contains('bg-accent-subtle')
+    );
     console.log('Has bg-accent-subtle class after Enter:', hasSelectedClass);
   });
 
@@ -83,7 +91,10 @@ test.describe('Block Selection', () => {
 
     // Log before Meta+e
     console.log('=== Before Meta+e ===');
-    let wrapperClasses = await page.locator('[data-block-id]').first().evaluate(el => el.className);
+    let wrapperClasses = await page
+      .locator('[data-block-id]')
+      .first()
+      .evaluate((el) => el.className);
     console.log('Wrapper classes:', wrapperClasses);
 
     // Press Meta+e and watch what happens
@@ -91,22 +102,33 @@ test.describe('Block Selection', () => {
 
     // Check immediately
     console.log('=== Immediately after Meta+e ===');
-    wrapperClasses = await page.locator('[data-block-id]').first().evaluate(el => el.className);
+    wrapperClasses = await page
+      .locator('[data-block-id]')
+      .first()
+      .evaluate((el) => el.className);
     console.log('Wrapper classes:', wrapperClasses);
 
     // Wait and check again
     await page.waitForTimeout(50);
     console.log('=== 50ms after Meta+e ===');
-    wrapperClasses = await page.locator('[data-block-id]').first().evaluate(el => el.className);
+    wrapperClasses = await page
+      .locator('[data-block-id]')
+      .first()
+      .evaluate((el) => el.className);
     console.log('Wrapper classes:', wrapperClasses);
 
     await page.waitForTimeout(100);
     console.log('=== 150ms after Meta+e ===');
-    wrapperClasses = await page.locator('[data-block-id]').first().evaluate(el => el.className);
+    wrapperClasses = await page
+      .locator('[data-block-id]')
+      .first()
+      .evaluate((el) => el.className);
     console.log('Wrapper classes:', wrapperClasses);
 
     // Check contentEditable state
-    const isContentEditable = await blockInput.evaluate(el => el.contentEditable);
+    const isContentEditable = await blockInput.evaluate(
+      (el) => el.contentEditable
+    );
     console.log('contentEditable:', isContentEditable);
   });
 });

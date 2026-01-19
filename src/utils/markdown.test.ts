@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { detectBlockType, getPrefix, stripPrefix, generateId } from './markdown';
+import {
+  detectBlockType,
+  getPrefix,
+  stripPrefix,
+  generateId,
+} from './markdown';
 
 describe('detectBlockType', () => {
   describe('headers', () => {

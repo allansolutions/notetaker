@@ -42,17 +42,28 @@ export function detectBlockType(text: string): BlockType {
 
 export function getPrefix(type: BlockType): string {
   switch (type) {
-    case 'h1': return '# ';
-    case 'h2': return '## ';
-    case 'h3': return '### ';
-    case 'bullet': return '- ';
-    case 'numbered': return '1. ';
-    case 'todo': return '[] ';
-    case 'todo-checked': return '[x] ';
-    case 'quote': return '> ';
-    case 'code': return '```';
-    case 'divider': return '---';
-    default: return '';
+    case 'h1':
+      return '# ';
+    case 'h2':
+      return '## ';
+    case 'h3':
+      return '### ';
+    case 'bullet':
+      return '- ';
+    case 'numbered':
+      return '1. ';
+    case 'todo':
+      return '[] ';
+    case 'todo-checked':
+      return '[x] ';
+    case 'quote':
+      return '> ';
+    case 'code':
+      return '```';
+    case 'divider':
+      return '---';
+    default:
+      return '';
   }
 }
 
