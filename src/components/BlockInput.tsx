@@ -83,6 +83,7 @@ export function BlockInput({
       inputRef.current.textContent = block.content;
       isInitialMount.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentional: only set content on initial mount, not on updates
   }, []);
 
   // Handle focus changes
@@ -280,6 +281,7 @@ export function BlockInput({
   // Render divider as non-editable
   if (block.type === 'divider') {
     return (
+      /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Custom editor block widget */
       <div
         className="group flex items-center my-px py-3 cursor-pointer focus:outline-none"
         data-block-id={block.id}
@@ -301,6 +303,7 @@ export function BlockInput({
         }}
         tabIndex={0}
       >
+        {/* eslint-enable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
         <hr className="w-full border-none border-t border-border group-focus:border-accent" />
       </div>
     );
@@ -311,8 +314,10 @@ export function BlockInput({
     switch (block.type) {
       case 'h1':
         return (
-          <span
-            className={`shrink-0 select-none text-primary flex items-center justify-center size-6 mr-1 -ml-7 text-muted cursor-pointer rounded-md transition-transform duration-normal hover:bg-hover hover:text-primary ${isCollapsed ? 'rotate-0' : 'rotate-90'}`}
+          <button
+            type="button"
+            aria-label={isCollapsed ? 'Expand section' : 'Collapse section'}
+            className={`shrink-0 select-none text-primary flex items-center justify-center size-6 mr-1 -ml-7 text-muted cursor-pointer rounded-md transition-transform duration-normal hover:bg-hover hover:text-primary bg-transparent border-none p-0 ${isCollapsed ? 'rotate-0' : 'rotate-90'}`}
             onClick={(e) => {
               e.stopPropagation();
               onToggleCollapse?.(block.id);
@@ -321,7 +326,7 @@ export function BlockInput({
             <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
               <path d="M4 2l4 4-4 4V2z" />
             </svg>
-          </span>
+          </button>
         );
       case 'bullet':
         return (
@@ -337,23 +342,27 @@ export function BlockInput({
         );
       case 'todo':
         return (
-          <span
-            className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer"
+          <button
+            type="button"
+            aria-label="Mark as complete"
+            className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer bg-transparent border-none p-0"
             onClick={handleTodoClick}
           >
             <span className="size-4 border-2 border-primary rounded-sm flex items-center justify-center text-xs transition-all duration-fast hover:bg-hover" />
-          </span>
+          </button>
         );
       case 'todo-checked':
         return (
-          <span
-            className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer"
+          <button
+            type="button"
+            aria-label="Mark as incomplete"
+            className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer bg-transparent border-none p-0"
             onClick={handleTodoClick}
           >
             <span className="size-4 border-2 border-accent bg-accent rounded-sm flex items-center justify-center text-xs transition-all duration-fast text-inverted">
               ✓
             </span>
-          </span>
+          </button>
         );
       case 'quote':
         return <span className="shrink-0 select-none text-primary hidden" />;
@@ -380,6 +389,7 @@ export function BlockInput({
   };
 
   if (prefix) {
+    /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Custom editor block widget with selection mode */
     return (
       <div
         ref={wrapperRef}
@@ -402,8 +412,10 @@ export function BlockInput({
         />
       </div>
     );
+    /* eslint-enable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex */
   }
 
+  /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Custom editor block widget with selection mode */
   return (
     <div
       ref={wrapperRef}
@@ -425,4 +437,5 @@ export function BlockInput({
       />
     </div>
   );
+  /* eslint-enable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex */
 }

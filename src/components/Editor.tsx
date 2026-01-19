@@ -66,6 +66,7 @@ export function Editor({
   // Handle navigation from outline
   useEffect(() => {
     if (navigateToId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync focus/selection state from navigation prop
       setFocusedId(navigateToId);
       setSelectedId(null);
       // Scroll the block into view

@@ -515,8 +515,8 @@ describe('Editor', () => {
         />
       );
 
-      // H1 toggle is the first span child of the h1 block wrapper
-      const toggle = document.querySelector('[data-block-id="h1-1"] > span');
+      // H1 toggle is the first button child of the h1 block wrapper
+      const toggle = document.querySelector('[data-block-id="h1-1"] > button');
       await user.click(toggle!);
 
       expect(onToggleCollapse).toHaveBeenCalledWith('h1-1');

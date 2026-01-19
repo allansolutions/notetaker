@@ -246,9 +246,9 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'todo', content: 'Task' });
       render(<BlockInput {...props} />);
 
-      // Find the todo prefix span that contains the checkbox
+      // Find the todo prefix button that contains the checkbox
       const checkbox = document.querySelector(
-        '[data-block-id="test-1"] > span'
+        '[data-block-id="test-1"] > button'
       );
       fireEvent.click(checkbox!);
 
@@ -264,7 +264,7 @@ describe('BlockInput', () => {
       render(<BlockInput {...props} />);
 
       const checkbox = document.querySelector(
-        '[data-block-id="test-1"] > span'
+        '[data-block-id="test-1"] > button'
       );
       fireEvent.click(checkbox!);
 
@@ -287,8 +287,10 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'h1', content: 'Heading' });
       render(<BlockInput {...props} />);
 
-      // H1 toggle is the first span child (contains svg)
-      const toggle = document.querySelector('[data-block-id="test-1"] > span');
+      // H1 toggle is the first button child (contains svg)
+      const toggle = document.querySelector(
+        '[data-block-id="test-1"] > button'
+      );
       fireEvent.click(toggle!);
 
       expect(props.onToggleCollapse).toHaveBeenCalledWith('test-1');
@@ -298,7 +300,9 @@ describe('BlockInput', () => {
       const props = createMockProps({ type: 'h1', content: 'Heading' });
       render(<BlockInput {...props} isCollapsed={true} />);
 
-      const toggle = document.querySelector('[data-block-id="test-1"] > span');
+      const toggle = document.querySelector(
+        '[data-block-id="test-1"] > button'
+      );
       expect(toggle?.classList.contains('rotate-0')).toBe(true);
     });
   });

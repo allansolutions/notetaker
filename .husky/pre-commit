@@ -1,1 +1,1 @@
-./node_modules/.bin/prettier --check . < /dev/null && ./node_modules/.bin/tsc --noEmit < /dev/null && CI=true ./node_modules/.bin/vitest run --reporter=dot < /dev/null
+./node_modules/.bin/prettier --check . < /dev/null && ./node_modules/.bin/eslint . < /dev/null && ./node_modules/.bin/tsc --noEmit < /dev/null && CI=true ./node_modules/.bin/vitest run --reporter=dot < /dev/null
