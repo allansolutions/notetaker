@@ -36,7 +36,7 @@ const blockTypeClasses: Record<BlockType, string> = {
 };
 
 const wrapperBaseClasses: Partial<Record<BlockType, string>> = {
-  h1: 'flex items-start pt-4 first:pt-0',
+  h1: 'flex items-center pt-4 first:pt-0',
   quote: 'flex items-center my-px border-l-[3px] border-primary pl-3.5 ml-0.5',
 };
 
