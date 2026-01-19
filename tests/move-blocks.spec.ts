@@ -48,9 +48,10 @@ test.describe('Task Detail View', () => {
     await page.keyboard.type('First block content');
     await page.keyboard.press('Enter');
 
-    // Wait for second block to be created
+    // Wait for second block to be created and focused
     const blocks = page.locator('.block-input');
     await expect(blocks).toHaveCount(2);
+    await page.waitForTimeout(100); // Wait for focus to settle
 
     // Type in second block (should already be focused)
     await page.keyboard.type('Second block content');
