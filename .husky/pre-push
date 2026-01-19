@@ -1,1 +1,5 @@
+# Run unit tests with coverage threshold check (80% minimum)
+npm run test:coverage
+
+# Run e2e tests
 ./node_modules/.bin/playwright test

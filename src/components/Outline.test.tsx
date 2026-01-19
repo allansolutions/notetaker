@@ -1,0 +1,104 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Outline } from './Outline';
+import { Block } from '../types';
+
+const createBlock = (id: string, type: Block['type'], content: string): Block => ({
+  id,
+  type,
+  content,
+});
+
+describe('Outline', () => {
+  const defaultProps = {
+    blocks: [] as Block[],
+    onNavigate: vi.fn(),
+    collapsedBlockIds: new Set<string>(),
+    onToggleCollapse: vi.fn(),
+  };
+
+  it('renders outline header', () => {
+    render(<Outline {...defaultProps} />);
+    expect(screen.getByText('Outline')).toBeInTheDocument();
+  });
+
+  it('shows "No headings" when no H1 blocks exist', () => {
+    render(<Outline {...defaultProps} blocks={[]} />);
+    expect(screen.getByText('No headings')).toBeInTheDocument();
+  });
+
+  it('shows "No headings" when only non-H1 blocks exist', () => {
+    const blocks = [
+      createBlock('1', 'paragraph', 'Some text'),
+      createBlock('2', 'h2', 'Subheading'),
+    ];
+    render(<Outline {...defaultProps} blocks={blocks} />);
+    expect(screen.getByText('No headings')).toBeInTheDocument();
+  });
+
+  it('displays H1 blocks in outline', () => {
+    const blocks = [
+      createBlock('1', 'h1', 'First Section'),
+      createBlock('2', 'paragraph', 'Content'),
+      createBlock('3', 'h1', 'Second Section'),
+    ];
+    render(<Outline {...defaultProps} blocks={blocks} />);
+
+    expect(screen.getByText('First Section')).toBeInTheDocument();
+    expect(screen.getByText('Second Section')).toBeInTheDocument();
+    expect(screen.queryByText('Content')).not.toBeInTheDocument();
+  });
+
+  it('displays "Untitled" for empty H1 content', () => {
+    const blocks = [createBlock('1', 'h1', '')];
+    render(<Outline {...defaultProps} blocks={blocks} />);
+    expect(screen.getByText('Untitled')).toBeInTheDocument();
+  });
+
+  it('calls onNavigate when H1 text is clicked', () => {
+    const onNavigate = vi.fn();
+    const blocks = [createBlock('1', 'h1', 'Section')];
+    render(<Outline {...defaultProps} blocks={blocks} onNavigate={onNavigate} />);
+
+    fireEvent.click(screen.getByText('Section'));
+    expect(onNavigate).toHaveBeenCalledWith('1');
+  });
+
+  it('calls onToggleCollapse when collapse button is clicked', () => {
+    const onToggleCollapse = vi.fn();
+    const blocks = [createBlock('1', 'h1', 'Section')];
+    render(
+      <Outline
+        {...defaultProps}
+        blocks={blocks}
+        onToggleCollapse={onToggleCollapse}
+      />
+    );
+
+    const toggleButton = document.querySelector('.outline-collapse-toggle');
+    fireEvent.click(toggleButton!);
+    expect(onToggleCollapse).toHaveBeenCalledWith('1');
+  });
+
+  it('adds collapsed class when block is collapsed', () => {
+    const blocks = [createBlock('1', 'h1', 'Section')];
+    const collapsedIds = new Set(['1']);
+    render(
+      <Outline {...defaultProps} blocks={blocks} collapsedBlockIds={collapsedIds} />
+    );
+
+    const item = document.querySelector('.outline-item');
+    expect(item?.classList.contains('outline-item-collapsed')).toBe(true);
+
+    const toggle = document.querySelector('.outline-collapse-toggle');
+    expect(toggle?.classList.contains('collapsed')).toBe(true);
+  });
+
+  it('does not add collapsed class when block is not collapsed', () => {
+    const blocks = [createBlock('1', 'h1', 'Section')];
+    render(<Outline {...defaultProps} blocks={blocks} />);
+
+    const item = document.querySelector('.outline-item');
+    expect(item?.classList.contains('outline-item-collapsed')).toBe(false);
+  });
+});

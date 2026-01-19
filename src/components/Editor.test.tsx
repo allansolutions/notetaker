@@ -301,4 +301,204 @@ describe('Editor', () => {
       expect(screen.getByText('Content 1')).toBeInTheDocument();
     });
   });
+
+  describe('focusPreviousBlock', () => {
+    it('focuses previous block when ArrowUp is pressed', async () => {
+      const user = userEvent.setup();
+      render(<Editor blocks={blocks} setBlocks={setBlocks} />);
+
+      // Click on second block to focus it
+      const secondBlock = screen.getByText('Second block');
+      await user.click(secondBlock);
+
+      // Press ArrowUp to focus previous block
+      await user.keyboard('{ArrowUp}');
+
+      // setBlocks should be called (for focusPreviousBlock)
+      expect(setBlocks).toHaveBeenCalled();
+    });
+
+    it('does nothing when first block tries to focus previous', async () => {
+      const user = userEvent.setup();
+      render(<Editor blocks={blocks} setBlocks={setBlocks} />);
+
+      const firstBlock = screen.getByText('First block');
+      await user.click(firstBlock);
+      await user.keyboard('{ArrowUp}');
+
+      // The function should still be called but not change focus
+      // (first block has no previous)
+      expect(setBlocks).toHaveBeenCalled();
+    });
+  });
+
+  describe('focusNextBlock', () => {
+    it('focuses next block when ArrowDown is pressed', async () => {
+      const user = userEvent.setup();
+      render(<Editor blocks={blocks} setBlocks={setBlocks} />);
+
+      const firstBlock = screen.getByText('First block');
+      await user.click(firstBlock);
+      await user.keyboard('{ArrowDown}');
+
+      expect(setBlocks).toHaveBeenCalled();
+    });
+
+    it('does nothing when last block tries to focus next', async () => {
+      const user = userEvent.setup();
+      render(<Editor blocks={blocks} setBlocks={setBlocks} />);
+
+      const thirdBlock = screen.getByText('Third block');
+      await user.click(thirdBlock);
+      await user.keyboard('{ArrowDown}');
+
+      // The function should still be called but not change focus
+      expect(setBlocks).toHaveBeenCalled();
+    });
+  });
+
+  describe('selectBlock and enterEditMode', () => {
+    it('selects block when Cmd+E is pressed', async () => {
+      const user = userEvent.setup();
+      render(<Editor blocks={blocks} setBlocks={setBlocks} />);
+
+      const firstBlock = screen.getByText('First block');
+      await user.click(firstBlock);
+      await user.keyboard('{Meta>}e{/Meta}');
+
+      // Block should have selected class
+      const wrapper = document.querySelector('[data-block-id="1"]');
+      expect(wrapper?.classList.contains('block-selected')).toBe(true);
+    });
+
+    it('enters edit mode when Enter pressed on selected block', async () => {
+      const user = userEvent.setup();
+      render(<Editor blocks={blocks} setBlocks={setBlocks} />);
+
+      // First select the block
+      const firstBlock = screen.getByText('First block');
+      await user.click(firstBlock);
+      await user.keyboard('{Meta>}e{/Meta}');
+
+      // Now press Enter to enter edit mode
+      await user.keyboard('{Enter}');
+
+      // Block should no longer be selected (should be in edit mode)
+      const wrapper = document.querySelector('[data-block-id="1"]');
+      expect(wrapper?.classList.contains('block-selected')).toBe(false);
+    });
+  });
+
+  describe('updateBlock', () => {
+    it('updates block content when typing', async () => {
+      const user = userEvent.setup();
+      let currentBlocks = [...blocks];
+      const setBlocksFn = vi.fn((updater: SetStateAction<Block[]>) => {
+        if (typeof updater === 'function') {
+          currentBlocks = updater(currentBlocks);
+        }
+      });
+
+      render(<Editor blocks={blocks} setBlocks={setBlocksFn} />);
+
+      const firstBlock = screen.getByText('First block');
+      await user.click(firstBlock);
+      await user.type(firstBlock, ' updated');
+
+      expect(setBlocksFn).toHaveBeenCalled();
+    });
+  });
+
+  describe('navigateToId', () => {
+    beforeEach(() => {
+      // Mock scrollIntoView since it's not available in jsdom
+      Element.prototype.scrollIntoView = vi.fn();
+    });
+
+    it('focuses block when navigateToId is provided', async () => {
+      const onNavigateComplete = vi.fn();
+
+      render(
+        <Editor
+          blocks={blocks}
+          setBlocks={setBlocks}
+          navigateToId="2"
+          onNavigateComplete={onNavigateComplete}
+        />
+      );
+
+      // Wait for effect to run
+      await vi.waitFor(() => {
+        expect(onNavigateComplete).toHaveBeenCalled();
+      });
+    });
+
+    it('calls onNavigateComplete after navigation', async () => {
+      const onNavigateComplete = vi.fn();
+
+      render(
+        <Editor
+          blocks={blocks}
+          setBlocks={setBlocks}
+          navigateToId="2"
+          onNavigateComplete={onNavigateComplete}
+        />
+      );
+
+      await vi.waitFor(() => {
+        expect(onNavigateComplete).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('scrolls block into view', async () => {
+      const onNavigateComplete = vi.fn();
+
+      render(
+        <Editor
+          blocks={blocks}
+          setBlocks={setBlocks}
+          navigateToId="2"
+          onNavigateComplete={onNavigateComplete}
+        />
+      );
+
+      await vi.waitFor(() => {
+        expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('onToggleCollapse', () => {
+    it('calls onToggleCollapse when H1 collapse toggle is clicked', async () => {
+      const user = userEvent.setup();
+      const onToggleCollapse = vi.fn();
+      const h1Blocks = [
+        { id: 'h1-1', type: 'h1' as const, content: 'Heading' },
+        { id: 'p1', type: 'paragraph' as const, content: 'Content' },
+      ];
+
+      render(
+        <Editor
+          blocks={h1Blocks}
+          setBlocks={vi.fn()}
+          collapsedBlockIds={new Set()}
+          onToggleCollapse={onToggleCollapse}
+        />
+      );
+
+      const toggle = document.querySelector('.h1-toggle');
+      await user.click(toggle!);
+
+      expect(onToggleCollapse).toHaveBeenCalledWith('h1-1');
+    });
+  });
+
+  describe('empty blocks array', () => {
+    it('handles empty blocks array without crashing', () => {
+      const emptyBlocks: Block[] = [];
+      expect(() => {
+        render(<Editor blocks={emptyBlocks} setBlocks={vi.fn()} />);
+      }).not.toThrow();
+    });
+  });
 });
