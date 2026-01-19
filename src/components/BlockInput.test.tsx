@@ -16,6 +16,7 @@ const createMockProps = (blockOverrides: Partial<Block> = {}) => {
     onUpdate: vi.fn(),
     onEnter: vi.fn(),
     onBackspace: vi.fn(),
+    onMerge: vi.fn(),
     onFocus: vi.fn(),
     onArrowUp: vi.fn(),
     onArrowDown: vi.fn(),
@@ -53,14 +54,43 @@ describe('BlockInput', () => {
       expect(props.onArrowDown).toHaveBeenCalledWith('test-1');
     });
 
-    it('calls onEnter when Enter is pressed', async () => {
+    it('calls onEnter with split info when Enter is pressed at end', async () => {
       const props = createMockProps();
       render(<BlockInput {...props} isFocused={true} />);
 
       const input = document.querySelector('.block-input');
       fireEvent.keyDown(input!, { key: 'Enter' });
 
-      expect(props.onEnter).toHaveBeenCalledWith('test-1');
+      // Cursor defaults to end, so all content stays in current block
+      expect(props.onEnter).toHaveBeenCalledWith('test-1', {
+        contentBefore: 'Test content',
+        contentAfter: '',
+      });
+    });
+
+    it('splits text at cursor position when Enter is pressed', async () => {
+      const props = createMockProps({ content: 'Hello World' });
+      render(<BlockInput {...props} isFocused={true} />);
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = 'Hello World';
+
+      // Simulate cursor after "Hello "
+      const range = document.createRange();
+      if (input!.firstChild) {
+        range.setStart(input!.firstChild, 6);
+        range.collapse(true);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+
+      fireEvent.keyDown(input!, { key: 'Enter' });
+
+      expect(props.onEnter).toHaveBeenCalledWith('test-1', {
+        contentBefore: 'Hello ',
+        contentAfter: 'World',
+      });
     });
 
     it('calls onSelect when Cmd+E is pressed', async () => {
@@ -115,7 +145,30 @@ describe('BlockInput', () => {
       expect(props.onBackspace).toHaveBeenCalledWith('test-1');
     });
 
-    it('converts non-paragraph to paragraph with prefix on backspace at start', async () => {
+    it('calls onMerge when backspace at start of non-empty block', async () => {
+      const props = createMockProps({
+        type: 'paragraph',
+        content: 'some text',
+      });
+      render(<BlockInput {...props} isFocused={true} />);
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = 'some text';
+
+      // Simulate cursor at start
+      const range = document.createRange();
+      range.setStart(input!, 0);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+
+      fireEvent.keyDown(input!, { key: 'Backspace' });
+
+      expect(props.onMerge).toHaveBeenCalledWith('test-1');
+    });
+
+    it('calls onMerge when backspace at start of non-paragraph block', async () => {
       const props = createMockProps({ type: 'bullet', content: 'item' });
       render(<BlockInput {...props} isFocused={true} />);
 
@@ -132,11 +185,7 @@ describe('BlockInput', () => {
 
       fireEvent.keyDown(input!, { key: 'Backspace' });
 
-      expect(props.onUpdate).toHaveBeenCalledWith(
-        'test-1',
-        '- item',
-        'paragraph'
-      );
+      expect(props.onMerge).toHaveBeenCalledWith('test-1');
     });
   });
 

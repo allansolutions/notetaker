@@ -4,7 +4,6 @@ import { generateSessionId, computeTimeSpent } from '../utils/task-operations';
 
 const ACTIVE_SESSION_KEY = 'notetaker-active-session';
 const PENDING_SESSIONS_KEY = 'notetaker-pending-sessions';
-const SLEEP_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
 const MIN_SESSION_DURATION_MS = 1 * 60 * 1000; // 1 minute - sessions shorter than this are not saved
 
 interface ActiveSessionData {
@@ -38,6 +37,24 @@ export function flushPendingSessions(): PendingSession[] {
   return JSON.parse(stored);
 }
 
+// Flush pending sessions for a specific task, leaving others
+function flushPendingSessionsForTask(taskId: string): TimeSession[] {
+  const stored = localStorage.getItem(PENDING_SESSIONS_KEY);
+  if (!stored) return [];
+
+  const pending: PendingSession[] = JSON.parse(stored);
+  const forTask = pending.filter((p) => p.taskId === taskId);
+  const remaining = pending.filter((p) => p.taskId !== taskId);
+
+  if (remaining.length > 0) {
+    localStorage.setItem(PENDING_SESSIONS_KEY, JSON.stringify(remaining));
+  } else {
+    localStorage.removeItem(PENDING_SESSIONS_KEY);
+  }
+
+  return forTask.map((p) => p.session);
+}
+
 interface UseTimeTrackingOptions {
   taskId: string;
   sessions: TimeSession[];
@@ -54,7 +71,6 @@ export function useTimeTracking({
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const currentSessionRef = useRef<TimeSession | null>(null);
-  const lastTickRef = useRef<number>(Date.now());
 
   const totalCompleted = computeTimeSpent(sessions);
 
@@ -91,12 +107,15 @@ export function useTimeTracking({
     currentSessionRef.current = session;
     saveActiveSession(session);
     setIsActive(true);
-    lastTickRef.current = Date.now();
   }, [saveActiveSession]);
 
   // Initialize: recover active session or start new one
   useEffect(() => {
     if (!hasEstimate) return;
+
+    // Flush any pending sessions for this task (from previous unmounts)
+    const pendingSessions = flushPendingSessionsForTask(taskId);
+    pendingSessions.forEach((session) => onSessionComplete(session));
 
     const stored = localStorage.getItem(ACTIVE_SESSION_KEY);
     if (stored) {
@@ -108,7 +127,6 @@ export function useTimeTracking({
           currentSessionRef.current = data.session;
           setElapsedMs(timeSinceStart);
           setIsActive(true);
-          lastTickRef.current = Date.now();
         } else {
           // Different task - end old session silently and start new
           localStorage.removeItem(ACTIVE_SESSION_KEY);
@@ -137,46 +155,16 @@ export function useTimeTracking({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, hasEstimate]);
 
-  // Timer tick
+  // Timer tick - simply update elapsed time based on session start
   useEffect(() => {
     if (!isActive || !currentSessionRef.current) return;
 
     const interval = setInterval(() => {
-      const now = Date.now();
-      const timeSinceLastTick = now - lastTickRef.current;
-
-      // Detect sleep/wake (gap > 2 minutes)
-      if (timeSinceLastTick > SLEEP_THRESHOLD_MS) {
-        // End current session at last known time
-        const sessionEndTime = lastTickRef.current;
-        const completedSession: TimeSession = {
-          ...currentSessionRef.current!,
-          endTime: sessionEndTime,
-        };
-        // Only save if session was >= 5 minutes
-        const sessionDuration =
-          sessionEndTime - currentSessionRef.current!.startTime;
-        if (sessionDuration >= MIN_SESSION_DURATION_MS) {
-          onSessionComplete(completedSession);
-        }
-
-        // Start new session
-        const newSession: TimeSession = {
-          id: generateSessionId(),
-          startTime: now,
-        };
-        currentSessionRef.current = newSession;
-        saveActiveSession(newSession);
-        setElapsedMs(0);
-      } else {
-        setElapsedMs(now - currentSessionRef.current!.startTime);
-      }
-
-      lastTickRef.current = now;
+      setElapsedMs(Date.now() - currentSessionRef.current!.startTime);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, onSessionComplete, saveActiveSession]);
+  }, [isActive]);
 
   // Handle beforeunload
   useEffect(() => {

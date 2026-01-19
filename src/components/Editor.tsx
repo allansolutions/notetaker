@@ -8,8 +8,10 @@ import {
   getShownBlocks,
   getVisibleBlocks,
   insertBlockAfter as insertBlockAfterUtil,
+  mergeBlockWithPrevious as mergeBlockWithPreviousUtil,
   moveBlockDown,
   moveBlockUp,
+  SplitInfo,
 } from '../utils/block-operations';
 import { generateId } from '../utils/markdown';
 
@@ -44,6 +46,10 @@ export function Editor({
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const pendingFocusRef = useRef<string | null>(null);
+  const [pendingCursorOffset, setPendingCursorOffset] = useState<{
+    blockId: string;
+    offset: number;
+  } | null>(null);
 
   // Apply pending focus after blocks update
   useEffect(() => {
@@ -52,6 +58,14 @@ export function Editor({
       pendingFocusRef.current = null;
     }
   }, [blocks]);
+
+  // Clear pending cursor offset after it's been consumed
+  useEffect(() => {
+    if (pendingCursorOffset) {
+      const timer = setTimeout(() => setPendingCursorOffset(null), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingCursorOffset]);
 
   // Compute visible blocks for navigation and rendering
   const shownBlocks = useMemo(
@@ -92,11 +106,16 @@ export function Editor({
   );
 
   const insertBlockAfter = useCallback(
-    (id: string) => {
+    (id: string, splitInfo?: SplitInfo) => {
       setBlocks((prev) => {
-        const result = insertBlockAfterUtil(prev, id, createBlock);
+        const result = insertBlockAfterUtil(prev, id, createBlock, splitInfo);
         if (result.newBlockId) {
           pendingFocusRef.current = result.newBlockId;
+          // Position cursor at start of new block
+          setPendingCursorOffset({
+            blockId: result.newBlockId,
+            offset: 0,
+          });
         }
         return result.blocks;
       });
@@ -110,6 +129,24 @@ export function Editor({
         const result = deleteBlockUtil(prev, id);
         if (result.focusBlockId) {
           setFocusedId(result.focusBlockId);
+        }
+        return result.blocks;
+      });
+    },
+    [setBlocks]
+  );
+
+  const mergeBlock = useCallback(
+    (id: string) => {
+      setBlocks((prev) => {
+        const result = mergeBlockWithPreviousUtil(prev, id);
+        if (!result) return prev;
+        if (result.focusBlockId) {
+          setFocusedId(result.focusBlockId);
+          setPendingCursorOffset({
+            blockId: result.focusBlockId,
+            offset: result.cursorOffset,
+          });
         }
         return result.blocks;
       });
@@ -172,6 +209,7 @@ export function Editor({
             onUpdate={updateBlock}
             onEnter={insertBlockAfter}
             onBackspace={deleteBlock}
+            onMerge={mergeBlock}
             onFocus={enterEditMode}
             onArrowUp={focusPreviousBlock}
             onArrowDown={focusNextBlock}
@@ -186,6 +224,11 @@ export function Editor({
               block.type === 'h1' && collapsedBlockIds?.has(block.id)
             }
             onToggleCollapse={onToggleCollapse}
+            pendingCursorOffset={
+              pendingCursorOffset?.blockId === block.id
+                ? pendingCursorOffset.offset
+                : null
+            }
           />
         );
       })}

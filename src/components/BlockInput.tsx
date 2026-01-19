@@ -1,13 +1,17 @@
 import { useRef, useLayoutEffect, KeyboardEvent } from 'react';
 import { Block, BlockType } from '../types';
-import { detectBlockType, stripPrefix, getPrefix } from '../utils/markdown';
+import { detectBlockType, stripPrefix } from '../utils/markdown';
 import { blockTypeClasses } from '../utils/block-styles';
+import { SplitInfo } from '../utils/block-operations';
+
+export type { SplitInfo };
 
 interface BlockInputProps {
   block: Block;
   onUpdate: (id: string, content: string, type: BlockType) => void;
-  onEnter: (id: string) => void;
+  onEnter: (id: string, splitInfo?: SplitInfo) => void;
   onBackspace: (id: string) => void;
+  onMerge: (id: string) => void;
   onFocus: (id: string) => void;
   onArrowUp: (id: string) => void;
   onArrowDown: (id: string) => void;
@@ -20,6 +24,8 @@ interface BlockInputProps {
   numberedIndex: number;
   isCollapsed?: boolean;
   onToggleCollapse?: (id: string) => void;
+  /** Cursor offset to use when focusing this block (for merge operations) */
+  pendingCursorOffset?: number | null;
 }
 
 const wrapperBaseClasses: Partial<Record<BlockType, string>> = {
@@ -37,6 +43,7 @@ export function BlockInput({
   onUpdate,
   onEnter,
   onBackspace,
+  onMerge,
   onFocus,
   onArrowUp,
   onArrowDown,
@@ -49,10 +56,19 @@ export function BlockInput({
   numberedIndex,
   isCollapsed,
   onToggleCollapse,
+  pendingCursorOffset,
 }: BlockInputProps) {
   const inputRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isInitialMount = useRef(true);
+  const cursorPositionedRef = useRef(false);
+
+  // Reset cursor positioned flag when focus is lost
+  useLayoutEffect(() => {
+    if (!isFocused) {
+      cursorPositionedRef.current = false;
+    }
+  }, [isFocused]);
 
   // Focus wrapper when selected
   useLayoutEffect(() => {
@@ -73,17 +89,47 @@ export function BlockInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentional: only set content on initial mount, not on updates
   }, []);
 
-  // Handle focus changes
+  // Sync content and position cursor when merge happens
   useLayoutEffect(() => {
+    if (pendingCursorOffset != null && inputRef.current) {
+      const el = inputRef.current;
+      // Sync content first
+      el.textContent = block.content;
+      // Mark that we've positioned the cursor for this focus session
+      cursorPositionedRef.current = true;
+      // Then position cursor at the join point
+      setTimeout(() => {
+        el.focus();
+        if (!el.firstChild) return;
+        const range = document.createRange();
+        const sel = window.getSelection();
+        const offset = Math.min(
+          pendingCursorOffset,
+          el.textContent?.length || 0
+        );
+        range.setStart(el.firstChild, offset);
+        range.collapse(true);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }, 0);
+    }
+  }, [pendingCursorOffset, block.content]);
+
+  // Handle focus changes (default behavior - cursor to end)
+  useLayoutEffect(() => {
+    // Skip if cursor was already positioned (by merge effect or previous focus)
+    if (cursorPositionedRef.current) return;
+
     if (isFocused && inputRef.current && block.type !== 'divider') {
+      cursorPositionedRef.current = true;
       const el = inputRef.current;
       // Use setTimeout(0) to ensure React has fully committed
       setTimeout(() => {
         el.focus();
-        // Move cursor to end
         const range = document.createRange();
         const sel = window.getSelection();
         if (el.childNodes.length > 0) {
+          // Move cursor to end (default behavior)
           range.selectNodeContents(el);
           range.collapse(false);
         } else {
@@ -94,7 +140,7 @@ export function BlockInput({
         sel?.addRange(range);
       }, 0);
     }
-  }, [isFocused, block.id, block.type]);
+  }, [isFocused, block.id, block.type, pendingCursorOffset]);
 
   const handleInput = () => {
     const text = inputRef.current?.textContent || '';
@@ -165,33 +211,40 @@ export function BlockInput({
 
     if (e.key === 'Enter') {
       e.preventDefault();
-      onEnter(block.id);
+      // Get cursor position relative to the full text content
+      let cursorPos = text.length;
+      if (sel && sel.rangeCount > 0 && inputRef.current) {
+        const range = sel.getRangeAt(0);
+        // Create a range from start of element to cursor position
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(inputRef.current);
+        preCaretRange.setEnd(range.startContainer, range.startOffset);
+        cursorPos = preCaretRange.toString().length;
+      }
+
+      const contentBefore = text.slice(0, cursorPos);
+      const contentAfter = text.slice(cursorPos);
+
+      // Update DOM immediately to show the split
+      if (inputRef.current) {
+        inputRef.current.textContent = contentBefore;
+      }
+
+      onEnter(block.id, { contentBefore, contentAfter });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       onArrowUp(block.id);
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       onArrowDown(block.id);
-    } else if (e.key === 'Backspace') {
-      if (text === '' || (isAtStart && block.type !== 'paragraph')) {
-        e.preventDefault();
-        if (block.type !== 'paragraph') {
-          const prefix = getPrefix(block.type);
-          if (inputRef.current) {
-            inputRef.current.textContent = prefix + text;
-            const range = document.createRange();
-            const sel = window.getSelection();
-            if (inputRef.current.firstChild) {
-              range.setStart(inputRef.current.firstChild, prefix.length);
-              range.collapse(true);
-              sel?.removeAllRanges();
-              sel?.addRange(range);
-            }
-          }
-          onUpdate(block.id, prefix + text, 'paragraph');
-        } else if (text === '') {
-          onBackspace(block.id);
-        }
+    } else if (e.key === 'Backspace' && isAtStart) {
+      e.preventDefault();
+      if (text === '') {
+        // Empty block: just delete it
+        onBackspace(block.id);
+      } else {
+        // Non-empty block at cursor start: merge with previous block
+        onMerge(block.id);
       }
     }
   };

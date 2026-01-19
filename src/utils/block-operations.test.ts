@@ -7,6 +7,7 @@ import {
   getVisibleBlocks,
   insertBlockAfter,
   deleteBlock,
+  mergeBlockWithPrevious,
 } from './block-operations';
 import { Block, BlockType } from '../types';
 
@@ -351,6 +352,60 @@ describe('insertBlockAfter', () => {
     insertBlockAfter(blocks, '1', createBlock);
     expect(blocks).toEqual(original);
   });
+
+  it('splits content between blocks when splitInfo provided', () => {
+    const blocks = [makeBlock('1', 'paragraph', 'Hello World')];
+    const result = insertBlockAfter(blocks, '1', createBlock, {
+      contentBefore: 'Hello ',
+      contentAfter: 'World',
+    });
+    expect(result.blocks.length).toBe(2);
+    expect(result.blocks[0].content).toBe('Hello ');
+    expect(result.blocks[1].content).toBe('World');
+  });
+
+  it('creates empty new block when cursor at end', () => {
+    const blocks = [makeBlock('1', 'paragraph', 'Hello')];
+    const result = insertBlockAfter(blocks, '1', createBlock, {
+      contentBefore: 'Hello',
+      contentAfter: '',
+    });
+    expect(result.blocks[0].content).toBe('Hello');
+    expect(result.blocks[1].content).toBe('');
+  });
+
+  it('moves all content to new block when cursor at start', () => {
+    const blocks = [makeBlock('1', 'paragraph', 'World')];
+    const result = insertBlockAfter(blocks, '1', createBlock, {
+      contentBefore: '',
+      contentAfter: 'World',
+    });
+    expect(result.blocks[0].content).toBe('');
+    expect(result.blocks[1].content).toBe('World');
+  });
+
+  it('continues list type with split content', () => {
+    const blocks = [makeBlock('1', 'bullet', 'First Second')];
+    const result = insertBlockAfter(blocks, '1', createBlock, {
+      contentBefore: 'First ',
+      contentAfter: 'Second',
+    });
+    expect(result.blocks[0].type).toBe('bullet');
+    expect(result.blocks[0].content).toBe('First ');
+    expect(result.blocks[1].type).toBe('bullet');
+    expect(result.blocks[1].content).toBe('Second');
+  });
+
+  it('converts to paragraph when split leaves list empty', () => {
+    const blocks = [makeBlock('1', 'bullet', 'item')];
+    const result = insertBlockAfter(blocks, '1', createBlock, {
+      contentBefore: '',
+      contentAfter: '',
+    });
+    expect(result.blocks.length).toBe(1);
+    expect(result.blocks[0].type).toBe('paragraph');
+    expect(result.newBlockId).toBeNull();
+  });
 });
 
 describe('deleteBlock', () => {
@@ -394,5 +449,105 @@ describe('deleteBlock', () => {
     const original = [...blocks];
     deleteBlock(blocks, '2');
     expect(blocks.map((b) => b.id)).toEqual(original.map((b) => b.id));
+  });
+});
+
+describe('mergeBlockWithPrevious', () => {
+  it('merges block content with previous block', () => {
+    const blocks = [
+      makeBlock('1', 'paragraph', 'Hello '),
+      makeBlock('2', 'paragraph', 'World'),
+    ];
+    const result = mergeBlockWithPrevious(blocks, '2');
+    expect(result).not.toBeNull();
+    expect(result!.blocks.length).toBe(1);
+    expect(result!.blocks[0].content).toBe('Hello World');
+    expect(result!.focusBlockId).toBe('1');
+    expect(result!.cursorOffset).toBe(6); // Length of "Hello "
+  });
+
+  it('returns null for first block', () => {
+    const blocks = [makeBlock('1', 'paragraph', 'Hello')];
+    const result = mergeBlockWithPrevious(blocks, '1');
+    expect(result).toBeNull();
+  });
+
+  it('returns null when block not found', () => {
+    const blocks = [makeBlock('1')];
+    const result = mergeBlockWithPrevious(blocks, 'nonexistent');
+    expect(result).toBeNull();
+  });
+
+  it('returns null when previous block is a divider', () => {
+    const blocks = [
+      makeBlock('1', 'divider', ''),
+      makeBlock('2', 'paragraph', 'content'),
+    ];
+    const result = mergeBlockWithPrevious(blocks, '2');
+    expect(result).toBeNull();
+  });
+
+  it('merges bullet into paragraph', () => {
+    const blocks = [
+      makeBlock('1', 'paragraph', 'Text '),
+      makeBlock('2', 'bullet', 'item'),
+    ];
+    const result = mergeBlockWithPrevious(blocks, '2');
+    expect(result!.blocks[0].content).toBe('Text item');
+    expect(result!.blocks[0].type).toBe('paragraph');
+  });
+
+  it('merges into h1 block', () => {
+    const blocks = [
+      makeBlock('1', 'h1', 'Heading'),
+      makeBlock('2', 'paragraph', ' text'),
+    ];
+    const result = mergeBlockWithPrevious(blocks, '2');
+    expect(result!.blocks[0].content).toBe('Heading text');
+    expect(result!.blocks[0].type).toBe('h1');
+  });
+
+  it('handles merging empty block', () => {
+    const blocks = [
+      makeBlock('1', 'paragraph', 'Hello'),
+      makeBlock('2', 'paragraph', ''),
+    ];
+    const result = mergeBlockWithPrevious(blocks, '2');
+    expect(result!.blocks[0].content).toBe('Hello');
+    expect(result!.cursorOffset).toBe(5);
+  });
+
+  it('handles merging into empty block', () => {
+    const blocks = [
+      makeBlock('1', 'paragraph', ''),
+      makeBlock('2', 'paragraph', 'World'),
+    ];
+    const result = mergeBlockWithPrevious(blocks, '2');
+    expect(result!.blocks[0].content).toBe('World');
+    expect(result!.cursorOffset).toBe(0);
+  });
+
+  it('preserves other blocks in array', () => {
+    const blocks = [
+      makeBlock('1', 'paragraph', 'First'),
+      makeBlock('2', 'paragraph', 'Second'),
+      makeBlock('3', 'paragraph', 'Third'),
+    ];
+    const result = mergeBlockWithPrevious(blocks, '2');
+    expect(result!.blocks.length).toBe(2);
+    expect(result!.blocks[0].content).toBe('FirstSecond');
+    expect(result!.blocks[1].id).toBe('3');
+  });
+
+  it('does not mutate original array', () => {
+    const blocks = [
+      makeBlock('1', 'paragraph', 'Hello'),
+      makeBlock('2', 'paragraph', 'World'),
+    ];
+    const original = blocks.map((b) => ({ ...b }));
+    mergeBlockWithPrevious(blocks, '2');
+    expect(blocks.length).toBe(2);
+    expect(blocks[0].content).toBe(original[0].content);
+    expect(blocks[1].content).toBe(original[1].content);
   });
 });

@@ -101,26 +101,45 @@ export type InsertBlockResult = {
   newBlockId: string | null;
 };
 
+export type SplitInfo = {
+  /** Content to keep in the current block (text before cursor) */
+  contentBefore: string;
+  /** Content to move to the new block (text after cursor) */
+  contentAfter: string;
+};
+
 /**
  * Handles Enter key behavior:
  * - For empty list blocks: converts to paragraph (no new block)
  * - For non-empty list blocks: creates new block of same type (todo-checked -> todo)
  * - For other blocks: creates new paragraph
+ * - If splitInfo is provided, splits content between current and new block
  *
  * Returns the updated blocks array and the ID of any newly created block.
  */
 export function insertBlockAfter(
   blocks: Block[],
   id: string,
-  createBlock: (type?: BlockType, content?: string) => Block
+  createBlock: (type?: BlockType, content?: string) => Block,
+  splitInfo?: SplitInfo
 ): InsertBlockResult {
   const index = blocks.findIndex((b) => b.id === id);
   if (index < 0) return { blocks, newBlockId: null };
 
   const currentBlock = blocks[index];
 
-  // If it's a list type and empty, convert to paragraph instead of continuing list
-  if (LIST_TYPES.includes(currentBlock.type) && currentBlock.content === '') {
+  // Determine effective content (use splitInfo if provided)
+  const currentContent = splitInfo
+    ? splitInfo.contentBefore
+    : currentBlock.content;
+  const newBlockContent = splitInfo ? splitInfo.contentAfter : '';
+
+  // If it's a list type and both parts are empty, convert to paragraph
+  if (
+    LIST_TYPES.includes(currentBlock.type) &&
+    currentContent === '' &&
+    newBlockContent === ''
+  ) {
     return {
       blocks: blocks.map((b) =>
         b.id === id ? { ...b, type: 'paragraph' as BlockType } : b
@@ -135,8 +154,12 @@ export function insertBlockAfter(
     newType = currentBlock.type === 'todo-checked' ? 'todo' : currentBlock.type;
   }
 
-  const newBlock = createBlock(newType);
-  const newBlocks = [...blocks];
+  const newBlock = createBlock(newType, newBlockContent);
+
+  // Update current block content if split, then insert new block
+  const newBlocks = blocks.map((b) =>
+    b.id === id ? { ...b, content: currentContent } : b
+  );
   newBlocks.splice(index + 1, 0, newBlock);
 
   return { blocks: newBlocks, newBlockId: newBlock.id };
@@ -146,6 +169,44 @@ export type DeleteBlockResult = {
   blocks: Block[];
   focusBlockId: string | null;
 };
+
+export type MergeBlockResult = {
+  blocks: Block[];
+  focusBlockId: string | null;
+  /** Cursor offset: position where the cursor should be placed in the merged block */
+  cursorOffset: number;
+};
+
+/**
+ * Merges a block with the previous block by appending its content.
+ * Returns null if the block is the first one or previous block is a divider.
+ */
+export function mergeBlockWithPrevious(
+  blocks: Block[],
+  id: string
+): MergeBlockResult | null {
+  const index = blocks.findIndex((b) => b.id === id);
+  if (index <= 0) return null;
+
+  const currentBlock = blocks[index];
+  const prevBlock = blocks[index - 1];
+
+  // Can't merge into a divider
+  if (prevBlock.type === 'divider') return null;
+
+  const cursorOffset = prevBlock.content.length;
+  const mergedContent = prevBlock.content + currentBlock.content;
+
+  const newBlocks = blocks
+    .map((b) => (b.id === prevBlock.id ? { ...b, content: mergedContent } : b))
+    .filter((b) => b.id !== id);
+
+  return {
+    blocks: newBlocks,
+    focusBlockId: prevBlock.id,
+    cursorOffset,
+  };
+}
 
 /**
  * Deletes a block and returns the updated array with the ID of the block to focus.
