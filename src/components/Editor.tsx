@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 
 import { Block, BlockType } from '../types';
 import { BlockInput } from './BlockInput';
@@ -39,6 +39,10 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
       pendingFocusRef.current = null;
     }
   }, [blocks]);
+
+  // Compute visible blocks for navigation and rendering
+  const shownBlocks = useMemo(() => getShownBlocks(blocks, hiddenBlockIds), [blocks, hiddenBlockIds]);
+  const visibleBlocks = useMemo(() => getVisibleBlocks(shownBlocks, collapsedBlockIds), [shownBlocks, collapsedBlockIds]);
 
   // Handle navigation from outline
   useEffect(() => {
@@ -83,18 +87,18 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
   }, [setBlocks]);
 
   const focusPreviousBlock = useCallback((id: string) => {
-    const index = blocks.findIndex(b => b.id === id);
+    const index = visibleBlocks.findIndex(b => b.id === id);
     if (index > 0) {
-      setFocusedId(blocks[index - 1].id);
+      setFocusedId(visibleBlocks[index - 1].id);
     }
-  }, [blocks]);
+  }, [visibleBlocks]);
 
   const focusNextBlock = useCallback((id: string) => {
-    const index = blocks.findIndex(b => b.id === id);
-    if (index < blocks.length - 1) {
-      setFocusedId(blocks[index + 1].id);
+    const index = visibleBlocks.findIndex(b => b.id === id);
+    if (index < visibleBlocks.length - 1) {
+      setFocusedId(visibleBlocks[index + 1].id);
     }
-  }, [blocks]);
+  }, [visibleBlocks]);
 
   const selectBlock = useCallback((id: string) => {
     setSelectedId(id);
@@ -113,10 +117,6 @@ export function Editor({ blocks, setBlocks, navigateToId, onNavigateComplete, co
   const handleMoveDown = useCallback((id: string) => {
     setBlocks(prev => moveBlockDown(prev, id));
   }, [setBlocks]);
-
-  // First filter out completely hidden sections, then apply collapse logic
-  const shownBlocks = getShownBlocks(blocks, hiddenBlockIds);
-  const visibleBlocks = getVisibleBlocks(shownBlocks, collapsedBlockIds);
 
   return (
     <div className="w-full">
