@@ -12,6 +12,7 @@ import {
   MonitorIcon,
 } from './icons';
 import { ThemeProvider } from '../context/ThemeContext';
+import { GoogleAuthProvider } from '../context/GoogleAuthContext';
 import { Task } from '../types';
 
 describe('BackButton', () => {
@@ -98,30 +99,39 @@ describe('Sidebar', () => {
     ...overrides,
   });
 
-  const renderWithTheme = (ui: React.ReactElement) => {
-    return render(<ThemeProvider>{ui}</ThemeProvider>);
+  const renderWithProviders = (ui: React.ReactElement) => {
+    // Mock fetch for GoogleAuthProvider
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ isConnected: false }),
+    } as Response);
+    return render(
+      <ThemeProvider>
+        <GoogleAuthProvider>{ui}</GoogleAuthProvider>
+      </ThemeProvider>
+    );
   };
 
   it('renders Schedule header', () => {
-    renderWithTheme(<Sidebar tasks={[]} onUpdateTask={() => {}} />);
+    renderWithProviders(<Sidebar tasks={[]} onUpdateTask={() => {}} />);
     expect(screen.getByText('Schedule')).toBeInTheDocument();
   });
 
   it('renders ThemeToggle', () => {
-    renderWithTheme(<Sidebar tasks={[]} onUpdateTask={() => {}} />);
+    renderWithProviders(<Sidebar tasks={[]} onUpdateTask={() => {}} />);
     // ThemeToggle renders a single button that cycles through themes
     // Default is system theme
     expect(screen.getByTitle('Theme: System')).toBeInTheDocument();
   });
 
   it('renders Agenda', () => {
-    renderWithTheme(<Sidebar tasks={[]} onUpdateTask={() => {}} />);
+    renderWithProviders(<Sidebar tasks={[]} onUpdateTask={() => {}} />);
     expect(screen.getByTestId('agenda')).toBeInTheDocument();
   });
 
   it('passes tasks to Agenda', () => {
     const tasks = [createMockTask({ title: 'My Task' })];
-    renderWithTheme(<Sidebar tasks={tasks} onUpdateTask={() => {}} />);
+    renderWithProviders(<Sidebar tasks={tasks} onUpdateTask={() => {}} />);
 
     // Task should be visible in agenda
     expect(screen.getByText('My Task')).toBeInTheDocument();

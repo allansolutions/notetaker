@@ -774,8 +774,8 @@ describe('TaskTable', () => {
       const filterButton = getFilterButton(container, 4)!;
       fireEvent.click(filterButton);
 
-      // Set date filter - date inputs don't have textbox role
-      const dateInput = container.querySelector(
+      // Set date filter - Radix popover renders in a portal, so query from document
+      const dateInput = document.querySelector(
         'input[type="date"]'
       ) as HTMLInputElement;
       const todayStr = today.toISOString().split('T')[0];
@@ -961,7 +961,7 @@ describe('ColumnFilter', () => {
 
   it('calls onChange when date is selected in date filter', () => {
     const onChange = vi.fn();
-    const { container } = render(
+    render(
       <ColumnFilter
         filterType="date"
         filterValue={null}
@@ -970,7 +970,8 @@ describe('ColumnFilter', () => {
     );
 
     fireEvent.click(screen.getByTestId('filter-button'));
-    const input = container.querySelector(
+    // Radix popover renders in a portal, so query from document
+    const input = document.querySelector(
       'input[type="date"]'
     ) as HTMLInputElement;
     fireEvent.change(input, { target: { value: '2024-01-15' } });
@@ -994,10 +995,11 @@ describe('ColumnFilter', () => {
     );
 
     const button = screen.getByTestId('filter-button');
-    expect(button.className).toContain('text-primary');
+    // shadcn uses text-foreground for active state
+    expect(button.className).toContain('text-foreground');
   });
 
-  it('closes popup when clicking outside', () => {
+  it('closes popup when pressing Escape', () => {
     render(
       <ColumnFilter
         filterType="text"
@@ -1009,7 +1011,8 @@ describe('ColumnFilter', () => {
     fireEvent.click(screen.getByTestId('filter-button'));
     expect(screen.getByText('Filter')).toBeInTheDocument();
 
-    fireEvent.mouseDown(document.body);
+    // Radix popover closes on Escape key
+    fireEvent.keyDown(document.body, { key: 'Escape' });
     expect(screen.queryByText('Filter')).not.toBeInTheDocument();
   });
 });
