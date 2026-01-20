@@ -16,7 +16,8 @@ export function CalendarEventBlock({
 
   // Use minimum display height for very short events
   const displayDuration = Math.max(event.duration, MIN_DURATION);
-  const height = (displayDuration / 60) * hourHeight;
+  // Subtract 2px to create visual gap between back-to-back events
+  const height = (displayDuration / 60) * hourHeight - 2;
 
   const openLink = () => {
     if (event.htmlLink) {

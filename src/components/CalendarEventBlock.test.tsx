@@ -34,8 +34,8 @@ describe('CalendarEventBlock', () => {
     render(<CalendarEventBlock event={baseEvent} hourHeight={hourHeight} />);
 
     const block = screen.getByTestId('calendar-event-block');
-    // 60 min / 60 * 48 = 48 pixels
-    expect(block).toHaveStyle({ height: '48px' });
+    // 60 min / 60 * 48 - 2 = 46 pixels (2px gap for adjacent events)
+    expect(block).toHaveStyle({ height: '46px' });
   });
 
   it('enforces minimum height for short events', () => {
@@ -43,8 +43,8 @@ describe('CalendarEventBlock', () => {
     render(<CalendarEventBlock event={shortEvent} hourHeight={hourHeight} />);
 
     const block = screen.getByTestId('calendar-event-block');
-    // Min duration is 15 min, so height should be 15/60 * 48 = 12 pixels
-    expect(block).toHaveStyle({ height: '12px' });
+    // Min duration is 15 min, so height should be 15/60 * 48 - 2 = 10 pixels (2px gap)
+    expect(block).toHaveStyle({ height: '10px' });
   });
 
   it('renders description when provided and block is tall enough', () => {
