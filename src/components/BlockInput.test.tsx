@@ -319,6 +319,77 @@ describe('BlockInput', () => {
 
       expect(props.onUpdate).toHaveBeenCalledWith('test-1', 'Done', 'todo');
     });
+
+    it('converts todo to paragraph when Delete pressed at start', async () => {
+      const props = createMockProps({ type: 'todo', content: 'Task' });
+      render(<BlockInput {...props} isFocused={true} />);
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = 'Task';
+
+      // Simulate cursor at start (right after checkbox)
+      const range = document.createRange();
+      range.setStart(input!, 0);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+
+      fireEvent.keyDown(input!, { key: 'Delete' });
+
+      expect(props.onUpdate).toHaveBeenCalledWith(
+        'test-1',
+        'Task',
+        'paragraph'
+      );
+    });
+
+    it('converts todo-checked to paragraph when Delete pressed at start', async () => {
+      const props = createMockProps({ type: 'todo-checked', content: 'Done' });
+      render(<BlockInput {...props} isFocused={true} />);
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = 'Done';
+
+      // Simulate cursor at start (right after checkbox)
+      const range = document.createRange();
+      range.setStart(input!, 0);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+
+      fireEvent.keyDown(input!, { key: 'Delete' });
+
+      expect(props.onUpdate).toHaveBeenCalledWith(
+        'test-1',
+        'Done',
+        'paragraph'
+      );
+    });
+
+    it('does not convert todo when Delete pressed in middle of text', async () => {
+      const props = createMockProps({ type: 'todo', content: 'Task' });
+      render(<BlockInput {...props} isFocused={true} />);
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = 'Task';
+
+      // Simulate cursor in middle of text
+      const range = document.createRange();
+      if (input!.firstChild) {
+        range.setStart(input!.firstChild, 2);
+        range.collapse(true);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+
+      fireEvent.keyDown(input!, { key: 'Delete' });
+
+      // Should not convert - Delete at non-start position should be default behavior
+      expect(props.onUpdate).not.toHaveBeenCalled();
+    });
   });
 
   describe('H1 collapse toggle', () => {

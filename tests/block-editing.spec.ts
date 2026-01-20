@@ -1,5 +1,218 @@
 import { test, expect } from '@playwright/test';
 
+test.describe('Todo checkbox deletion', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('http://localhost:5173');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+
+    // Create a task and navigate to its detail view
+    const addTaskInput = page.getByPlaceholder('Add a new task...');
+    await addTaskInput.fill('Test Task');
+    await page.keyboard.press('Enter');
+
+    // Dismiss the estimate gate modal by clicking a preset
+    const estimateButton = page.getByRole('button', { name: '15m' });
+    await estimateButton.click();
+
+    // Wait for the task detail view to load
+    await page.waitForSelector('.block-input');
+  });
+
+  test('Delete key removes todo checkbox on first block', async ({ page }) => {
+    // Type [] to create a todo block on the first line
+    const firstBlock = page.locator('.block-input').first();
+    await firstBlock.click();
+    await page.keyboard.type('[] My task');
+    await page.waitForTimeout(50);
+
+    // Verify it's a todo block (has checkbox)
+    const checkbox = page.locator('[data-block-id] > button').first();
+    await expect(checkbox).toBeVisible();
+
+    // Move cursor to start (right after checkbox)
+    await page.keyboard.press('Home');
+    await page.waitForTimeout(50);
+
+    // Press Delete to remove the checkbox
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(100);
+
+    // Checkbox should be gone, but text remains
+    await expect(checkbox).not.toBeVisible();
+    await expect(firstBlock).toHaveText('My task');
+  });
+
+  test('Delete key removes todo checkbox on second block', async ({ page }) => {
+    // Type something on first block and create second block
+    const firstBlock = page.locator('.block-input').first();
+    await firstBlock.click();
+    await page.keyboard.type('First line');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(50);
+
+    // Type [] to create a todo block on the second line
+    await page.keyboard.type('[] My task');
+    await page.waitForTimeout(50);
+
+    // Verify it's a todo block (has checkbox) - should be second button
+    const checkboxes = page.locator('[data-block-id] > button');
+    await expect(checkboxes).toHaveCount(1); // Only todo has checkbox button
+
+    // Move cursor to start (right after checkbox)
+    await page.keyboard.press('Home');
+    await page.waitForTimeout(50);
+
+    // Press Delete to remove the checkbox
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(100);
+
+    // Checkbox should be gone, but text remains
+    await expect(checkboxes).toHaveCount(0);
+    const secondBlock = page.locator('.block-input').nth(1);
+    await expect(secondBlock).toHaveText('My task');
+  });
+
+  test('Delete key removes todo checkbox on first block when clicking to position cursor', async ({
+    page,
+  }) => {
+    // Type [] to create a todo block on the first line
+    const firstBlock = page.locator('.block-input').first();
+    await firstBlock.click();
+    await page.keyboard.type('[] My task');
+    await page.waitForTimeout(50);
+
+    // Verify it's a todo block (has checkbox)
+    const checkbox = page.locator('[data-block-id] > button').first();
+    await expect(checkbox).toBeVisible();
+
+    // Click somewhere else first (e.g., the title) to lose focus
+    await page.locator('input[placeholder="Task title"]').click();
+    await page.waitForTimeout(50);
+
+    // Now click back on the first block - this simulates user clicking into it
+    await firstBlock.click();
+    await page.waitForTimeout(50);
+
+    // Move cursor to start (right after checkbox)
+    await page.keyboard.press('Home');
+    await page.waitForTimeout(50);
+
+    // Press Delete to remove the checkbox
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(100);
+
+    // Checkbox should be gone, but text remains
+    await expect(checkbox).not.toBeVisible();
+    await expect(firstBlock).toHaveText('My task');
+  });
+
+  test('Delete key removes empty todo checkbox on first block', async ({
+    page,
+  }) => {
+    // Create an empty todo block by typing [] and space only
+    const firstBlock = page.locator('.block-input').first();
+    await firstBlock.click();
+    await page.keyboard.type('[] ');
+    await page.waitForTimeout(50);
+
+    // Verify it's a todo block with checkbox but NO text
+    const checkbox = page.locator('[data-block-id] > button').first();
+    await expect(checkbox).toBeVisible();
+    await expect(firstBlock).toHaveText('');
+
+    // Press Delete to remove the checkbox (cursor should already be at start since block is empty)
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(100);
+
+    // Checkbox should be gone
+    await expect(checkbox).not.toBeVisible();
+  });
+
+  test('Backspace removes empty todo checkbox (Mac Delete key)', async ({
+    page,
+  }) => {
+    // Create an empty todo block
+    const firstBlock = page.locator('.block-input').first();
+    await firstBlock.click();
+    await page.keyboard.type('[] ');
+    await page.waitForTimeout(50);
+
+    // Verify it's an empty todo
+    const checkbox = page.locator('[data-block-id] > button').first();
+    await expect(checkbox).toBeVisible();
+    await expect(firstBlock).toHaveText('');
+
+    // Press Backspace (Mac "Delete" key) - should remove checkbox, NOT delete block
+    await page.keyboard.press('Backspace');
+    await page.waitForTimeout(100);
+
+    // Checkbox should be gone but block should still exist
+    await expect(checkbox).not.toBeVisible();
+    const blocks = page.locator('.block-input');
+    await expect(blocks).toHaveCount(1);
+  });
+
+  test('Delete key removes empty todo after clicking into it', async ({
+    page,
+  }) => {
+    // Create an empty todo block
+    const firstBlock = page.locator('.block-input').first();
+    await firstBlock.click();
+    await page.keyboard.type('[] ');
+    await page.waitForTimeout(50);
+
+    // Verify it's an empty todo
+    const checkbox = page.locator('[data-block-id] > button').first();
+    await expect(checkbox).toBeVisible();
+    await expect(firstBlock).toHaveText('');
+
+    // Click away to lose focus
+    await page.locator('input[placeholder="Task title"]').click();
+    await page.waitForTimeout(100);
+
+    // Click back into the empty todo block
+    await firstBlock.click();
+    await page.waitForTimeout(100);
+
+    // Press Delete
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(100);
+
+    // Checkbox should be gone
+    await expect(checkbox).not.toBeVisible();
+  });
+
+  test('Delete key removes todo checkbox when using keyboard only (no click)', async ({
+    page,
+  }) => {
+    // Wait for the first block to be focused (auto-focus happens on mount)
+    const firstBlock = page.locator('.block-input').first();
+    await firstBlock.focus();
+    await page.waitForTimeout(100);
+
+    // Type [] to create a todo block on the first line
+    await page.keyboard.type('[] My task');
+    await page.waitForTimeout(50);
+
+    // Verify it's a todo block (has checkbox)
+    const checkbox = page.locator('[data-block-id] > button').first();
+    await expect(checkbox).toBeVisible();
+
+    // Move cursor to start using only keyboard
+    await page.keyboard.press('Home');
+    await page.waitForTimeout(50);
+
+    // Press Delete to remove the checkbox
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(100);
+
+    // Checkbox should be gone, but text remains
+    await expect(checkbox).not.toBeVisible();
+    await expect(firstBlock).toHaveText('My task');
+  });
+});
+
 test.describe('Block Editing', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:5173');

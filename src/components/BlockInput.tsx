@@ -239,7 +239,10 @@ export function BlockInput({
 
   // Handle Backspace at start of block
   const handleBackspaceAtStart = (text: string) => {
-    if (text === '') {
+    // For todo blocks, convert to paragraph (remove checkbox) instead of merge/delete
+    if (block.type === 'todo' || block.type === 'todo-checked') {
+      onUpdate(block.id, text, 'paragraph');
+    } else if (text === '') {
       onBackspace(block.id);
     } else {
       onMerge(block.id);
@@ -251,7 +254,10 @@ export function BlockInput({
 
     const sel = window.getSelection();
     const text = inputRef.current?.textContent || '';
-    const isAtStart = sel?.anchorOffset === 0 && sel?.focusOffset === 0;
+    const cursorPos = inputRef.current
+      ? getCursorPosition(inputRef.current, sel, text.length)
+      : text.length;
+    const isAtStart = cursorPos === 0;
 
     switch (e.key) {
       case 'Enter':
@@ -270,6 +276,15 @@ export function BlockInput({
         if (isAtStart) {
           e.preventDefault();
           handleBackspaceAtStart(text);
+        }
+        break;
+      case 'Delete':
+        if (
+          isAtStart &&
+          (block.type === 'todo' || block.type === 'todo-checked')
+        ) {
+          e.preventDefault();
+          onUpdate(block.id, text, 'paragraph');
         }
         break;
     }
