@@ -218,7 +218,7 @@ export function TaskTable({
             }
           />
         ),
-        size: 110,
+        size: 180,
         sortingFn: (rowA, rowB) => {
           const a = STATUS_ORDER[rowA.original.status];
           const b = STATUS_ORDER[rowB.original.status];
