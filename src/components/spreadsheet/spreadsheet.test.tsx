@@ -6,6 +6,7 @@ import { TypeCell } from './TypeCell';
 import { StatusCell } from './StatusCell';
 import { ImportanceCell } from './ImportanceCell';
 import { TaskTable } from './TaskTable';
+import { ColumnFilter, FilterValue } from './ColumnFilter';
 import { Task, TaskType, TASK_TYPE_COLORS } from '../../types';
 
 describe('SelectCell', () => {
@@ -536,5 +537,479 @@ describe('TaskTable', () => {
       titles = getRowTitles();
       expect(titles).toEqual(['Charlie', 'Alpha', 'Bravo']);
     });
+  });
+
+  describe('filtering', () => {
+    const getRowTitles = () => {
+      const rows = screen.queryAllByTestId(/^task-row-/);
+      return rows.map((row) => {
+        const titleButton = row.querySelector('button');
+        return titleButton?.textContent || '';
+      });
+    };
+
+    const getFilterButton = (container: HTMLElement, columnIndex: number) => {
+      const thead = container.querySelector('thead');
+      const filterButtons = thead?.querySelectorAll(
+        '[data-testid="filter-button"]'
+      );
+      return filterButtons?.[columnIndex] as HTMLButtonElement | undefined;
+    };
+
+    it('renders filter buttons in column headers', () => {
+      const { container } = render(<TaskTable {...defaultProps} />);
+
+      const filterButtons = container.querySelectorAll(
+        '[data-testid="filter-button"]'
+      );
+      expect(filterButtons).toHaveLength(5); // Type, Task, Status, Importance, Date
+    });
+
+    it('opens filter popup when filter button is clicked', () => {
+      const { container } = render(<TaskTable {...defaultProps} />);
+
+      const filterButton = getFilterButton(container, 0)!; // Type column
+      fireEvent.click(filterButton);
+
+      expect(screen.getByText('Filter')).toBeInTheDocument();
+      expect(screen.getByText('All')).toBeInTheDocument();
+      expect(screen.getByText('None')).toBeInTheDocument();
+    });
+
+    it('filters by type using multiselect', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Personal Task',
+          type: 'personal',
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'Fitness Task',
+          type: 'fitness',
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Open type filter
+      const filterButton = getFilterButton(container, 0)!;
+      fireEvent.click(filterButton);
+
+      // Select only 'admin'
+      const adminCheckbox = screen.getByRole('checkbox', { name: 'Admin' });
+      fireEvent.click(adminCheckbox);
+
+      // Should only show admin task
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Admin Task']);
+    });
+
+    it('filters by multiple types', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Personal Task',
+          type: 'personal',
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'Fitness Task',
+          type: 'fitness',
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Open type filter
+      const filterButton = getFilterButton(container, 0)!;
+      fireEvent.click(filterButton);
+
+      // Select 'admin' and 'personal'
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Personal' }));
+
+      // Should show admin and personal tasks
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Admin Task', 'Personal Task']);
+    });
+
+    it('filters by status', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Todo Task', status: 'todo' }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Done Task',
+          status: 'done',
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'In Progress Task',
+          status: 'in-progress',
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Open status filter (index 2)
+      const filterButton = getFilterButton(container, 2)!;
+      fireEvent.click(filterButton);
+
+      // Select only 'done'
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Done' }));
+
+      // Should only show done task
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Done Task']);
+    });
+
+    it('filters by importance', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'High Task',
+          importance: 'high',
+        }),
+        createMockTask({ id: 'task-2', title: 'Low Task', importance: 'low' }),
+        createMockTask({ id: 'task-3', title: 'Mid Task', importance: 'mid' }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Open importance filter (index 3)
+      const filterButton = getFilterButton(container, 3)!;
+      fireEvent.click(filterButton);
+
+      // Select only 'high'
+      fireEvent.click(screen.getByRole('checkbox', { name: 'High' }));
+
+      const titles = getRowTitles();
+      expect(titles).toEqual(['High Task']);
+    });
+
+    it('filters by task title text search', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Buy groceries' }),
+        createMockTask({ id: 'task-2', title: 'Call mom' }),
+        createMockTask({ id: 'task-3', title: 'Buy flowers' }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Open task filter (index 1)
+      const filterButton = getFilterButton(container, 1)!;
+      fireEvent.click(filterButton);
+
+      // Type search text
+      const searchInput = screen.getByPlaceholderText('Search...');
+      fireEvent.change(searchInput, { target: { value: 'Buy' } });
+
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Buy groceries', 'Buy flowers']);
+    });
+
+    it('filters by task title with wildcard pattern', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Buy groceries' }),
+        createMockTask({ id: 'task-2', title: 'Call mom' }),
+        createMockTask({ id: 'task-3', title: 'Buy flowers' }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Open task filter
+      const filterButton = getFilterButton(container, 1)!;
+      fireEvent.click(filterButton);
+
+      // Type wildcard pattern
+      const searchInput = screen.getByPlaceholderText('Search...');
+      fireEvent.change(searchInput, { target: { value: 'Buy*' } });
+
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Buy groceries', 'Buy flowers']);
+    });
+
+    it('filters by date', () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today.getTime() + 86400000);
+
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Task',
+          dueDate: today.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Tomorrow Task',
+          dueDate: tomorrow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'No Date Task',
+          dueDate: undefined,
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Open date filter (index 4)
+      const filterButton = getFilterButton(container, 4)!;
+      fireEvent.click(filterButton);
+
+      // Set date filter - date inputs don't have textbox role
+      const dateInput = container.querySelector(
+        'input[type="date"]'
+      ) as HTMLInputElement;
+      const todayStr = today.toISOString().split('T')[0];
+      fireEvent.change(dateInput, { target: { value: todayStr } });
+
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Today Task']);
+    });
+
+    it('shows filter count when filters are active', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Personal Task',
+          type: 'personal',
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'Fitness Task',
+          type: 'fitness',
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Open type filter
+      const filterButton = getFilterButton(container, 0)!;
+      fireEvent.click(filterButton);
+
+      // Select only 'admin'
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
+
+      // Should show filter count message
+      expect(screen.getByText('Showing 1 of 3 tasks')).toBeInTheDocument();
+      expect(screen.getByText('Clear all filters')).toBeInTheDocument();
+    });
+
+    it('clears all filters when clicking clear all button', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Personal Task',
+          type: 'personal',
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Apply filter
+      const filterButton = getFilterButton(container, 0)!;
+      fireEvent.click(filterButton);
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
+
+      // Verify filter is active
+      expect(getRowTitles()).toEqual(['Admin Task']);
+
+      // Clear all filters
+      fireEvent.click(screen.getByText('Clear all filters'));
+
+      // All tasks should be visible
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Admin Task', 'Personal Task']);
+    });
+
+    it('combines multiple filters', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'High Admin',
+          type: 'admin',
+          importance: 'high',
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Low Admin',
+          type: 'admin',
+          importance: 'low',
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'High Personal',
+          type: 'personal',
+          importance: 'high',
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Apply type filter
+      const typeFilter = getFilterButton(container, 0)!;
+      fireEvent.click(typeFilter);
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
+
+      // Close dropdown by clicking elsewhere
+      fireEvent.mouseDown(document.body);
+
+      // Apply importance filter
+      const importanceFilter = getFilterButton(container, 3)!;
+      fireEvent.click(importanceFilter);
+      fireEvent.click(screen.getByRole('checkbox', { name: 'High' }));
+
+      // Should only show high admin task
+      const titles = getRowTitles();
+      expect(titles).toEqual(['High Admin']);
+    });
+  });
+});
+
+describe('ColumnFilter', () => {
+  it('renders filter button', () => {
+    const onChange = vi.fn();
+    render(
+      <ColumnFilter
+        filterType="multiselect"
+        options={[{ value: 'a', label: 'A' }]}
+        filterValue={null}
+        onFilterChange={onChange}
+      />
+    );
+
+    expect(screen.getByTestId('filter-button')).toBeInTheDocument();
+  });
+
+  it('opens popup when clicked', () => {
+    const onChange = vi.fn();
+    render(
+      <ColumnFilter
+        filterType="multiselect"
+        options={[{ value: 'a', label: 'A' }]}
+        filterValue={null}
+        onFilterChange={onChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('filter-button'));
+    expect(screen.getByText('Filter')).toBeInTheDocument();
+  });
+
+  it('calls onChange when checkbox is clicked in multiselect', () => {
+    const onChange = vi.fn();
+    render(
+      <ColumnFilter
+        filterType="multiselect"
+        options={[{ value: 'a', label: 'Option A' }]}
+        filterValue={null}
+        onFilterChange={onChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('filter-button'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Option A' }));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: 'multiselect',
+      selected: new Set(['a']),
+    });
+  });
+
+  it('calls onChange when text is entered in text filter', () => {
+    const onChange = vi.fn();
+    render(
+      <ColumnFilter
+        filterType="text"
+        filterValue={null}
+        onFilterChange={onChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('filter-button'));
+    const input = screen.getByPlaceholderText('Search...');
+    fireEvent.change(input, { target: { value: 'test' } });
+
+    expect(onChange).toHaveBeenCalledWith({ type: 'text', value: 'test' });
+  });
+
+  it('calls onChange when date is selected in date filter', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <ColumnFilter
+        filterType="date"
+        filterValue={null}
+        onFilterChange={onChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('filter-button'));
+    const input = container.querySelector(
+      'input[type="date"]'
+    ) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '2024-01-15' } });
+
+    expect(onChange).toHaveBeenCalled();
+    const call = onChange.mock.calls[0][0] as FilterValue;
+    expect(call.type).toBe('date');
+    expect(
+      (call as { type: 'date'; value: number | null }).value
+    ).not.toBeNull();
+  });
+
+  it('shows active state when filter has value', () => {
+    render(
+      <ColumnFilter
+        filterType="multiselect"
+        options={[{ value: 'a', label: 'A' }]}
+        filterValue={{ type: 'multiselect', selected: new Set(['a']) }}
+        onFilterChange={() => {}}
+      />
+    );
+
+    const button = screen.getByTestId('filter-button');
+    expect(button.className).toContain('text-primary');
+  });
+
+  it('closes popup when clicking outside', () => {
+    render(
+      <ColumnFilter
+        filterType="text"
+        filterValue={null}
+        onFilterChange={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('filter-button'));
+    expect(screen.getByText('Filter')).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByText('Filter')).not.toBeInTheDocument();
   });
 });

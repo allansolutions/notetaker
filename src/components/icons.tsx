@@ -96,3 +96,20 @@ export function CalendarIcon(): JSX.Element {
     </svg>
   );
 }
+
+export function FilterIcon(): JSX.Element {
+  return (
+    <svg {...SVG_PROPS}>
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+  );
+}
+
+export function XIcon(): JSX.Element {
+  return (
+    <svg {...SVG_PROPS}>
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}

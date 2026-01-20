@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -25,12 +25,21 @@ import {
 } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
-import { Task, TaskType, TaskStatus, TaskImportance } from '../../types';
+import {
+  Task,
+  TaskType,
+  TaskStatus,
+  TaskImportance,
+  TASK_TYPE_OPTIONS,
+  TASK_STATUS_OPTIONS,
+  TASK_IMPORTANCE_OPTIONS,
+} from '../../types';
 import { TypeCell } from './TypeCell';
 import { StatusCell } from './StatusCell';
 import { ImportanceCell } from './ImportanceCell';
 import { TitleCell } from './TitleCell';
 import { DateCell } from './DateCell';
+import { ColumnFilter, FilterValue } from './ColumnFilter';
 import { DragHandleIcon, TrashIcon } from '../icons';
 
 // Sort order maps for custom sorting
@@ -45,6 +54,77 @@ const IMPORTANCE_ORDER: Record<TaskImportance, number> = {
   mid: 1,
   high: 2,
 };
+
+// Filter state type
+export interface ColumnFilters {
+  type: FilterValue | null;
+  title: FilterValue | null;
+  status: FilterValue | null;
+  importance: FilterValue | null;
+  dueDate: FilterValue | null;
+}
+
+// Wildcard matching for text filter
+function wildcardMatch(text: string, pattern: string): boolean {
+  if (!pattern) return true;
+  const lowerText = text.toLowerCase();
+  const lowerPattern = pattern.toLowerCase();
+
+  // Convert wildcard pattern to regex
+  const regexPattern = lowerPattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special regex chars except *
+    .replace(/\*/g, '.*'); // Convert * to .*
+
+  try {
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(lowerText);
+  } catch {
+    // Fallback to simple includes if regex fails
+    return lowerText.includes(lowerPattern.replace(/\*/g, ''));
+  }
+}
+
+// Helper functions for filtering to reduce cognitive complexity
+function matchesMultiselect(
+  filterValue: FilterValue | null,
+  taskValue: string
+): boolean {
+  if (filterValue?.type !== 'multiselect' || filterValue.selected.size === 0) {
+    return true;
+  }
+  return filterValue.selected.has(taskValue);
+}
+
+function matchesTextFilter(
+  filterValue: FilterValue | null,
+  taskValue: string
+): boolean {
+  if (filterValue?.type !== 'text' || !filterValue.value.trim()) {
+    return true;
+  }
+  const pattern = filterValue.value.trim();
+  if (pattern.includes('*')) {
+    return wildcardMatch(taskValue, pattern);
+  }
+  return taskValue.toLowerCase().includes(pattern.toLowerCase());
+}
+
+function matchesDateFilter(
+  filterValue: FilterValue | null,
+  taskDate: number | undefined
+): boolean {
+  if (filterValue?.type !== 'date' || filterValue.value === null) {
+    return true;
+  }
+  if (!taskDate) return false;
+  const filterDate = new Date(filterValue.value);
+  const taskDateObj = new Date(taskDate);
+  return (
+    filterDate.getFullYear() === taskDateObj.getFullYear() &&
+    filterDate.getMonth() === taskDateObj.getMonth() &&
+    filterDate.getDate() === taskDateObj.getDate()
+  );
+}
 
 function SortIcon({ direction }: { direction: SortDirection | false }) {
   if (!direction) {
@@ -174,6 +254,14 @@ function SortableRow({ row, onDelete }: SortableRowProps) {
   );
 }
 
+const defaultFilters: ColumnFilters = {
+  type: null,
+  title: null,
+  status: null,
+  importance: null,
+  dueDate: null,
+};
+
 export function TaskTable({
   tasks,
   onUpdateTask,
@@ -184,6 +272,41 @@ export function TaskTable({
 }: TaskTableProps) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [filters, setFilters] = useState<ColumnFilters>(defaultFilters);
+
+  const updateFilter = useCallback(
+    (column: keyof ColumnFilters, value: FilterValue | null) => {
+      setFilters((prev) => ({ ...prev, [column]: value }));
+    },
+    []
+  );
+
+  // Filter tasks based on column filters
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      return (
+        matchesMultiselect(filters.type, task.type) &&
+        matchesTextFilter(filters.title, task.title) &&
+        matchesMultiselect(filters.status, task.status) &&
+        matchesMultiselect(filters.importance, task.importance) &&
+        matchesDateFilter(filters.dueDate, task.dueDate)
+      );
+    });
+  }, [tasks, filters]);
+
+  const hasActiveFilters = useMemo(() => {
+    return Object.values(filters).some((f) => {
+      if (!f) return false;
+      if (f.type === 'multiselect') return f.selected.size > 0;
+      if (f.type === 'text') return f.value.trim() !== '';
+      if (f.type === 'date') return f.value !== null;
+      return false;
+    });
+  }, [filters]);
+
+  const clearAllFilters = useCallback(() => {
+    setFilters(defaultFilters);
+  }, []);
 
   const columns = useMemo(
     () => [
@@ -264,7 +387,7 @@ export function TaskTable({
   );
 
   const table = useReactTable({
-    data: tasks,
+    data: filteredTasks,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -274,6 +397,34 @@ export function TaskTable({
     onSortingChange: setSorting,
     getRowId: (row) => row.id,
   });
+
+  // Map column IDs to filter config
+  const filterConfig: Record<
+    string,
+    {
+      type: 'multiselect' | 'text' | 'date';
+      options?: { value: string; label: string }[];
+      filterKey: keyof ColumnFilters;
+    }
+  > = {
+    type: {
+      type: 'multiselect',
+      options: TASK_TYPE_OPTIONS,
+      filterKey: 'type',
+    },
+    title: { type: 'text', filterKey: 'title' },
+    status: {
+      type: 'multiselect',
+      options: TASK_STATUS_OPTIONS,
+      filterKey: 'status',
+    },
+    importance: {
+      type: 'multiselect',
+      options: TASK_IMPORTANCE_OPTIONS,
+      filterKey: 'importance',
+    },
+    dueDate: { type: 'date', filterKey: 'dueDate' },
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -308,6 +459,20 @@ export function TaskTable({
 
   return (
     <div className="w-full">
+      {hasActiveFilters && (
+        <div className="flex items-center justify-between mb-2 px-2 py-1 bg-primary/5 border border-primary/20 rounded text-xs">
+          <span className="text-primary">
+            Showing {filteredTasks.length} of {tasks.length} tasks
+          </span>
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="text-muted hover:text-primary"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -322,31 +487,46 @@ export function TaskTable({
                 className="text-left text-xs text-muted uppercase tracking-wider border-b border-border"
               >
                 <th className="pb-2 w-8"></th>
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="pb-2 font-semibold px-2"
-                    style={{ width: header.column.getSize() }}
-                  >
-                    <button
-                      type="button"
-                      className="group flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
-                      onClick={header.column.getToggleSortingHandler()}
+                {headerGroup.headers.map((header) => {
+                  const config = filterConfig[header.id];
+                  return (
+                    <th
+                      key={header.id}
+                      className="pb-2 font-semibold px-2"
+                      style={{ width: header.column.getSize() }}
                     >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                      <SortIcon direction={header.column.getIsSorted()} />
-                    </button>
-                  </th>
-                ))}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          className="group flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          <SortIcon direction={header.column.getIsSorted()} />
+                        </button>
+                        {config && (
+                          <ColumnFilter
+                            filterType={config.type}
+                            options={config.options}
+                            filterValue={filters[config.filterKey]}
+                            onFilterChange={(value) =>
+                              updateFilter(config.filterKey, value)
+                            }
+                          />
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
                 <th className="pb-2 w-8"></th>
               </tr>
             ))}
           </thead>
           <SortableContext
-            items={tasks.map((t) => t.id)}
+            items={filteredTasks.map((t) => t.id)}
             strategy={verticalListSortingStrategy}
           >
             <tbody>
