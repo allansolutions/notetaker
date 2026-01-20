@@ -82,6 +82,10 @@ Only use `eslint-disable` when you've genuinely evaluated alternatives and deter
 
 Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
 
+## UI Components
+
+When adding new UI components (dropdowns, modals, popovers, form elements, etc.), check shadcn/ui first before building custom components. Only build custom if shadcn/ui doesn't have what's needed or if a pre-existing project dependency already provides the functionality.
+
 ## Git
 
 Never make commits on your own. Only commit when explicitly asked via /commit or similar.
