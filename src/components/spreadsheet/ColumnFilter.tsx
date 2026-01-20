@@ -205,7 +205,12 @@ export function ColumnFilter({
       ref={containerRef}
       className="relative"
       onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          setIsOpen(false);
+        }
+        e.stopPropagation();
+      }}
       role="presentation"
     >
       <Button
