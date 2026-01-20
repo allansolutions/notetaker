@@ -307,4 +307,234 @@ describe('TaskTable', () => {
 
     expect(screen.getByTestId('task-row-task-123')).toBeInTheDocument();
   });
+
+  describe('sorting', () => {
+    const getRowTitles = () => {
+      const rows = screen.getAllByTestId(/^task-row-/);
+      return rows.map((row) => {
+        const titleButton = row.querySelector('button');
+        return titleButton?.textContent || '';
+      });
+    };
+
+    const getHeaderButton = (container: HTMLElement, headerText: string) => {
+      const thead = container.querySelector('thead');
+      const button = thead?.querySelector(`button`) as HTMLButtonElement | null;
+      const buttons = thead?.querySelectorAll('button') || [];
+      for (const btn of buttons) {
+        if (btn.textContent?.includes(headerText)) {
+          return btn as HTMLButtonElement;
+        }
+      }
+      return button;
+    };
+
+    it('renders sortable headers with sort icons', () => {
+      const { container } = render(<TaskTable {...defaultProps} />);
+
+      const headers = ['Type', 'Task', 'Status', 'Importance', 'Date'];
+      headers.forEach((header) => {
+        const headerButton = getHeaderButton(container, header);
+        expect(headerButton).toBeInTheDocument();
+        expect(headerButton?.querySelector('svg')).toBeInTheDocument();
+      });
+    });
+
+    it('sorts by type column alphabetically', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Task A', type: 'personal' }),
+        createMockTask({ id: 'task-2', title: 'Task B', type: 'admin' }),
+        createMockTask({ id: 'task-3', title: 'Task C', type: 'fitness' }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      // Click Type header to sort ascending
+      const typeHeader = getHeaderButton(container, 'Type')!;
+      fireEvent.click(typeHeader);
+
+      let titles = getRowTitles();
+      // admin < fitness < personal (alphabetical)
+      expect(titles).toEqual(['Task B', 'Task C', 'Task A']);
+
+      // Click again to sort descending
+      fireEvent.click(typeHeader);
+      titles = getRowTitles();
+      expect(titles).toEqual(['Task A', 'Task C', 'Task B']);
+    });
+
+    it('sorts by task column alphabetically', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Charlie' }),
+        createMockTask({ id: 'task-2', title: 'Alpha' }),
+        createMockTask({ id: 'task-3', title: 'Bravo' }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      const taskHeader = getHeaderButton(container, 'Task')!;
+      fireEvent.click(taskHeader);
+
+      let titles = getRowTitles();
+      expect(titles).toEqual(['Alpha', 'Bravo', 'Charlie']);
+
+      fireEvent.click(taskHeader);
+      titles = getRowTitles();
+      expect(titles).toEqual(['Charlie', 'Bravo', 'Alpha']);
+    });
+
+    it('sorts by status column with custom order (todo < in-progress < done)', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Done Task', status: 'done' }),
+        createMockTask({ id: 'task-2', title: 'Todo Task', status: 'todo' }),
+        createMockTask({
+          id: 'task-3',
+          title: 'In Progress Task',
+          status: 'in-progress',
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      const statusHeader = getHeaderButton(container, 'Status')!;
+      fireEvent.click(statusHeader);
+
+      let titles = getRowTitles();
+      // Ascending: todo (0) < in-progress (1) < done (2)
+      expect(titles).toEqual(['Todo Task', 'In Progress Task', 'Done Task']);
+
+      fireEvent.click(statusHeader);
+      titles = getRowTitles();
+      // Descending
+      expect(titles).toEqual(['Done Task', 'In Progress Task', 'Todo Task']);
+    });
+
+    it('sorts by importance column with custom order (low < mid < high)', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'High Task',
+          importance: 'high',
+        }),
+        createMockTask({ id: 'task-2', title: 'Low Task', importance: 'low' }),
+        createMockTask({ id: 'task-3', title: 'Mid Task', importance: 'mid' }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      const importanceHeader = getHeaderButton(container, 'Importance')!;
+      fireEvent.click(importanceHeader);
+
+      let titles = getRowTitles();
+      // Ascending: low (0) < mid (1) < high (2)
+      expect(titles).toEqual(['Low Task', 'Mid Task', 'High Task']);
+
+      fireEvent.click(importanceHeader);
+      titles = getRowTitles();
+      // Descending
+      expect(titles).toEqual(['High Task', 'Mid Task', 'Low Task']);
+    });
+
+    it('sorts by date column chronologically', () => {
+      const now = Date.now();
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Future Task',
+          dueDate: now + 86400000,
+        }), // tomorrow
+        createMockTask({
+          id: 'task-2',
+          title: 'Past Task',
+          dueDate: now - 86400000,
+        }), // yesterday
+        createMockTask({ id: 'task-3', title: 'Today Task', dueDate: now }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      const dateHeader = getHeaderButton(container, 'Date')!;
+      fireEvent.click(dateHeader);
+
+      let titles = getRowTitles();
+      // First click: sorts by date (newest/largest first due to how TanStack handles custom sort)
+      expect(titles).toEqual(['Future Task', 'Today Task', 'Past Task']);
+
+      fireEvent.click(dateHeader);
+      titles = getRowTitles();
+      // Second click: reverses sort order (oldest first)
+      expect(titles).toEqual(['Past Task', 'Today Task', 'Future Task']);
+    });
+
+    it('handles undefined dates in sorting', () => {
+      const now = Date.now();
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'No Date Task',
+          dueDate: undefined,
+        }),
+        createMockTask({ id: 'task-2', title: 'Has Date Task', dueDate: now }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      const dateHeader = getHeaderButton(container, 'Date')!;
+
+      // First click - undefined dates (Infinity) sort to end when ascending
+      fireEvent.click(dateHeader);
+      let titles = getRowTitles();
+      expect(titles).toEqual(['No Date Task', 'Has Date Task']);
+
+      // Second click - reverses sort order
+      fireEvent.click(dateHeader);
+      titles = getRowTitles();
+      expect(titles).toEqual(['Has Date Task', 'No Date Task']);
+    });
+
+    it('clears sort when clicking header three times', () => {
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Charlie' }),
+        createMockTask({ id: 'task-2', title: 'Alpha' }),
+        createMockTask({ id: 'task-3', title: 'Bravo' }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} />
+      );
+
+      const taskHeader = getHeaderButton(container, 'Task')!;
+
+      // Original order
+      let titles = getRowTitles();
+      expect(titles).toEqual(['Charlie', 'Alpha', 'Bravo']);
+
+      // Click once: ascending
+      fireEvent.click(taskHeader);
+      titles = getRowTitles();
+      expect(titles).toEqual(['Alpha', 'Bravo', 'Charlie']);
+
+      // Click twice: descending
+      fireEvent.click(taskHeader);
+      titles = getRowTitles();
+      expect(titles).toEqual(['Charlie', 'Bravo', 'Alpha']);
+
+      // Click three times: back to original (no sort)
+      fireEvent.click(taskHeader);
+      titles = getRowTitles();
+      expect(titles).toEqual(['Charlie', 'Alpha', 'Bravo']);
+    });
+  });
 });

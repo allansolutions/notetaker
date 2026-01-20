@@ -2,8 +2,11 @@ import { useMemo, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
+  getSortedRowModel,
   flexRender,
   createColumnHelper,
+  SortingState,
+  SortDirection,
 } from '@tanstack/react-table';
 import {
   DndContext,
@@ -29,6 +32,63 @@ import { ImportanceCell } from './ImportanceCell';
 import { TitleCell } from './TitleCell';
 import { DateCell } from './DateCell';
 import { DragHandleIcon, TrashIcon } from '../icons';
+
+// Sort order maps for custom sorting
+const STATUS_ORDER: Record<TaskStatus, number> = {
+  todo: 0,
+  'in-progress': 1,
+  done: 2,
+};
+
+const IMPORTANCE_ORDER: Record<TaskImportance, number> = {
+  low: 0,
+  mid: 1,
+  high: 2,
+};
+
+function SortIcon({ direction }: { direction: SortDirection | false }) {
+  if (!direction) {
+    return (
+      <svg
+        className="w-3 h-3 text-muted opacity-0 group-hover:opacity-50"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      className="w-3 h-3 text-primary"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      {direction === 'asc' ? (
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M5 15l7-7 7 7"
+        />
+      ) : (
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M19 9l-7 7-7-7"
+        />
+      )}
+    </svg>
+  );
+}
 
 interface TaskTableProps {
   tasks: Task[];
@@ -119,6 +179,7 @@ export function TaskTable({
   onAddTask,
 }: TaskTableProps) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const columns = useMemo(
     () => [
@@ -131,6 +192,7 @@ export function TaskTable({
           />
         ),
         size: 120,
+        sortingFn: 'alphanumeric',
       }),
       columnHelper.accessor('title', {
         header: 'Task',
@@ -140,6 +202,7 @@ export function TaskTable({
             onClick={() => onSelectTask(row.original.id)}
           />
         ),
+        sortingFn: 'alphanumeric',
       }),
       columnHelper.accessor('status', {
         header: 'Status',
@@ -152,6 +215,11 @@ export function TaskTable({
           />
         ),
         size: 110,
+        sortingFn: (rowA, rowB) => {
+          const a = STATUS_ORDER[rowA.original.status];
+          const b = STATUS_ORDER[rowB.original.status];
+          return a - b;
+        },
       }),
       columnHelper.accessor('importance', {
         header: 'Importance',
@@ -164,6 +232,11 @@ export function TaskTable({
           />
         ),
         size: 100,
+        sortingFn: (rowA, rowB) => {
+          const a = IMPORTANCE_ORDER[rowA.original.importance];
+          const b = IMPORTANCE_ORDER[rowB.original.importance];
+          return a - b;
+        },
       }),
       columnHelper.accessor('dueDate', {
         header: 'Date',
@@ -176,6 +249,11 @@ export function TaskTable({
           />
         ),
         size: 100,
+        sortingFn: (rowA, rowB) => {
+          const a = rowA.original.dueDate ?? Infinity;
+          const b = rowB.original.dueDate ?? Infinity;
+          return a - b;
+        },
       }),
     ],
     [onUpdateTask, onSelectTask]
@@ -185,6 +263,11 @@ export function TaskTable({
     data: tasks,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
     getRowId: (row) => row.id,
   });
 
@@ -241,10 +324,17 @@ export function TaskTable({
                     className="pb-2 font-semibold px-2"
                     style={{ width: header.column.getSize() }}
                   >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
+                    <button
+                      type="button"
+                      className="group flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                      <SortIcon direction={header.column.getIsSorted()} />
+                    </button>
                   </th>
                 ))}
                 <th className="pb-2 w-8"></th>
