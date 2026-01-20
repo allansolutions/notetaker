@@ -65,6 +65,7 @@ export interface Task {
   duration?: number;
   estimate?: number; // Estimated time in minutes
   sessions?: TimeSession[]; // Log of all work sessions
+  dueDate?: number; // Unix timestamp (ms) - optional due date
   createdAt: number;
   updatedAt: number;
 }

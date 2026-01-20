@@ -27,6 +27,7 @@ import { TypeCell } from './TypeCell';
 import { StatusCell } from './StatusCell';
 import { ImportanceCell } from './ImportanceCell';
 import { TitleCell } from './TitleCell';
+import { DateCell } from './DateCell';
 import { DragHandleIcon, TrashIcon } from '../icons';
 
 interface TaskTableProps {
@@ -159,6 +160,18 @@ export function TaskTable({
             value={getValue() as TaskImportance}
             onChange={(value) =>
               onUpdateTask(row.original.id, { importance: value })
+            }
+          />
+        ),
+        size: 100,
+      }),
+      columnHelper.accessor('dueDate', {
+        header: 'Date',
+        cell: ({ row, getValue }) => (
+          <DateCell
+            value={getValue() as number | undefined}
+            onChange={(date) =>
+              onUpdateTask(row.original.id, { dueDate: date })
             }
           />
         ),
