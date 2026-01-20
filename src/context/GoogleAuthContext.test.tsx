@@ -12,7 +12,6 @@ function TestComponent() {
       <span data-testid="email">{auth.email || 'none'}</span>
       <span data-testid="error">{auth.error || 'none'}</span>
       <button onClick={auth.connect}>Connect</button>
-      <button onClick={auth.disconnect}>Disconnect</button>
       <button onClick={auth.refresh}>Refresh</button>
     </div>
   );
@@ -111,71 +110,6 @@ describe('GoogleAuthContext', () => {
 
     await user.click(screen.getByText('Connect'));
     expect(mockLocation.href).toBe('/auth/google');
-  });
-
-  it('calls logout on disconnect', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const fetchMock = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({ isConnected: true, email: 'test@example.com' }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      } as Response);
-
-    render(
-      <GoogleAuthProvider>
-        <TestComponent />
-      </GoogleAuthProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('is-connected').textContent).toBe('true');
-    });
-
-    await user.click(screen.getByText('Disconnect'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('is-connected').textContent).toBe('false');
-    });
-
-    expect(fetchMock).toHaveBeenCalledWith('/auth/logout', {
-      method: 'POST',
-      credentials: 'include',
-    });
-  });
-
-  it('handles disconnect error', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({ isConnected: true, email: 'test@example.com' }),
-      } as Response)
-      .mockRejectedValueOnce(new Error('Network error'));
-
-    render(
-      <GoogleAuthProvider>
-        <TestComponent />
-      </GoogleAuthProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('is-connected').textContent).toBe('true');
-    });
-
-    await user.click(screen.getByText('Disconnect'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('error').textContent).toBe(
-        'Failed to disconnect'
-      );
-    });
   });
 
   it('refreshes auth status', async () => {

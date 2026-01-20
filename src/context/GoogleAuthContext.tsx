@@ -12,7 +12,6 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 
 interface GoogleAuthContextType extends GoogleAuthState {
   connect: () => void;
-  disconnect: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -66,26 +65,6 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     window.location.href = `${API_URL}/auth/google`;
   }, []);
 
-  const disconnect = useCallback(async () => {
-    setState((prev) => ({ ...prev, isLoading: true }));
-    try {
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      setState({
-        isConnected: false,
-        isLoading: false,
-      });
-    } catch {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: 'Failed to disconnect',
-      }));
-    }
-  }, []);
-
   const refresh = useCallback(async () => {
     await checkStatus();
   }, [checkStatus]);
@@ -95,7 +74,6 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
       value={{
         ...state,
         connect,
-        disconnect,
         refresh,
       }}
     >

@@ -17,7 +17,6 @@ describe('GoogleConnectButton', () => {
       isConnected: false,
       isLoading: true,
       connect: vi.fn(),
-      disconnect: vi.fn(),
     });
 
     render(<GoogleConnectButton />);
@@ -33,7 +32,6 @@ describe('GoogleConnectButton', () => {
       isLoading: false,
       error: 'Something went wrong',
       connect: vi.fn(),
-      disconnect: vi.fn(),
     });
 
     render(<GoogleConnectButton />);
@@ -48,7 +46,6 @@ describe('GoogleConnectButton', () => {
       isConnected: false,
       isLoading: false,
       connect: vi.fn(),
-      disconnect: vi.fn(),
     });
 
     render(<GoogleConnectButton />);
@@ -66,7 +63,6 @@ describe('GoogleConnectButton', () => {
       isConnected: false,
       isLoading: false,
       connect: mockConnect,
-      disconnect: vi.fn(),
     });
 
     render(<GoogleConnectButton />);
@@ -76,40 +72,19 @@ describe('GoogleConnectButton', () => {
     expect(mockConnect).toHaveBeenCalled();
   });
 
-  it('shows email and disconnect when connected', () => {
+  it('shows email when connected', () => {
     mockUseGoogleAuth.mockReturnValue({
       isConnected: true,
       isLoading: false,
       email: 'test@example.com',
       connect: vi.fn(),
-      disconnect: vi.fn(),
     });
 
     render(<GoogleConnectButton />);
 
-    expect(screen.getByText('test@example.com')).toBeInTheDocument();
-    expect(screen.getByTestId('google-disconnect-button')).toHaveTextContent(
-      'Disconnect Calendar'
+    expect(screen.getByTestId('google-connected-email')).toHaveTextContent(
+      'test@example.com'
     );
-  });
-
-  it('calls disconnect when disconnect button clicked', async () => {
-    const user = userEvent.setup();
-    const mockDisconnect = vi.fn();
-
-    mockUseGoogleAuth.mockReturnValue({
-      isConnected: true,
-      isLoading: false,
-      email: 'test@example.com',
-      connect: vi.fn(),
-      disconnect: mockDisconnect,
-    });
-
-    render(<GoogleConnectButton />);
-
-    await user.click(screen.getByTestId('google-disconnect-button'));
-
-    expect(mockDisconnect).toHaveBeenCalled();
   });
 
   it('shows email with title attribute for truncated emails', () => {
@@ -118,7 +93,6 @@ describe('GoogleConnectButton', () => {
       isLoading: false,
       email: 'verylongemail@example.com',
       connect: vi.fn(),
-      disconnect: vi.fn(),
     });
 
     render(<GoogleConnectButton />);
