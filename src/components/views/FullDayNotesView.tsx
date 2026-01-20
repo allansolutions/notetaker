@@ -92,12 +92,14 @@ export function FullDayNotesView({
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-4 mb-6">
         <BackButton onClick={onBack} />
-        <h1 className="text-lg font-semibold text-primary">Full Day Notes</h1>
+        <h1 className="text-lg font-semibold text-primary">Notes</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {tasks.length === 0 ? (
-          <p className="text-muted italic">No tasks yet.</p>
+          <p className="text-muted italic">
+            No tasks match the current filters.
+          </p>
         ) : (
           tasks.map((task) => (
             <TaskSection

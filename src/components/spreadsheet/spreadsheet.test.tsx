@@ -1123,6 +1123,110 @@ describe('TaskTable', () => {
       expect(titles).toHaveLength(2);
     });
   });
+
+  describe('onVisibleTasksChange callback', () => {
+    it('calls onVisibleTasksChange with all tasks when no filters applied', () => {
+      const onVisibleTasksChange = vi.fn();
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Task A' }),
+        createMockTask({ id: 'task-2', title: 'Task B' }),
+      ];
+
+      render(
+        <TaskTable
+          {...defaultProps}
+          tasks={tasks}
+          onVisibleTasksChange={onVisibleTasksChange}
+        />
+      );
+
+      expect(onVisibleTasksChange).toHaveBeenCalled();
+      const lastCall =
+        onVisibleTasksChange.mock.calls[
+          onVisibleTasksChange.mock.calls.length - 1
+        ];
+      expect(lastCall[0]).toHaveLength(2);
+      expect(lastCall[0].map((t: Task) => t.title)).toEqual([
+        'Task A',
+        'Task B',
+      ]);
+    });
+
+    it('calls onVisibleTasksChange with filtered tasks when filters applied', () => {
+      const onVisibleTasksChange = vi.fn();
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Personal Task',
+          type: 'personal',
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable
+          {...defaultProps}
+          tasks={tasks}
+          onVisibleTasksChange={onVisibleTasksChange}
+        />
+      );
+
+      // Apply type filter for admin
+      const filterButtons = container.querySelectorAll(
+        '[data-testid="filter-button"]'
+      );
+      fireEvent.click(filterButtons[0]); // Type filter
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
+
+      // Get the most recent call
+      const lastCall =
+        onVisibleTasksChange.mock.calls[
+          onVisibleTasksChange.mock.calls.length - 1
+        ];
+      expect(lastCall[0]).toHaveLength(1);
+      expect(lastCall[0][0].title).toBe('Admin Task');
+    });
+
+    it('calls onVisibleTasksChange with sorted tasks when sorting applied', () => {
+      const onVisibleTasksChange = vi.fn();
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Charlie' }),
+        createMockTask({ id: 'task-2', title: 'Alpha' }),
+        createMockTask({ id: 'task-3', title: 'Bravo' }),
+      ];
+
+      const { container } = render(
+        <TaskTable
+          {...defaultProps}
+          tasks={tasks}
+          onVisibleTasksChange={onVisibleTasksChange}
+        />
+      );
+
+      // Click Task header to sort ascending
+      const thead = container.querySelector('thead');
+      const buttons = thead?.querySelectorAll('button') || [];
+      let taskHeader: HTMLButtonElement | null = null;
+      for (const btn of buttons) {
+        if (btn.textContent?.includes('Task')) {
+          taskHeader = btn as HTMLButtonElement;
+          break;
+        }
+      }
+      fireEvent.click(taskHeader!);
+
+      // Get the most recent call
+      const lastCall =
+        onVisibleTasksChange.mock.calls[
+          onVisibleTasksChange.mock.calls.length - 1
+        ];
+      expect(lastCall[0].map((t: Task) => t.title)).toEqual([
+        'Alpha',
+        'Bravo',
+        'Charlie',
+      ]);
+    });
+  });
 });
 
 describe('ColumnFilter', () => {

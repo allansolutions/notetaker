@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -181,6 +181,7 @@ interface TaskTableProps {
   onSelectTask: (id: string) => void;
   onAddTask: (data: AddTaskData) => void;
   dateFilterPreset?: DateFilterPreset;
+  onVisibleTasksChange?: (tasks: Task[]) => void;
 }
 
 const columnHelper = createColumnHelper<Task>();
@@ -274,6 +275,7 @@ export function TaskTable({
   onSelectTask,
   onAddTask,
   dateFilterPreset = 'all',
+  onVisibleTasksChange,
 }: TaskTableProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -410,6 +412,14 @@ export function TaskTable({
     onSortingChange: setSorting,
     getRowId: (row) => row.id,
   });
+
+  // Notify parent of visible tasks (after filtering and sorting)
+  const visibleRows = table.getRowModel().rows;
+  useEffect(() => {
+    if (onVisibleTasksChange) {
+      onVisibleTasksChange(visibleRows.map((row) => row.original));
+    }
+  }, [visibleRows, onVisibleTasksChange]);
 
   // Map column IDs to filter config
   const filterConfig: Record<

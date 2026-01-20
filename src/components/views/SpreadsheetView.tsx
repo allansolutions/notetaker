@@ -14,6 +14,7 @@ interface SpreadsheetViewProps {
   onSelectTask: (id: string) => void;
   onAddTask: (data: AddTaskData) => void;
   onNavigateToFullDayNotes: () => void;
+  onVisibleTasksChange?: (tasks: Task[]) => void;
 }
 
 export function SpreadsheetView({
@@ -24,6 +25,7 @@ export function SpreadsheetView({
   onSelectTask,
   onAddTask,
   onNavigateToFullDayNotes,
+  onVisibleTasksChange,
 }: SpreadsheetViewProps) {
   const [dateFilterPreset, setDateFilterPreset] =
     useState<DateFilterPreset>('all');
@@ -53,7 +55,7 @@ export function SpreadsheetView({
           className="text-small text-muted hover:text-primary flex items-center gap-1"
         >
           <DocumentIcon />
-          Full Day Notes
+          View notes
         </button>
         <DateFilterTabs
           activePreset={dateFilterPreset}
@@ -71,6 +73,7 @@ export function SpreadsheetView({
         onSelectTask={onSelectTask}
         onAddTask={onAddTask}
         dateFilterPreset={dateFilterPreset}
+        onVisibleTasksChange={onVisibleTasksChange}
       />
     </div>
   );

@@ -6,8 +6,9 @@ import { ThemeProvider } from './context/ThemeContext';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { TasksProvider } from './context/TasksContext';
-import { ViewType } from './types';
+import { ViewType, Task } from './types';
 import { SpreadsheetView } from './components/views/SpreadsheetView';
+import { AddTaskData } from './components/AddTaskModal';
 import { TaskDetailView } from './components/views/TaskDetailView';
 import { FullDayNotesView } from './components/views/FullDayNotesView';
 import { Sidebar } from './components/Sidebar';
@@ -28,7 +29,6 @@ function AppContent() {
     updateTaskById,
     removeTask,
     reorder,
-    setEstimate,
     addSession,
     updateSession,
     deleteSession,
@@ -38,6 +38,7 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState<ViewType>('spreadsheet');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [visibleTasks, setVisibleTasks] = useState<Task[]>([]);
 
   const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
     SIDEBAR_WIDTH_KEY,
@@ -97,12 +98,15 @@ function AppContent() {
   }, []);
 
   const handleAddTask = useCallback(
-    async (title: string) => {
-      const newTask = await addTask(title);
-      if (newTask) {
-        setSelectedTaskId(newTask.id);
-        setCurrentView('task-detail');
-      }
+    async (data: AddTaskData) => {
+      await addTask(
+        data.title,
+        data.type,
+        data.status,
+        data.importance,
+        data.estimate,
+        data.dueDate
+      );
     },
     [addTask]
   );
@@ -122,7 +126,6 @@ function AppContent() {
           <TaskDetailView
             task={selectedTask}
             onUpdateTask={updateTaskById}
-            onSetEstimate={setEstimate}
             onAddSession={addSession}
             onUpdateSession={updateSession}
             onDeleteSession={deleteSession}
@@ -132,7 +135,7 @@ function AppContent() {
       case 'full-day-notes':
         return (
           <FullDayNotesView
-            tasks={tasks}
+            tasks={visibleTasks}
             onSelectTask={handleSelectTask}
             onBack={handleBackToSpreadsheet}
           />
@@ -148,6 +151,7 @@ function AppContent() {
             onSelectTask={handleSelectTask}
             onAddTask={handleAddTask}
             onNavigateToFullDayNotes={handleNavigateToFullDayNotes}
+            onVisibleTasksChange={setVisibleTasks}
           />
         );
     }

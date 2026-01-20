@@ -44,9 +44,9 @@ describe('SpreadsheetView', () => {
     expect(screen.getByRole('tab', { name: /this week/i })).toBeInTheDocument();
   });
 
-  it('renders Full Day Notes button', () => {
+  it('renders View notes button', () => {
     render(<SpreadsheetView {...defaultProps} />);
-    expect(screen.getByText('Full Day Notes')).toBeInTheDocument();
+    expect(screen.getByText('View notes')).toBeInTheDocument();
   });
 
   it('calls onNavigateToFullDayNotes when button is clicked', () => {
@@ -58,7 +58,7 @@ describe('SpreadsheetView', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Full Day Notes'));
+    fireEvent.click(screen.getByText('View notes'));
     expect(onNavigateToFullDayNotes).toHaveBeenCalled();
   });
 
@@ -312,7 +312,7 @@ describe('FullDayNotesView', () => {
 
   it('renders header', () => {
     render(<FullDayNotesView {...defaultProps} />);
-    expect(screen.getByText('Full Day Notes')).toBeInTheDocument();
+    expect(screen.getByText('Notes')).toBeInTheDocument();
   });
 
   it('renders back button', () => {
@@ -330,7 +330,9 @@ describe('FullDayNotesView', () => {
 
   it('shows empty state when no tasks', () => {
     render(<FullDayNotesView {...defaultProps} />);
-    expect(screen.getByText('No tasks yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No tasks match the current filters.')
+    ).toBeInTheDocument();
   });
 
   it('renders task titles', () => {
