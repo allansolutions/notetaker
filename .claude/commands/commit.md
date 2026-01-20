@@ -10,12 +10,24 @@ Create a well-structured git commit for the current changes.
    - `git diff --staged` to see staged changes
    - `git log --oneline -5` to see recent commit style
 
-2. **Stage appropriate files**:
+2. **Check for changes made outside this session**:
+
+   Files may have been modified outside the current Claude Code session. Compare the changed files against what was worked on in this conversation:
+   - **Unrelated files**: If you see changed files that weren't touched in this session, do NOT include them in the commit. Only stage files relevant to the work done in this session.
+
+   - **Mixed changes in a single file**: If a file you worked on also contains changes from outside this session (e.g., unrelated modifications mixed with your changes), ask the user how they want to proceed. Suggest options like:
+     - Stage only the hunks related to this session's work using `git add -p`
+     - Commit all changes in the file together
+     - Skip the file for now and let the user handle it manually
+
+   When in doubt, ask the user to clarify which changes should be included.
+
+3. **Stage appropriate files**:
    - Add files that are logically related to a single change
    - Never commit files containing secrets (.env, credentials, API keys)
    - If changes span multiple unrelated features, suggest splitting into multiple commits
 
-3. **Write the commit message** following this structure:
+4. **Write the commit message** following this structure:
 
    ```
    <type>(<scope>): <subject>
@@ -47,7 +59,7 @@ Create a well-structured git commit for the current changes.
    - Explain motivation and contrast with previous behavior
    - Use bullet points for multiple items
 
-4. **Commit using HEREDOC format** for proper formatting:
+5. **Commit using HEREDOC format** for proper formatting:
 
    ```bash
    git commit -m "$(cat <<'EOF'
@@ -60,7 +72,7 @@ Create a well-structured git commit for the current changes.
    )"
    ```
 
-5. **Verify** the commit succeeded with `git status`
+6. **Verify** the commit succeeded with `git status`
 
 ## Examples
 
