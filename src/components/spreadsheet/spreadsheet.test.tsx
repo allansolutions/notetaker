@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SelectCell } from './SelectCell';
 import { TitleCell } from './TitleCell';
@@ -185,6 +185,15 @@ describe('TaskTable', () => {
     onAddTask: vi.fn(),
   };
 
+  // Shared helper to get task row titles
+  const getRowTitles = () => {
+    const rows = screen.queryAllByTestId(/^task-row-/);
+    return rows.map((row) => {
+      const titleButton = row.querySelector('button');
+      return titleButton?.textContent || '';
+    });
+  };
+
   it('renders table headers', () => {
     render(<TaskTable {...defaultProps} />);
 
@@ -206,59 +215,99 @@ describe('TaskTable', () => {
     expect(screen.getByText('Second Task')).toBeInTheDocument();
   });
 
-  it('renders add task input', () => {
+  it('renders add task button', () => {
     render(<TaskTable {...defaultProps} />);
 
     expect(
-      screen.getByPlaceholderText('Add a new task...')
+      screen.getByRole('button', { name: 'Add task' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
   });
 
-  it('calls onAddTask when adding a task via button', () => {
-    const onAddTask = vi.fn();
-    render(<TaskTable {...defaultProps} onAddTask={onAddTask} />);
-
-    const input = screen.getByPlaceholderText('Add a new task...');
-    fireEvent.change(input, { target: { value: 'New Task' } });
-
-    const addButton = screen.getByRole('button', { name: 'Add' });
-    fireEvent.click(addButton);
-
-    expect(onAddTask).toHaveBeenCalledWith('New Task');
-  });
-
-  it('calls onAddTask when pressing Enter', () => {
-    const onAddTask = vi.fn();
-    render(<TaskTable {...defaultProps} onAddTask={onAddTask} />);
-
-    const input = screen.getByPlaceholderText('Add a new task...');
-    fireEvent.change(input, { target: { value: 'New Task' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    expect(onAddTask).toHaveBeenCalledWith('New Task');
-  });
-
-  it('does not call onAddTask when input is empty', () => {
-    const onAddTask = vi.fn();
-    render(<TaskTable {...defaultProps} onAddTask={onAddTask} />);
-
-    const addButton = screen.getByRole('button', { name: 'Add' });
-    fireEvent.click(addButton);
-
-    expect(onAddTask).not.toHaveBeenCalled();
-  });
-
-  it('clears input after adding task', () => {
+  it('opens add task modal when button is clicked', () => {
     render(<TaskTable {...defaultProps} />);
 
-    const input = screen.getByPlaceholderText(
-      'Add a new task...'
-    ) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'New Task' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
+    const addButton = screen.getByRole('button', { name: 'Add task' });
+    fireEvent.click(addButton);
 
-    expect(input.value).toBe('');
+    // Modal should open
+    expect(screen.getByText('Add Task')).toBeInTheDocument();
+    expect(screen.getByLabelText('Type')).toBeInTheDocument();
+    expect(screen.getByLabelText('Task')).toBeInTheDocument();
+    expect(screen.getByLabelText('Importance')).toBeInTheDocument();
+  });
+
+  it('calls onAddTask when submitting via modal', () => {
+    const onAddTask = vi.fn();
+    render(<TaskTable {...defaultProps} onAddTask={onAddTask} />);
+
+    // Open modal
+    fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+
+    // Fill in required fields
+    fireEvent.change(screen.getByLabelText('Type'), {
+      target: { value: 'admin' },
+    });
+    fireEvent.change(screen.getByLabelText('Task'), {
+      target: { value: 'New Task' },
+    });
+    fireEvent.change(screen.getByLabelText('Importance'), {
+      target: { value: 'mid' },
+    });
+    // Select estimate
+    fireEvent.click(screen.getByRole('button', { name: '15m' }));
+
+    // Submit
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    expect(onAddTask).toHaveBeenCalledWith({
+      title: 'New Task',
+      type: 'admin',
+      status: 'todo',
+      importance: 'mid',
+      estimate: 15,
+      dueDate: undefined,
+    });
+  });
+
+  it('closes modal after submitting', () => {
+    render(<TaskTable {...defaultProps} />);
+
+    // Open modal
+    fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+    expect(screen.getByText('Add Task')).toBeInTheDocument();
+
+    // Fill in required fields
+    fireEvent.change(screen.getByLabelText('Type'), {
+      target: { value: 'admin' },
+    });
+    fireEvent.change(screen.getByLabelText('Task'), {
+      target: { value: 'New Task' },
+    });
+    fireEvent.change(screen.getByLabelText('Importance'), {
+      target: { value: 'mid' },
+    });
+    // Select estimate
+    fireEvent.click(screen.getByRole('button', { name: '15m' }));
+
+    // Submit
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    // Modal should be closed
+    expect(screen.queryByText('Add Task')).not.toBeInTheDocument();
+  });
+
+  it('closes modal when clicking Cancel', () => {
+    render(<TaskTable {...defaultProps} />);
+
+    // Open modal
+    fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+    expect(screen.getByText('Add Task')).toBeInTheDocument();
+
+    // Click Cancel
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // Modal should be closed
+    expect(screen.queryByText('Add Task')).not.toBeInTheDocument();
   });
 
   it('calls onSelectTask when task title is clicked', () => {
@@ -310,14 +359,6 @@ describe('TaskTable', () => {
   });
 
   describe('sorting', () => {
-    const getRowTitles = () => {
-      const rows = screen.getAllByTestId(/^task-row-/);
-      return rows.map((row) => {
-        const titleButton = row.querySelector('button');
-        return titleButton?.textContent || '';
-      });
-    };
-
     const getHeaderButton = (container: HTMLElement, headerText: string) => {
       const thead = container.querySelector('thead');
       const button = thead?.querySelector(`button`) as HTMLButtonElement | null;
@@ -540,14 +581,6 @@ describe('TaskTable', () => {
   });
 
   describe('filtering', () => {
-    const getRowTitles = () => {
-      const rows = screen.queryAllByTestId(/^task-row-/);
-      return rows.map((row) => {
-        const titleButton = row.querySelector('button');
-        return titleButton?.textContent || '';
-      });
-    };
-
     const getFilterButton = (container: HTMLElement, columnIndex: number) => {
       const thead = container.querySelector('thead');
       const filterButtons = thead?.querySelectorAll(
@@ -888,6 +921,206 @@ describe('TaskTable', () => {
       // Should only show high admin task
       const titles = getRowTitles();
       expect(titles).toEqual(['High Admin']);
+    });
+  });
+
+  describe('dateFilterPreset', () => {
+    // Helper to create dates relative to a fixed "now"
+    const fixedNow = new Date(2024, 5, 19, 14, 0); // Wednesday, June 19, 2024
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(fixedNow);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('shows all tasks when preset is "all"', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Tomorrow',
+          dueDate: fixedNow.getTime() + 86400000,
+        }),
+        createMockTask({ id: 'task-3', title: 'No Date', dueDate: undefined }),
+      ];
+
+      render(
+        <TaskTable {...defaultProps} tasks={tasks} dateFilterPreset="all" />
+      );
+
+      const titles = getRowTitles();
+      expect(titles).toHaveLength(3);
+    });
+
+    it('shows only tasks due today when preset is "today"', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Task',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Tomorrow Task',
+          dueDate: fixedNow.getTime() + 86400000,
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'No Date Task',
+          dueDate: undefined,
+        }),
+      ];
+
+      render(
+        <TaskTable {...defaultProps} tasks={tasks} dateFilterPreset="today" />
+      );
+
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Today Task']);
+    });
+
+    it('shows only tasks due tomorrow when preset is "tomorrow"', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Task',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Tomorrow Task',
+          dueDate: fixedNow.getTime() + 86400000,
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'Next Week Task',
+          dueDate: fixedNow.getTime() + 7 * 86400000,
+        }),
+      ];
+
+      render(
+        <TaskTable
+          {...defaultProps}
+          tasks={tasks}
+          dateFilterPreset="tomorrow"
+        />
+      );
+
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Tomorrow Task']);
+    });
+
+    it('shows tasks due this week when preset is "this-week"', () => {
+      // fixedNow is Wednesday June 19, 2024
+      // Week is Monday June 17 - Sunday June 23
+      const monday = new Date(2024, 5, 17).getTime();
+      const sunday = new Date(2024, 5, 23).getTime();
+      const nextWeek = new Date(2024, 5, 24).getTime();
+
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Monday Task', dueDate: monday }),
+        createMockTask({ id: 'task-2', title: 'Sunday Task', dueDate: sunday }),
+        createMockTask({
+          id: 'task-3',
+          title: 'Next Week Task',
+          dueDate: nextWeek,
+        }),
+        createMockTask({
+          id: 'task-4',
+          title: 'No Date Task',
+          dueDate: undefined,
+        }),
+      ];
+
+      render(
+        <TaskTable
+          {...defaultProps}
+          tasks={tasks}
+          dateFilterPreset="this-week"
+        />
+      );
+
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Monday Task', 'Sunday Task']);
+    });
+
+    it('hides tasks without dueDate when preset is not "all"', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'With Date',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({ id: 'task-2', title: 'No Date', dueDate: undefined }),
+      ];
+
+      render(
+        <TaskTable {...defaultProps} tasks={tasks} dateFilterPreset="today" />
+      );
+
+      const titles = getRowTitles();
+      expect(titles).toEqual(['With Date']);
+    });
+
+    it('still applies column filters alongside preset', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Admin',
+          dueDate: fixedNow.getTime(),
+          type: 'admin',
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Today Personal',
+          dueDate: fixedNow.getTime(),
+          type: 'personal',
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'Tomorrow Admin',
+          dueDate: fixedNow.getTime() + 86400000,
+          type: 'admin',
+        }),
+      ];
+
+      const { container } = render(
+        <TaskTable {...defaultProps} tasks={tasks} dateFilterPreset="today" />
+      );
+
+      // Apply type filter for admin
+      const filterButtons = container.querySelectorAll(
+        '[data-testid="filter-button"]'
+      );
+      fireEvent.click(filterButtons[0]); // Type filter
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
+
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Today Admin']);
+    });
+
+    it('defaults to "all" when no preset is provided', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({ id: 'task-2', title: 'No Date', dueDate: undefined }),
+      ];
+
+      render(<TaskTable {...defaultProps} tasks={tasks} />);
+
+      const titles = getRowTitles();
+      expect(titles).toHaveLength(2);
     });
   });
 });

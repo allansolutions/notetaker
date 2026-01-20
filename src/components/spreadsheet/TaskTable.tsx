@@ -30,17 +30,20 @@ import {
   TaskType,
   TaskStatus,
   TaskImportance,
+  DateFilterPreset,
   TASK_TYPE_OPTIONS,
   TASK_STATUS_OPTIONS,
   TASK_IMPORTANCE_OPTIONS,
 } from '../../types';
+import { matchesDatePreset } from '../../utils/date-filters';
 import { TypeCell } from './TypeCell';
 import { StatusCell } from './StatusCell';
 import { ImportanceCell } from './ImportanceCell';
 import { TitleCell } from './TitleCell';
 import { DateCell } from './DateCell';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
-import { DragHandleIcon, TrashIcon } from '../icons';
+import { DragHandleIcon, TrashIcon, PlusIcon } from '../icons';
+import { AddTaskModal, AddTaskData } from '../AddTaskModal';
 
 // Sort order maps for custom sorting
 const STATUS_ORDER: Record<TaskStatus, number> = {
@@ -176,7 +179,8 @@ interface TaskTableProps {
   onDeleteTask: (id: string) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onSelectTask: (id: string) => void;
-  onAddTask: (title: string) => void;
+  onAddTask: (data: AddTaskData) => void;
+  dateFilterPreset?: DateFilterPreset;
 }
 
 const columnHelper = createColumnHelper<Task>();
@@ -269,8 +273,9 @@ export function TaskTable({
   onReorder,
   onSelectTask,
   onAddTask,
+  dateFilterPreset = 'all',
 }: TaskTableProps) {
-  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [filters, setFilters] = useState<ColumnFilters>(defaultFilters);
 
@@ -281,18 +286,26 @@ export function TaskTable({
     []
   );
 
-  // Filter tasks based on column filters
+  // Filter tasks based on date preset and column filters
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
+      // Apply date preset filter first
+      if (!matchesDatePreset(task.dueDate, dateFilterPreset)) {
+        return false;
+      }
+
+      // Apply column filters
+      // Skip dueDate column filter when a preset (other than 'all') is active
+      const skipDueDateFilter = dateFilterPreset !== 'all';
       return (
         matchesMultiselect(filters.type, task.type) &&
         matchesTextFilter(filters.title, task.title) &&
         matchesMultiselect(filters.status, task.status) &&
         matchesMultiselect(filters.importance, task.importance) &&
-        matchesDateFilter(filters.dueDate, task.dueDate)
+        (skipDueDateFilter || matchesDateFilter(filters.dueDate, task.dueDate))
       );
     });
-  }, [tasks, filters]);
+  }, [tasks, filters, dateFilterPreset]);
 
   const hasActiveFilters = useMemo(() => {
     return Object.values(filters).some((f) => {
@@ -444,17 +457,9 @@ export function TaskTable({
     }
   };
 
-  const handleAddTask = () => {
-    if (newTaskTitle.trim()) {
-      onAddTask(newTaskTitle.trim());
-      setNewTaskTitle('');
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newTaskTitle.trim()) {
-      handleAddTask();
-    }
+  const handleAddTask = (data: AddTaskData) => {
+    onAddTask(data);
+    setShowAddModal(false);
   };
 
   return (
@@ -542,25 +547,24 @@ export function TaskTable({
         </table>
       </DndContext>
 
-      {/* Add Task Row */}
-      <div className="flex items-center gap-2 mt-2 py-2 px-2 border border-dashed border-border rounded hover:border-muted">
-        <input
-          type="text"
-          value={newTaskTitle}
-          onChange={(e) => setNewTaskTitle(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Add a new task..."
-          className="flex-1 bg-transparent text-small text-primary outline-none placeholder:text-muted"
-        />
+      {/* Add Task Button */}
+      <div className="mt-2">
         <button
           type="button"
-          onClick={handleAddTask}
-          disabled={!newTaskTitle.trim()}
-          className="text-xs text-muted hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1"
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-border text-muted hover:border-muted hover:text-primary hover:bg-hover transition-colors"
+          aria-label="Add task"
         >
-          Add
+          <PlusIcon />
         </button>
       </div>
+
+      {showAddModal && (
+        <AddTaskModal
+          onSubmit={handleAddTask}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SpreadsheetView } from './SpreadsheetView';
 import { TaskDetailView } from './TaskDetailView';
@@ -30,9 +30,18 @@ describe('SpreadsheetView', () => {
     onNavigateToFullDayNotes: vi.fn(),
   };
 
-  it('renders header with title', () => {
+  it('renders DateFilterTabs with All selected by default', () => {
     render(<SpreadsheetView {...defaultProps} />);
-    expect(screen.getByText('Tasks')).toBeInTheDocument();
+    const allTab = screen.getByRole('tab', { name: /all/i });
+    expect(allTab).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('renders all filter tabs', () => {
+    render(<SpreadsheetView {...defaultProps} />);
+    expect(screen.getByRole('tab', { name: /all/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /today/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /tomorrow/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /this week/i })).toBeInTheDocument();
   });
 
   it('renders Full Day Notes button', () => {
@@ -59,13 +68,133 @@ describe('SpreadsheetView', () => {
 
     expect(screen.getByText('My Task')).toBeInTheDocument();
   });
+
+  describe('date filter tab interactions', () => {
+    const fixedNow = new Date(2024, 5, 19, 14, 0); // Wednesday, June 19, 2024
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(fixedNow);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('shows task counts for each filter tab', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Task',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Tomorrow Task',
+          dueDate: fixedNow.getTime() + 86400000,
+        }),
+        createMockTask({
+          id: 'task-3',
+          title: 'No Date Task',
+          dueDate: undefined,
+        }),
+      ];
+
+      render(<SpreadsheetView {...defaultProps} tasks={tasks} />);
+
+      // All tab should show (3)
+      const allTab = screen.getByRole('tab', { name: /all/i });
+      expect(allTab).toHaveTextContent('(3)');
+      // Today tab should show (1)
+      const todayTab = screen.getByRole('tab', { name: /today/i });
+      expect(todayTab).toHaveTextContent('(1)');
+      // Tomorrow tab should show (1)
+      const tomorrowTab = screen.getByRole('tab', { name: /tomorrow/i });
+      expect(tomorrowTab).toHaveTextContent('(1)');
+    });
+
+    it('filters tasks when clicking Today tab', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Task',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Tomorrow Task',
+          dueDate: fixedNow.getTime() + 86400000,
+        }),
+      ];
+
+      render(<SpreadsheetView {...defaultProps} tasks={tasks} />);
+
+      // Click Today tab
+      fireEvent.click(screen.getByRole('tab', { name: /today/i }));
+
+      // Should only show today's task
+      expect(screen.getByText('Today Task')).toBeInTheDocument();
+      expect(screen.queryByText('Tomorrow Task')).not.toBeInTheDocument();
+    });
+
+    it('filters tasks when clicking Tomorrow tab', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Task',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Tomorrow Task',
+          dueDate: fixedNow.getTime() + 86400000,
+        }),
+      ];
+
+      render(<SpreadsheetView {...defaultProps} tasks={tasks} />);
+
+      // Click Tomorrow tab
+      fireEvent.click(screen.getByRole('tab', { name: /tomorrow/i }));
+
+      // Should only show tomorrow's task
+      expect(screen.queryByText('Today Task')).not.toBeInTheDocument();
+      expect(screen.getByText('Tomorrow Task')).toBeInTheDocument();
+    });
+
+    it('shows all tasks when clicking All tab after filtering', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Task',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Tomorrow Task',
+          dueDate: fixedNow.getTime() + 86400000,
+        }),
+      ];
+
+      render(<SpreadsheetView {...defaultProps} tasks={tasks} />);
+
+      // Filter by Today
+      fireEvent.click(screen.getByRole('tab', { name: /today/i }));
+      expect(screen.queryByText('Tomorrow Task')).not.toBeInTheDocument();
+
+      // Click All tab
+      fireEvent.click(screen.getByRole('tab', { name: /all/i }));
+
+      // Should show all tasks
+      expect(screen.getByText('Today Task')).toBeInTheDocument();
+      expect(screen.getByText('Tomorrow Task')).toBeInTheDocument();
+    });
+  });
 });
 
 describe('TaskDetailView', () => {
   const createProps = (taskOverrides: Partial<Task> = {}) => ({
     task: createMockTask({ estimate: 60, ...taskOverrides }),
     onUpdateTask: vi.fn(),
-    onSetEstimate: vi.fn(),
     onAddSession: vi.fn(),
     onUpdateSession: vi.fn(),
     onDeleteSession: vi.fn(),
@@ -106,7 +235,6 @@ describe('TaskDetailView', () => {
       <TaskDetailView
         task={task}
         onUpdateTask={onUpdateTask}
-        onSetEstimate={vi.fn()}
         onAddSession={vi.fn()}
         onUpdateSession={vi.fn()}
         onDeleteSession={vi.fn()}
@@ -130,7 +258,6 @@ describe('TaskDetailView', () => {
       <TaskDetailView
         task={task}
         onUpdateTask={onUpdateTask}
-        onSetEstimate={vi.fn()}
         onAddSession={vi.fn()}
         onUpdateSession={vi.fn()}
         onDeleteSession={vi.fn()}

@@ -1,6 +1,10 @@
-import { Task } from '../../types';
+import { useState, useMemo } from 'react';
+import { Task, DateFilterPreset } from '../../types';
 import { TaskTable } from '../spreadsheet/TaskTable';
 import { DocumentIcon } from '../icons';
+import { AddTaskData } from '../AddTaskModal';
+import { DateFilterTabs } from '../DateFilterTabs';
+import { matchesDatePreset } from '../../utils/date-filters';
 
 interface SpreadsheetViewProps {
   tasks: Task[];
@@ -8,7 +12,7 @@ interface SpreadsheetViewProps {
   onDeleteTask: (id: string) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onSelectTask: (id: string) => void;
-  onAddTask: (title: string) => void;
+  onAddTask: (data: AddTaskData) => void;
   onNavigateToFullDayNotes: () => void;
 }
 
@@ -21,6 +25,25 @@ export function SpreadsheetView({
   onAddTask,
   onNavigateToFullDayNotes,
 }: SpreadsheetViewProps) {
+  const [dateFilterPreset, setDateFilterPreset] =
+    useState<DateFilterPreset>('all');
+
+  // Calculate counts for each preset
+  const presetCounts = useMemo(() => {
+    const now = new Date();
+    return {
+      all: tasks.length,
+      today: tasks.filter((t) => matchesDatePreset(t.dueDate, 'today', now))
+        .length,
+      tomorrow: tasks.filter((t) =>
+        matchesDatePreset(t.dueDate, 'tomorrow', now)
+      ).length,
+      'this-week': tasks.filter((t) =>
+        matchesDatePreset(t.dueDate, 'this-week', now)
+      ).length,
+    };
+  }, [tasks]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-6">
@@ -32,7 +55,11 @@ export function SpreadsheetView({
           <DocumentIcon />
           Full Day Notes
         </button>
-        <h1 className="text-lg font-semibold text-primary">Tasks</h1>
+        <DateFilterTabs
+          activePreset={dateFilterPreset}
+          onPresetChange={setDateFilterPreset}
+          counts={presetCounts}
+        />
         <div className="w-24"></div>
       </div>
 
@@ -43,6 +70,7 @@ export function SpreadsheetView({
         onReorder={onReorder}
         onSelectTask={onSelectTask}
         onAddTask={onAddTask}
+        dateFilterPreset={dateFilterPreset}
       />
     </div>
   );

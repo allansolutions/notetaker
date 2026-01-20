@@ -151,3 +151,16 @@ export interface GoogleAuthState {
   email?: string;
   error?: string;
 }
+
+// Date filter preset types
+export type DateFilterPreset = 'all' | 'today' | 'tomorrow' | 'this-week';
+
+export const DATE_FILTER_PRESET_OPTIONS: {
+  value: DateFilterPreset;
+  label: string;
+}[] = [
+  { value: 'all', label: 'All' },
+  { value: 'today', label: 'Today' },
+  { value: 'tomorrow', label: 'Tomorrow' },
+  { value: 'this-week', label: 'This Week' },
+];
