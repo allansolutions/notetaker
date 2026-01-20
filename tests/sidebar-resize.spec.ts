@@ -7,12 +7,13 @@ test.describe('Sidebar Resize', () => {
     await mockAuthenticated(page);
     await mockTasksApi(page);
 
-    // Clear localStorage for sidebar width
-    await page.addInitScript(() => {
-      localStorage.removeItem('notetaker-sidebar-width');
-    });
-
     await page.goto('http://localhost:5173');
+
+    // Clear localStorage for sidebar width after page loads
+    await page.evaluate(() =>
+      localStorage.removeItem('notetaker-sidebar-width')
+    );
+
     await page.waitForSelector('[data-testid="sidebar"]');
   });
 
@@ -169,6 +170,10 @@ test.describe('Sidebar Resize', () => {
 
     // Wait for localStorage debounce (300ms) to save the width
     await page.waitForTimeout(400);
+
+    // Re-setup mocks before reload (route intercepts don't persist across reload)
+    await mockAuthenticated(page);
+    await mockTasksApi(page);
 
     // Reload the page
     await page.reload();

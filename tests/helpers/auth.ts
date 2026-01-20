@@ -53,6 +53,10 @@ export async function mockTasksApi(
     blocks?: unknown[];
     scheduled?: boolean;
     orderIndex?: number;
+    estimate?: number;
+    startTime?: number;
+    duration?: number;
+    dueDate?: number;
   }> = []
 ): Promise<void> {
   let tasks = initialTasks.map((t, i) => ({
@@ -65,6 +69,10 @@ export async function mockTasksApi(
     blocks: t.blocks ?? [],
     scheduled: t.scheduled ?? false,
     orderIndex: t.orderIndex ?? i,
+    estimate: t.estimate,
+    startTime: t.startTime ?? 360,
+    duration: t.duration ?? 30,
+    dueDate: t.dueDate,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }));
@@ -76,7 +84,7 @@ export async function mockTasksApi(
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(tasks),
+        body: JSON.stringify({ tasks }),
       });
     } else if (method === 'POST') {
       const body = JSON.parse(route.request().postData() ?? '{}');
@@ -102,7 +110,7 @@ export async function mockTasksApi(
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify(newTask),
+        body: JSON.stringify({ task: newTask }),
       });
     } else {
       await route.continue();
@@ -126,7 +134,7 @@ export async function mockTasksApi(
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(tasks[taskIndex]),
+          body: JSON.stringify({ task: tasks[taskIndex] }),
         });
       } else {
         await route.fulfill({ status: 404 });
@@ -140,7 +148,7 @@ export async function mockTasksApi(
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(task),
+          body: JSON.stringify({ task }),
         });
       } else {
         await route.fulfill({ status: 404 });
@@ -156,7 +164,7 @@ export async function mockTasksApi(
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([]),
+        body: JSON.stringify({ sessions: [] }),
       });
     } else if (route.request().method() === 'POST') {
       const body = JSON.parse(route.request().postData() ?? '{}');
@@ -170,7 +178,7 @@ export async function mockTasksApi(
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify(newSession),
+        body: JSON.stringify({ session: newSession }),
       });
     } else {
       await route.continue();
