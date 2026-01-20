@@ -167,7 +167,7 @@
 
 @layer components {
   /* Placeholder pseudo-element (cannot be pure Tailwind) */
-  .block-input:empty::before {
+  .block-input:empty:focus::before {
     content: attr(data-placeholder);
     @apply text-muted pointer-events-none;
   }
