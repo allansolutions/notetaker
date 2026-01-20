@@ -7,6 +7,7 @@ describe('SessionsModal', () => {
   const mockOnClose = vi.fn();
   const mockOnUpdateSession = vi.fn();
   const mockOnDeleteSession = vi.fn();
+  const mockOnUpdateEstimate = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -27,6 +28,7 @@ describe('SessionsModal', () => {
     estimateMinutes: 60,
     onUpdateSession: mockOnUpdateSession,
     onDeleteSession: mockOnDeleteSession,
+    onUpdateEstimate: mockOnUpdateEstimate,
     onClose: mockOnClose,
   };
 
@@ -52,7 +54,7 @@ describe('SessionsModal', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('renders total time and estimate', () => {
+    it('renders total time and estimate separately', () => {
       const sessions = [createSession('s1', 0, 3600000)]; // 1 hour
       render(
         <SessionsModal
@@ -62,7 +64,11 @@ describe('SessionsModal', () => {
         />
       );
       expect(screen.getByText('Total')).toBeInTheDocument();
-      expect(screen.getByText('1h 0m / 120m estimate')).toBeInTheDocument();
+      // Session shows 1h 0m and that is also the total
+      const durationElements = screen.getAllByText('1h 0m');
+      expect(durationElements.length).toBeGreaterThan(0);
+      expect(screen.getByText('Estimate')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '120m' })).toBeInTheDocument();
     });
 
     it('calculates total from multiple sessions', () => {
@@ -74,10 +80,11 @@ describe('SessionsModal', () => {
         <SessionsModal
           {...defaultProps}
           sessions={sessions}
-          estimateMinutes={60}
+          estimateMinutes={120} // Use 120 to avoid collision with 30m preset
         />
       );
-      expect(screen.getByText('1h 0m / 60m estimate')).toBeInTheDocument();
+      const totalElements = screen.getAllByText('1h 0m');
+      expect(totalElements.length).toBeGreaterThan(0);
     });
 
     it('shows Active badge for session without endTime', () => {
@@ -88,8 +95,16 @@ describe('SessionsModal', () => {
 
     it('shows duration for completed session', () => {
       const sessions = [createSession('s1', 0, 1800000)]; // 30 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
-      expect(screen.getByText('30m')).toBeInTheDocument();
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120} // Use 120 to avoid 30m preset collision
+        />
+      );
+      // Session duration button with title "Click to edit"
+      const durationButton = screen.getByTitle('Click to edit');
+      expect(durationButton).toHaveTextContent('30m');
     });
   });
 
@@ -146,40 +161,76 @@ describe('SessionsModal', () => {
   describe('edit functionality', () => {
     it('shows editable duration button for completed sessions', () => {
       const sessions = [createSession('s1', 0, 1800000)]; // 30 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
-      // Button text is the duration "30m"
-      const durationButton = screen.getByRole('button', { name: '30m' });
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120} // Avoid collision with 30m preset
+        />
+      );
+      // Session duration button has "Click to edit" title
+      const durationButton = screen.getByTitle('Click to edit');
       expect(durationButton).toBeInTheDocument();
-      expect(durationButton).toHaveAttribute('title', 'Click to edit');
+      expect(durationButton).toHaveTextContent('30m');
     });
 
     it('clicking duration shows edit input', () => {
       const sessions = [createSession('s1', 0, 1800000)]; // 30 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
-      const durationButton = screen.getByRole('button', { name: '30m' });
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120}
+        />
+      );
+      const durationButton = screen.getByTitle('Click to edit');
       fireEvent.click(durationButton);
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument();
+      // Session duration input is the one with value 30
+      const inputs = screen.getAllByRole('spinbutton');
+      const durationInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '30'
+      );
+      expect(durationInput).toBeInTheDocument();
     });
 
     it('edit input has current duration value', () => {
       const sessions = [createSession('s1', 0, 1800000)]; // 30 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
-      const durationButton = screen.getByRole('button', { name: '30m' });
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120}
+        />
+      );
+      const durationButton = screen.getByTitle('Click to edit');
       fireEvent.click(durationButton);
-      expect(screen.getByRole('spinbutton')).toHaveValue(30);
+      const inputs = screen.getAllByRole('spinbutton');
+      const durationInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '30'
+      );
+      expect(durationInput).toHaveValue(30);
     });
 
     it('pressing Enter saves edited duration', async () => {
       const startTime = 0;
       const sessions = [createSession('s1', startTime, 1800000)]; // 30 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120}
+        />
+      );
 
-      const durationButton = screen.getByRole('button', { name: '30m' });
+      const durationButton = screen.getByTitle('Click to edit');
       fireEvent.click(durationButton);
 
-      const input = screen.getByRole('spinbutton');
-      fireEvent.change(input, { target: { value: '45' } });
-      fireEvent.keyDown(input, { key: 'Enter' });
+      const inputs = screen.getAllByRole('spinbutton');
+      const durationInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '30'
+      );
+      fireEvent.change(durationInput!, { target: { value: '45' } });
+      fireEvent.keyDown(durationInput!, { key: 'Enter' });
 
       await waitFor(() => {
         expect(mockOnUpdateSession).toHaveBeenCalledWith('s1', {
@@ -190,33 +241,51 @@ describe('SessionsModal', () => {
 
     it('pressing Escape cancels edit', async () => {
       const sessions = [createSession('s1', 0, 1800000)]; // 30 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120}
+        />
+      );
 
-      const durationButton = screen.getByRole('button', { name: '30m' });
+      const durationButton = screen.getByTitle('Click to edit');
       fireEvent.click(durationButton);
 
-      const input = screen.getByRole('spinbutton');
-      fireEvent.change(input, { target: { value: '999' } });
-      fireEvent.keyDown(input, { key: 'Escape' });
+      const inputs = screen.getAllByRole('spinbutton');
+      const durationInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '30'
+      );
+      fireEvent.change(durationInput!, { target: { value: '999' } });
+      fireEvent.keyDown(durationInput!, { key: 'Escape' });
 
       await waitFor(() => {
         expect(mockOnUpdateSession).not.toHaveBeenCalled();
         // Should show duration button again with original value
-        expect(screen.getByRole('button', { name: '30m' })).toBeInTheDocument();
+        expect(screen.getByTitle('Click to edit')).toHaveTextContent('30m');
       });
     });
 
     it('blur saves edited duration', async () => {
       const startTime = 0;
       const sessions = [createSession('s1', startTime, 1800000)]; // 30 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120}
+        />
+      );
 
-      const durationButton = screen.getByRole('button', { name: '30m' });
+      const durationButton = screen.getByTitle('Click to edit');
       fireEvent.click(durationButton);
 
-      const input = screen.getByRole('spinbutton');
-      fireEvent.change(input, { target: { value: '60' } });
-      fireEvent.blur(input);
+      const inputs = screen.getAllByRole('spinbutton');
+      const durationInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '30'
+      );
+      fireEvent.change(durationInput!, { target: { value: '60' } });
+      fireEvent.blur(durationInput!);
 
       await waitFor(() => {
         expect(mockOnUpdateSession).toHaveBeenCalledWith('s1', {
@@ -227,14 +296,23 @@ describe('SessionsModal', () => {
 
     it('does not save invalid duration (NaN)', async () => {
       const sessions = [createSession('s1', 0, 1800000)]; // 30 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120}
+        />
+      );
 
-      const durationButton = screen.getByRole('button', { name: '30m' });
+      const durationButton = screen.getByTitle('Click to edit');
       fireEvent.click(durationButton);
 
-      const input = screen.getByRole('spinbutton');
-      fireEvent.change(input, { target: { value: 'abc' } });
-      fireEvent.keyDown(input, { key: 'Enter' });
+      const inputs = screen.getAllByRole('spinbutton');
+      const durationInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '30'
+      );
+      fireEvent.change(durationInput!, { target: { value: 'abc' } });
+      fireEvent.keyDown(durationInput!, { key: 'Enter' });
 
       await waitFor(() => {
         expect(mockOnUpdateSession).not.toHaveBeenCalled();
@@ -243,14 +321,23 @@ describe('SessionsModal', () => {
 
     it('does not save negative duration', async () => {
       const sessions = [createSession('s1', 0, 1800000)]; // 30 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120}
+        />
+      );
 
-      const durationButton = screen.getByRole('button', { name: '30m' });
+      const durationButton = screen.getByTitle('Click to edit');
       fireEvent.click(durationButton);
 
-      const input = screen.getByRole('spinbutton');
-      fireEvent.change(input, { target: { value: '-10' } });
-      fireEvent.keyDown(input, { key: 'Enter' });
+      const inputs = screen.getAllByRole('spinbutton');
+      const durationInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '30'
+      );
+      fireEvent.change(durationInput!, { target: { value: '-10' } });
+      fireEvent.keyDown(durationInput!, { key: 'Enter' });
 
       await waitFor(() => {
         expect(mockOnUpdateSession).not.toHaveBeenCalled();
@@ -269,14 +356,30 @@ describe('SessionsModal', () => {
   describe('duration formatting', () => {
     it('formats minutes only when less than 1 hour', () => {
       const sessions = [createSession('s1', 0, 2700000)]; // 45 minutes
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
-      expect(screen.getByText('45m')).toBeInTheDocument();
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120} // Avoid collision
+        />
+      );
+      // Duration button should show 45m
+      const durationButton = screen.getByTitle('Click to edit');
+      expect(durationButton).toHaveTextContent('45m');
     });
 
     it('formats hours and minutes', () => {
       const sessions = [createSession('s1', 0, 5400000)]; // 1h 30m
-      render(<SessionsModal {...defaultProps} sessions={sessions} />);
-      expect(screen.getByText('1h 30m')).toBeInTheDocument();
+      render(
+        <SessionsModal
+          {...defaultProps}
+          sessions={sessions}
+          estimateMinutes={120} // Avoid collision
+        />
+      );
+      // Session duration and total both show 1h 30m
+      const elements = screen.getAllByText('1h 30m');
+      expect(elements.length).toBeGreaterThan(0);
     });
 
     it('formats 0 minutes total when no completed sessions', () => {
@@ -285,10 +388,109 @@ describe('SessionsModal', () => {
         <SessionsModal
           {...defaultProps}
           sessions={sessions}
-          estimateMinutes={60}
+          estimateMinutes={120} // Use 120 to avoid 0m collision
         />
       );
-      expect(screen.getByText('0m / 60m estimate')).toBeInTheDocument();
+      expect(screen.getByText('0m')).toBeInTheDocument();
+    });
+  });
+
+  describe('estimate editing', () => {
+    it('shows estimate preset buttons', () => {
+      render(<SessionsModal {...defaultProps} estimateMinutes={45} />); // Use non-preset value
+      expect(screen.getByRole('button', { name: '15m' })).toBeInTheDocument();
+      // The 30m button exists as a preset
+      const preset30mButtons = screen.getAllByRole('button', { name: '30m' });
+      expect(preset30mButtons.length).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: '1h' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '2h' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '4h' })).toBeInTheDocument();
+    });
+
+    it('highlights current estimate preset', () => {
+      render(<SessionsModal {...defaultProps} estimateMinutes={60} />);
+      const oneHourButton = screen.getByRole('button', { name: '1h' });
+      expect(oneHourButton).toHaveClass('bg-primary');
+    });
+
+    it('calls onUpdateEstimate when preset clicked', () => {
+      render(<SessionsModal {...defaultProps} estimateMinutes={45} />); // Use non-preset value
+      fireEvent.click(screen.getByRole('button', { name: '2h' }));
+      expect(mockOnUpdateEstimate).toHaveBeenCalledWith(120);
+    });
+
+    it('shows editable estimate value', () => {
+      render(<SessionsModal {...defaultProps} estimateMinutes={45} />);
+      // The estimate value button has title "Click to edit estimate"
+      expect(screen.getByTitle('Click to edit estimate')).toHaveTextContent(
+        '45m'
+      );
+    });
+
+    it('clicking estimate value opens edit input', () => {
+      render(<SessionsModal {...defaultProps} estimateMinutes={45} />);
+      const estimateButton = screen.getByTitle('Click to edit estimate');
+      fireEvent.click(estimateButton);
+      // Should show input with value 45
+      const inputs = screen.getAllByRole('spinbutton');
+      const estimateInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '45'
+      );
+      expect(estimateInput).toBeInTheDocument();
+    });
+
+    it('pressing Enter saves edited estimate', async () => {
+      render(<SessionsModal {...defaultProps} estimateMinutes={45} />);
+      const estimateButton = screen.getByTitle('Click to edit estimate');
+      fireEvent.click(estimateButton);
+
+      const inputs = screen.getAllByRole('spinbutton');
+      const estimateInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '45'
+      );
+      fireEvent.change(estimateInput!, { target: { value: '90' } });
+      fireEvent.keyDown(estimateInput!, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnUpdateEstimate).toHaveBeenCalledWith(90);
+      });
+    });
+
+    it('pressing Escape cancels estimate edit', async () => {
+      render(<SessionsModal {...defaultProps} estimateMinutes={45} />);
+      const estimateButton = screen.getByTitle('Click to edit estimate');
+      fireEvent.click(estimateButton);
+
+      const inputs = screen.getAllByRole('spinbutton');
+      const estimateInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '45'
+      );
+      fireEvent.change(estimateInput!, { target: { value: '999' } });
+      fireEvent.keyDown(estimateInput!, { key: 'Escape' });
+
+      await waitFor(() => {
+        expect(mockOnUpdateEstimate).not.toHaveBeenCalled();
+        expect(screen.getByTitle('Click to edit estimate')).toHaveTextContent(
+          '45m'
+        );
+      });
+    });
+
+    it('does not save invalid estimate', async () => {
+      render(<SessionsModal {...defaultProps} estimateMinutes={45} />);
+      const estimateButton = screen.getByTitle('Click to edit estimate');
+      fireEvent.click(estimateButton);
+
+      const inputs = screen.getAllByRole('spinbutton');
+      const estimateInput = inputs.find(
+        (input) => (input as HTMLInputElement).value === '45'
+      );
+      fireEvent.change(estimateInput!, { target: { value: '0' } });
+      fireEvent.keyDown(estimateInput!, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnUpdateEstimate).not.toHaveBeenCalled();
+      });
     });
   });
 });

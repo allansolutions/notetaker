@@ -6,6 +6,7 @@ interface SessionsModalProps {
   estimateMinutes: number;
   onUpdateSession: (sessionId: string, updates: Partial<TimeSession>) => void;
   onDeleteSession: (sessionId: string) => void;
+  onUpdateEstimate: (estimate: number) => void;
   onClose: () => void;
 }
 
@@ -72,14 +73,58 @@ function EditInput({
   );
 }
 
+const ESTIMATE_PRESETS = [
+  { label: '15m', minutes: 15 },
+  { label: '30m', minutes: 30 },
+  { label: '1h', minutes: 60 },
+  { label: '2h', minutes: 120 },
+  { label: '4h', minutes: 240 },
+];
+
 export function SessionsModal({
   sessions,
   estimateMinutes,
   onUpdateSession,
   onDeleteSession,
+  onUpdateEstimate,
   onClose,
 }: SessionsModalProps) {
   const [editing, setEditing] = useState<EditingState | null>(null);
+  const [editingEstimate, setEditingEstimate] = useState(false);
+  const [estimateValue, setEstimateValue] = useState(String(estimateMinutes));
+  const estimateInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingEstimate) {
+      estimateInputRef.current?.focus();
+      estimateInputRef.current?.select();
+    }
+  }, [editingEstimate]);
+
+  const handleEstimateSave = () => {
+    const newEstimate = parseInt(estimateValue, 10);
+    if (!isNaN(newEstimate) && newEstimate > 0) {
+      onUpdateEstimate(newEstimate);
+    } else {
+      setEstimateValue(String(estimateMinutes));
+    }
+    setEditingEstimate(false);
+  };
+
+  const handleEstimateKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleEstimateSave();
+    } else if (e.key === 'Escape') {
+      setEstimateValue(String(estimateMinutes));
+      setEditingEstimate(false);
+    }
+  };
+
+  const handlePresetClick = (minutes: number) => {
+    onUpdateEstimate(minutes);
+    setEstimateValue(String(minutes));
+    setEditingEstimate(false);
+  };
 
   const totalMs = sessions.reduce((sum, s) => {
     if (s.endTime) {
@@ -254,12 +299,57 @@ export function SessionsModal({
           )}
         </div>
 
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted">Total</span>
             <span className="text-primary font-medium">
-              {formatDuration(totalMs)} / {estimateMinutes}m estimate
+              {formatDuration(totalMs)}
             </span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted">Estimate</span>
+              {editingEstimate ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    ref={estimateInputRef}
+                    type="number"
+                    min="1"
+                    value={estimateValue}
+                    onChange={(e) => setEstimateValue(e.target.value)}
+                    onKeyDown={handleEstimateKeyDown}
+                    onBlur={handleEstimateSave}
+                    className="w-16 px-2 py-1 text-sm rounded bg-surface border border-border text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-muted">min</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingEstimate(true)}
+                  className="text-sm text-primary font-medium hover:underline"
+                  title="Click to edit estimate"
+                >
+                  {estimateMinutes}m
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {ESTIMATE_PRESETS.map(({ label, minutes }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => handlePresetClick(minutes)}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    estimateMinutes === minutes
+                      ? 'bg-primary text-white'
+                      : 'bg-hover text-primary hover:bg-primary/20'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

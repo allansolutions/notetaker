@@ -3,14 +3,12 @@ import { Task, Block, TimeSession } from '../../types';
 import { Editor, createBlock } from '../Editor';
 import { BackButton } from '../BackButton';
 import { TimeDisplay } from '../TimeDisplay';
-import { EstimateGate } from '../EstimateGate';
 import { SessionsModal } from '../SessionsModal';
 import { useTimeTracking } from '../../hooks/useTimeTracking';
 
 interface TaskDetailViewProps {
   task: Task;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
-  onSetEstimate: (id: string, estimate: number) => void;
   onAddSession: (id: string, session: TimeSession) => void;
   onUpdateSession: (
     taskId: string,
@@ -24,7 +22,6 @@ interface TaskDetailViewProps {
 export function TaskDetailView({
   task,
   onUpdateTask,
-  onSetEstimate,
   onAddSession,
   onUpdateSession,
   onDeleteSession,
@@ -48,13 +45,6 @@ export function TaskDetailView({
     hasEstimate,
     onSessionComplete: handleSessionComplete,
   });
-
-  const handleSetEstimate = useCallback(
-    (minutes: number) => {
-      onSetEstimate(task.id, minutes);
-    },
-    [task.id, onSetEstimate]
-  );
 
   // Ensure there's at least one block - memoize to keep stable reference
   const blocks = useMemo(
@@ -100,6 +90,13 @@ export function TaskDetailView({
     [task.id, onDeleteSession]
   );
 
+  const handleUpdateEstimate = useCallback(
+    (estimate: number) => {
+      onUpdateTask(task.id, { estimate });
+    },
+    [task.id, onUpdateTask]
+  );
+
   return (
     <div className="flex flex-col h-full relative">
       <div className="flex items-center justify-between mb-6">
@@ -129,14 +126,13 @@ export function TaskDetailView({
         <Editor blocks={blocks} setBlocks={setBlocks} />
       </div>
 
-      {!hasEstimate && <EstimateGate onSubmit={handleSetEstimate} />}
-
       {showSessionsModal && hasEstimate && (
         <SessionsModal
           sessions={task.sessions ?? []}
           estimateMinutes={task.estimate!}
           onUpdateSession={handleUpdateSession}
           onDeleteSession={handleDeleteSession}
+          onUpdateEstimate={handleUpdateEstimate}
           onClose={() => setShowSessionsModal(false)}
         />
       )}

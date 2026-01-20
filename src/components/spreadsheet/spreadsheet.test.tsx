@@ -201,6 +201,8 @@ describe('TaskTable', () => {
     expect(screen.getByText('Task')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('Importance')).toBeInTheDocument();
+    expect(screen.getByText('Estimate')).toBeInTheDocument();
+    expect(screen.getByText('Date')).toBeInTheDocument();
   });
 
   it('renders task rows', () => {
@@ -374,7 +376,14 @@ describe('TaskTable', () => {
     it('renders sortable headers with sort icons', () => {
       const { container } = render(<TaskTable {...defaultProps} />);
 
-      const headers = ['Type', 'Task', 'Status', 'Importance', 'Date'];
+      const headers = [
+        'Type',
+        'Task',
+        'Status',
+        'Importance',
+        'Estimate',
+        'Date',
+      ];
       headers.forEach((header) => {
         const headerButton = getHeaderButton(container, header);
         expect(headerButton).toBeInTheDocument();
@@ -595,7 +604,7 @@ describe('TaskTable', () => {
       const filterButtons = container.querySelectorAll(
         '[data-testid="filter-button"]'
       );
-      expect(filterButtons).toHaveLength(5); // Type, Task, Status, Importance, Date
+      expect(filterButtons).toHaveLength(5); // Type, Task, Status, Importance, Date (Estimate has no filter)
     });
 
     it('opens filter popup when filter button is clicked', () => {

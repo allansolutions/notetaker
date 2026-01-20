@@ -40,6 +40,7 @@ import { TypeCell } from './TypeCell';
 import { StatusCell } from './StatusCell';
 import { ImportanceCell } from './ImportanceCell';
 import { TitleCell } from './TitleCell';
+import { EstimateCell } from './EstimateCell';
 import { DateCell } from './DateCell';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
 import { DragHandleIcon, TrashIcon, PlusIcon } from '../icons';
@@ -377,6 +378,21 @@ export function TaskTable({
         sortingFn: (rowA, rowB) => {
           const a = IMPORTANCE_ORDER[rowA.original.importance];
           const b = IMPORTANCE_ORDER[rowB.original.importance];
+          return a - b;
+        },
+      }),
+      columnHelper.accessor('estimate', {
+        header: 'Estimate',
+        cell: ({ row, getValue }) => (
+          <EstimateCell
+            value={getValue() as number | undefined}
+            onChange={(estimate) => onUpdateTask(row.original.id, { estimate })}
+          />
+        ),
+        size: 90,
+        sortingFn: (rowA, rowB) => {
+          const a = rowA.original.estimate ?? Infinity;
+          const b = rowB.original.estimate ?? Infinity;
           return a - b;
         },
       }),
