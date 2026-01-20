@@ -27,7 +27,10 @@ export function TimeDisplay({
   const totalMs = totalCompletedMs + elapsedMs;
   const estimateMs = estimateMinutes * 60000;
   const isOverEstimate = totalMs > estimateMs;
-  const percentage = Math.round((totalMs / estimateMs) * 100);
+  const showPercentage = estimateMs > 0;
+  const percentage = showPercentage
+    ? Math.round((totalMs / estimateMs) * 100)
+    : 0;
 
   return (
     <button
@@ -38,8 +41,8 @@ export function TimeDisplay({
       <span
         className={`text-small font-medium ${isOverEstimate ? 'text-red-500' : 'text-muted'}`}
       >
-        {formatDuration(totalMs)} / {formatMinutes(estimateMinutes)} (
-        {percentage}%)
+        {formatDuration(totalMs)} / {formatMinutes(estimateMinutes)}
+        {showPercentage && ` (${percentage}%)`}
       </span>
       {isActive && (
         <span

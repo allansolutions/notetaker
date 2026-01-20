@@ -30,7 +30,8 @@ export function TaskDetailView({
   const [title, setTitle] = useState(task.title);
   const [showSessionsModal, setShowSessionsModal] = useState(false);
 
-  const hasEstimate = task.estimate !== undefined;
+  const hasEstimate = task.estimate != null && task.estimate > 0;
+  const estimateMinutes = hasEstimate ? task.estimate! : 0;
 
   const handleSessionComplete = useCallback(
     (session: TimeSession) => {
@@ -42,7 +43,7 @@ export function TaskDetailView({
   const { elapsedMs, totalCompletedMs, isActive } = useTimeTracking({
     taskId: task.id,
     sessions: task.sessions ?? [],
-    hasEstimate,
+    hasEstimate: true, // Always track time
     onSessionComplete: handleSessionComplete,
   });
 
@@ -101,15 +102,13 @@ export function TaskDetailView({
     <div className="flex flex-col h-full relative">
       <div className="flex items-center justify-between mb-6">
         <BackButton onClick={onBack} />
-        {hasEstimate && (
-          <TimeDisplay
-            elapsedMs={elapsedMs}
-            totalCompletedMs={totalCompletedMs}
-            estimateMinutes={task.estimate!}
-            isActive={isActive}
-            onClick={() => setShowSessionsModal(true)}
-          />
-        )}
+        <TimeDisplay
+          elapsedMs={elapsedMs}
+          totalCompletedMs={totalCompletedMs}
+          estimateMinutes={estimateMinutes}
+          isActive={isActive}
+          onClick={() => setShowSessionsModal(true)}
+        />
       </div>
 
       <input

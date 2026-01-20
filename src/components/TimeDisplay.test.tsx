@@ -99,4 +99,16 @@ describe('TimeDisplay', () => {
     ); // 2h / 2h
     expect(screen.getByRole('button')).toHaveTextContent('2h / 2h (100%)');
   });
+
+  it('hides percentage when estimateMinutes is 0', () => {
+    render(
+      <TimeDisplay
+        {...defaultProps}
+        totalCompletedMs={1800000}
+        estimateMinutes={0}
+      />
+    ); // 30m / 0m - no percentage
+    expect(screen.getByRole('button')).toHaveTextContent('30m / 0m');
+    expect(screen.getByRole('button')).not.toHaveTextContent('%');
+  });
 });
