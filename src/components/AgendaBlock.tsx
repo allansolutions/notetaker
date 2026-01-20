@@ -7,6 +7,7 @@ import {
   AGENDA_END_HOUR,
   SNAP_INTERVAL,
   MIN_DURATION,
+  TASK_TYPE_COLORS,
 } from '../types';
 
 interface AgendaBlockProps {
@@ -91,10 +92,12 @@ export function AgendaBlock({
     zIndex: isDragging || isResizing ? 20 : 1,
   };
 
+  const colors = TASK_TYPE_COLORS[task.type];
+
   return (
     <div
       ref={setNodeRef}
-      className="absolute left-16 right-1 bg-accent rounded text-xs text-primary overflow-hidden select-none"
+      className={`absolute left-16 right-1 rounded text-xs overflow-hidden select-none ${colors.bg} ${colors.text}`}
       style={style}
       data-testid={`agenda-block-${task.id}`}
       {...attributes}
