@@ -1,5 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { FilterIcon, XIcon } from '../icons';
+import { useState, useRef, useEffect } from 'react';
+import { Filter, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 
 interface MultiSelectFilterProps {
   options: { value: string; label: string }[];
@@ -33,34 +36,34 @@ function MultiSelectFilter({
   return (
     <div className="min-w-[140px]">
       <div className="flex gap-2 mb-2 text-xs">
-        <button
-          type="button"
+        <Button
+          variant="link"
+          size="sm"
+          className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
           onClick={handleSelectAll}
-          className="text-muted hover:text-primary"
         >
           All
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="link"
+          size="sm"
+          className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
           onClick={handleClear}
-          className="text-muted hover:text-primary"
         >
           None
-        </button>
+        </Button>
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {options.map((option) => (
           <label
             key={option.value}
-            className="flex items-center gap-2 cursor-pointer hover:bg-hover px-1 py-0.5 rounded text-small"
+            className="flex items-center gap-2 cursor-pointer hover:bg-accent px-1 py-0.5 rounded text-sm"
           >
-            <input
-              type="checkbox"
+            <Checkbox
               checked={selected.has(option.value)}
-              onChange={() => handleToggle(option.value)}
-              className="rounded border-border text-primary focus:ring-primary"
+              onCheckedChange={() => handleToggle(option.value)}
             />
-            <span className="text-primary">{option.label}</span>
+            <span>{option.label}</span>
           </label>
         ))}
       </div>
@@ -76,14 +79,14 @@ interface TextFilterProps {
 function TextFilter({ value, onChange }: TextFilterProps) {
   return (
     <div className="min-w-[180px]">
-      <input
+      <Input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search..."
-        className="w-full px-2 py-1 text-small bg-surface border border-border rounded text-primary placeholder:text-muted focus:outline-none focus:border-primary"
+        className="h-8 text-sm"
       />
-      <p className="text-xs text-muted mt-1">Use * as wildcard</p>
+      <p className="text-xs text-muted-foreground mt-1.5">Use * as wildcard</p>
     </div>
   );
 }
@@ -97,7 +100,6 @@ function DateFilter({ value, onChange }: DateFilterProps) {
   const formatDateForInput = (timestamp: number | null): string => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
-    // Format as YYYY-MM-DD in local timezone
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -109,7 +111,6 @@ function DateFilter({ value, onChange }: DateFilterProps) {
     if (!dateStr) {
       onChange(null);
     } else {
-      // Parse as local date (YYYY-MM-DD format)
       const [year, month, day] = dateStr.split('-').map(Number);
       const date = new Date(year, month - 1, day, 0, 0, 0, 0);
       onChange(date.getTime());
@@ -118,20 +119,21 @@ function DateFilter({ value, onChange }: DateFilterProps) {
 
   return (
     <div className="min-w-[160px]">
-      <input
+      <Input
         type="date"
         value={formatDateForInput(value)}
         onChange={handleDateChange}
-        className="w-full px-2 py-1 text-small bg-surface border border-border rounded text-primary focus:outline-none focus:border-primary"
+        className="h-8 text-sm"
       />
       {value && (
-        <button
-          type="button"
+        <Button
+          variant="link"
+          size="sm"
+          className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground mt-1"
           onClick={() => onChange(null)}
-          className="text-xs text-muted hover:text-primary mt-1"
         >
           Clear date
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -158,70 +160,88 @@ export function ColumnFilter({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (
-      containerRef.current &&
-      !containerRef.current.contains(event.target as Node)
-    ) {
-      setIsOpen(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, handleClickOutside]);
-
   const isActive =
     filterValue !== null &&
     ((filterValue.type === 'multiselect' && filterValue.selected.size > 0) ||
       (filterValue.type === 'text' && filterValue.value.trim() !== '') ||
       (filterValue.type === 'date' && filterValue.value !== null));
 
-  const handleClearFilter = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleClearFilter = () => {
     onFilterChange(null);
-    setIsOpen(false);
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
+
   return (
-    <div ref={containerRef} className="relative inline-block">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        className={`p-0.5 rounded transition-colors ${
+    <div
+      ref={containerRef}
+      className="relative"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      role="presentation"
+    >
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className={`size-6 ${
           isActive
-            ? 'text-primary bg-primary/10'
-            : 'text-muted opacity-0 group-hover:opacity-50 hover:opacity-100'
+            ? 'text-foreground bg-accent'
+            : 'text-muted-foreground opacity-0 group-hover:opacity-50 hover:opacity-100'
         }`}
         title={isActive ? 'Filter active' : 'Filter'}
         data-testid="filter-button"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
       >
-        <FilterIcon />
-      </button>
+        <Filter className="size-3.5" />
+      </Button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 p-2 bg-surface border border-border rounded shadow-lg z-50">
+        <div
+          className="absolute left-0 top-full mt-1 z-50 bg-popover text-popover-foreground rounded-md border p-3 shadow-md"
+          data-testid="filter-dropdown"
+        >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-muted uppercase">
+            <span className="text-xs font-medium text-muted-foreground uppercase">
               Filter
             </span>
             {isActive && (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-5 text-muted-foreground hover:text-destructive"
                 onClick={handleClearFilter}
-                className="text-muted hover:text-error p-0.5"
                 title="Clear filter"
               >
-                <XIcon />
-              </button>
+                <X className="size-3" />
+              </Button>
             )}
           </div>
 

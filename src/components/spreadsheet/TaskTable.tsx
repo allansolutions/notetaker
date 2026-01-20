@@ -495,10 +495,10 @@ export function TaskTable({
                       className="pb-2 font-semibold px-2"
                       style={{ width: header.column.getSize() }}
                     >
-                      <div className="flex items-center gap-1">
+                      <div className="group flex items-center gap-1">
                         <button
                           type="button"
-                          className="group flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
+                          className="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           {flexRender(
