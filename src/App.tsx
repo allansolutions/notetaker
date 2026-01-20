@@ -4,11 +4,16 @@ import { useTasks } from './hooks/useTasks';
 import { useCalendarEvents } from './hooks/useCalendarEvents';
 import { ThemeProvider } from './context/ThemeContext';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { TasksProvider } from './context/TasksContext';
 import { ViewType } from './types';
 import { SpreadsheetView } from './components/views/SpreadsheetView';
 import { TaskDetailView } from './components/views/TaskDetailView';
 import { FullDayNotesView } from './components/views/FullDayNotesView';
 import { Sidebar } from './components/Sidebar';
+import { LoginPage } from './components/LoginPage';
+import { AuthGuard } from './components/AuthGuard';
+import { MigrationPrompt } from './components/MigrationPrompt';
 import './styles/main.css';
 
 const SIDEBAR_WIDTH_KEY = 'notetaker-sidebar-width';
@@ -92,10 +97,12 @@ function AppContent() {
   }, []);
 
   const handleAddTask = useCallback(
-    (title: string) => {
-      const newTask = addTask(title);
-      setSelectedTaskId(newTask.id);
-      setCurrentView('task-detail');
+    async (title: string) => {
+      const newTask = await addTask(title);
+      if (newTask) {
+        setSelectedTaskId(newTask.id);
+        setCurrentView('task-detail');
+      }
     },
     [addTask]
   );
@@ -190,13 +197,26 @@ function AppContent() {
   );
 }
 
-function App() {
+function AuthenticatedApp() {
   return (
     <ThemeProvider>
       <GoogleAuthProvider>
-        <AppContent />
+        <TasksProvider>
+          <MigrationPrompt />
+          <AppContent />
+        </TasksProvider>
       </GoogleAuthProvider>
     </ThemeProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AuthGuard fallback={<LoginPage />}>
+        <AuthenticatedApp />
+      </AuthGuard>
+    </AuthProvider>
   );
 }
 

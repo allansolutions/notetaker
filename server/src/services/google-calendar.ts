@@ -83,7 +83,21 @@ export async function refreshAccessToken(
   return response.json();
 }
 
+export interface GoogleUserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  picture?: string;
+}
+
 export async function getUserEmail(accessToken: string): Promise<string> {
+  const profile = await getUserProfile(accessToken);
+  return profile.email;
+}
+
+export async function getUserProfile(
+  accessToken: string
+): Promise<GoogleUserProfile> {
   const response = await fetch(GOOGLE_USERINFO_URL, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -94,8 +108,8 @@ export async function getUserEmail(accessToken: string): Promise<string> {
     throw new Error('Failed to fetch user info');
   }
 
-  const data = (await response.json()) as { email: string };
-  return data.email;
+  const data = (await response.json()) as GoogleUserProfile;
+  return data;
 }
 
 export async function fetchCalendarEvents(

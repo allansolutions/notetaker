@@ -3,56 +3,11 @@ import { TimeSession } from '../types';
 import { generateSessionId, computeTimeSpent } from '../utils/task-operations';
 
 const ACTIVE_SESSION_KEY = 'notetaker-active-session';
-const PENDING_SESSIONS_KEY = 'notetaker-pending-sessions';
 const MIN_SESSION_DURATION_MS = 1 * 60 * 1000; // 1 minute - sessions shorter than this are not saved
 
 interface ActiveSessionData {
   taskId: string;
   session: TimeSession;
-}
-
-export interface PendingSession {
-  taskId: string;
-  session: TimeSession;
-}
-
-// Save a completed session to localStorage for later flushing
-// Only saves if session duration >= 5 minutes
-function savePendingSession(taskId: string, session: TimeSession) {
-  if (!session.endTime) return;
-  const duration = session.endTime - session.startTime;
-  if (duration < MIN_SESSION_DURATION_MS) return;
-
-  const stored = localStorage.getItem(PENDING_SESSIONS_KEY);
-  const pending: PendingSession[] = stored ? JSON.parse(stored) : [];
-  pending.push({ taskId, session });
-  localStorage.setItem(PENDING_SESSIONS_KEY, JSON.stringify(pending));
-}
-
-// Get and clear all pending sessions
-export function flushPendingSessions(): PendingSession[] {
-  const stored = localStorage.getItem(PENDING_SESSIONS_KEY);
-  if (!stored) return [];
-  localStorage.removeItem(PENDING_SESSIONS_KEY);
-  return JSON.parse(stored);
-}
-
-// Flush pending sessions for a specific task, leaving others
-function flushPendingSessionsForTask(taskId: string): TimeSession[] {
-  const stored = localStorage.getItem(PENDING_SESSIONS_KEY);
-  if (!stored) return [];
-
-  const pending: PendingSession[] = JSON.parse(stored);
-  const forTask = pending.filter((p) => p.taskId === taskId);
-  const remaining = pending.filter((p) => p.taskId !== taskId);
-
-  if (remaining.length > 0) {
-    localStorage.setItem(PENDING_SESSIONS_KEY, JSON.stringify(remaining));
-  } else {
-    localStorage.removeItem(PENDING_SESSIONS_KEY);
-  }
-
-  return forTask.map((p) => p.session);
 }
 
 interface UseTimeTrackingOptions {
@@ -71,6 +26,12 @@ export function useTimeTracking({
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const currentSessionRef = useRef<TimeSession | null>(null);
+  const onSessionCompleteRef = useRef(onSessionComplete);
+
+  // Keep callback ref updated
+  useEffect(() => {
+    onSessionCompleteRef.current = onSessionComplete;
+  }, [onSessionComplete]);
 
   const totalCompleted = computeTimeSpent(sessions);
 
@@ -86,18 +47,26 @@ export function useTimeTracking({
     [taskId]
   );
 
+  const completeSession = useCallback((session: TimeSession) => {
+    const duration = (session.endTime ?? Date.now()) - session.startTime;
+    // Only save sessions >= minimum duration
+    if (duration >= MIN_SESSION_DURATION_MS) {
+      onSessionCompleteRef.current(session);
+    }
+  }, []);
+
   const endCurrentSession = useCallback(() => {
     if (currentSessionRef.current) {
       const completedSession: TimeSession = {
         ...currentSessionRef.current,
         endTime: Date.now(),
       };
-      onSessionComplete(completedSession);
+      completeSession(completedSession);
       currentSessionRef.current = null;
       saveActiveSession(null);
       setIsActive(false);
     }
-  }, [onSessionComplete, saveActiveSession]);
+  }, [completeSession, saveActiveSession]);
 
   const startNewSession = useCallback(() => {
     const session: TimeSession = {
@@ -106,17 +75,13 @@ export function useTimeTracking({
     };
     currentSessionRef.current = session;
     saveActiveSession(session);
-    setElapsedMs(0); // Reset elapsed time to avoid stale values from previous sessions
+    setElapsedMs(0);
     setIsActive(true);
   }, [saveActiveSession]);
 
   // Initialize: recover active session or start new one
   useEffect(() => {
     if (!hasEstimate) return;
-
-    // Flush any pending sessions for this task (from previous unmounts)
-    const pendingSessions = flushPendingSessionsForTask(taskId);
-    pendingSessions.forEach((session) => onSessionComplete(session));
 
     const stored = localStorage.getItem(ACTIVE_SESSION_KEY);
     if (stored) {
@@ -129,7 +94,21 @@ export function useTimeTracking({
           setElapsedMs(timeSinceStart);
           setIsActive(true);
         } else {
-          // Different task - end old session silently and start new
+          // Different task - save old session and start new
+          const oldSession: TimeSession = {
+            ...data.session,
+            endTime: Date.now(),
+          };
+          const duration = oldSession.endTime! - oldSession.startTime;
+          if (duration >= MIN_SESSION_DURATION_MS) {
+            // Save to localStorage for later sync (will be picked up by that task's context)
+            const pendingKey = `notetaker-pending-${data.taskId}`;
+            const pending = JSON.parse(
+              localStorage.getItem(pendingKey) || '[]'
+            );
+            pending.push(oldSession);
+            localStorage.setItem(pendingKey, JSON.stringify(pending));
+          }
           localStorage.removeItem(ACTIVE_SESSION_KEY);
           startNewSession();
         }
@@ -142,21 +121,23 @@ export function useTimeTracking({
     }
 
     return () => {
-      // End session on unmount - save to localStorage for later flushing
-      // (React state updates during cleanup may not persist)
+      // End session on unmount - try to save via API
       if (currentSessionRef.current) {
         const completedSession: TimeSession = {
           ...currentSessionRef.current,
           endTime: Date.now(),
         };
-        savePendingSession(taskId, completedSession);
+        const duration = completedSession.endTime! - completedSession.startTime;
+        if (duration >= MIN_SESSION_DURATION_MS) {
+          // Call the completion callback (which triggers API save)
+          onSessionCompleteRef.current(completedSession);
+        }
         localStorage.removeItem(ACTIVE_SESSION_KEY);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskId, hasEstimate]);
+  }, [taskId, hasEstimate, startNewSession]);
 
-  // Timer tick - simply update elapsed time based on session start
+  // Timer tick
   useEffect(() => {
     if (!isActive || !currentSessionRef.current) return;
 
@@ -167,7 +148,7 @@ export function useTimeTracking({
     return () => clearInterval(interval);
   }, [isActive]);
 
-  // Handle beforeunload
+  // Handle beforeunload - save active session
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (currentSessionRef.current) {

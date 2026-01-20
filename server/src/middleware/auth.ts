@@ -21,6 +21,10 @@ export const requireAuth: MiddlewareHandler<{
     return c.json({ error: 'Session not found' }, 401);
   }
 
+  if (!session.userId) {
+    return c.json({ error: 'User not associated with session' }, 401);
+  }
+
   if (isTokenExpired(session) && session.googleRefreshToken) {
     try {
       const tokens = await refreshAccessToken(
@@ -43,5 +47,6 @@ export const requireAuth: MiddlewareHandler<{
   }
 
   c.set('sessionId', sessionId);
+  c.set('userId', session.userId);
   await next();
 };

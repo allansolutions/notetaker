@@ -1,14 +1,18 @@
 import { test, expect } from '@playwright/test';
+import { mockAuthenticated, mockTasksApi } from './helpers/auth';
 
 test.describe('Sidebar Resize', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear localStorage to ensure consistent starting state
-    await page.goto('http://localhost:5173');
-    await page.evaluate(() => {
+    // Setup auth and API mocks
+    await mockAuthenticated(page);
+    await mockTasksApi(page);
+
+    // Clear localStorage for sidebar width
+    await page.addInitScript(() => {
       localStorage.removeItem('notetaker-sidebar-width');
-      localStorage.removeItem('notetaker-tasks');
     });
-    await page.reload();
+
+    await page.goto('http://localhost:5173');
     await page.waitForSelector('[data-testid="sidebar"]');
   });
 

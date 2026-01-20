@@ -10,6 +10,7 @@ export interface Env {
 export interface Variables {
   db: Database;
   sessionId?: string;
+  userId?: string;
 }
 
 export interface CalendarEvent {

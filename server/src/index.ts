@@ -3,6 +3,9 @@ import { cors } from 'hono/cors';
 import { createDb } from './db';
 import { authRoutes } from './routes/auth';
 import { calendarRoutes } from './routes/calendar';
+import { taskRoutes } from './routes/tasks';
+import { settingsRoutes } from './routes/settings';
+import { migrateRoutes } from './routes/migrate';
 import type { Env, Variables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -26,5 +29,8 @@ app.get('/health', (c) => {
 
 app.route('/auth', authRoutes);
 app.route('/api/calendar', calendarRoutes);
+app.route('/api/tasks', taskRoutes);
+app.route('/api/settings', settingsRoutes);
+app.route('/api/migrate', migrateRoutes);
 
 export default app;

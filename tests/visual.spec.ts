@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { mockAuthenticated, mockTasksApi } from './helpers/auth';
 
 test('Visual check of spreadsheet view', async ({ page }) => {
+  // Setup auth and API mocks before navigating
+  await mockAuthenticated(page);
+  await mockTasksApi(page);
+
   await page.goto('http://localhost:5173');
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
   await page.waitForSelector('[data-testid="sidebar"]');
 
   // Screenshot of empty spreadsheet

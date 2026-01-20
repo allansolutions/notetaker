@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { mockAuthenticated, mockTasksApi } from './helpers/auth';
 
 test.describe('Agenda', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear localStorage to ensure consistent starting state
+    // Setup auth and API mocks
+    await mockAuthenticated(page);
+    await mockTasksApi(page);
+
     await page.goto('http://localhost:5173');
-    await page.evaluate(() => {
-      localStorage.removeItem('notetaker-tasks');
-    });
-    await page.reload();
     await page.waitForSelector('[data-testid="agenda"]');
   });
 

@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { mockAuthenticated, mockTasksApi } from './helpers/auth';
 
 test.describe('Column Filters', () => {
   test.beforeEach(async ({ page }) => {
+    // Setup auth and API mocks
+    await mockAuthenticated(page);
+    await mockTasksApi(page);
+
     await page.goto('http://localhost:5173');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
     await page.waitForSelector('[data-testid="sidebar"]');
 
     // Add a task

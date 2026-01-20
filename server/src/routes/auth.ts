@@ -1,13 +1,20 @@
 import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { Env, Variables } from '../types';
-import { createSession, getSession, deleteSession } from '../services/session';
+import {
+  createSession,
+  getSession,
+  deleteSession,
+  updateSession,
+} from '../services/session';
 import {
   buildOAuthUrl,
   exchangeCodeForTokens,
-  getUserEmail,
+  getUserProfile,
   revokeToken,
 } from '../services/google-calendar';
+import { getOrCreateUser, getUserById } from '../services/user';
+import { getUserSettings } from '../services/settings';
 
 export const authRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -52,14 +59,26 @@ authRoutes.get('/callback', async (c) => {
       redirectUri
     );
 
-    const email = await getUserEmail(tokens.access_token);
+    const profile = await getUserProfile(tokens.access_token);
 
     const db = c.get('db');
+
+    // Create or get user
+    const user = await getOrCreateUser(
+      db,
+      profile.id,
+      profile.email,
+      profile.name,
+      profile.picture
+    );
+
+    // Create session linked to user
     const sessionId = await createSession(db, {
+      userId: user.id,
       googleAccessToken: tokens.access_token,
       googleRefreshToken: tokens.refresh_token,
       googleTokenExpiry: Date.now() + tokens.expires_in * 1000,
-      googleEmail: email,
+      googleEmail: profile.email,
     });
 
     setCookie(c, 'session', sessionId, {
@@ -97,6 +116,46 @@ authRoutes.get('/status', async (c) => {
   return c.json({
     isConnected: true,
     email: session.googleEmail,
+  });
+});
+
+authRoutes.get('/me', async (c) => {
+  const sessionId = getCookie(c, 'session');
+
+  if (!sessionId) {
+    return c.json({ user: null }, 401);
+  }
+
+  const db = c.get('db');
+  const session = await getSession(db, sessionId);
+
+  if (!session || !session.userId) {
+    deleteCookie(c, 'session');
+    return c.json({ user: null }, 401);
+  }
+
+  const user = await getUserById(db, session.userId);
+
+  if (!user) {
+    deleteCookie(c, 'session');
+    return c.json({ user: null }, 401);
+  }
+
+  const settings = await getUserSettings(db, user.id);
+
+  return c.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+    },
+    settings: settings
+      ? {
+          theme: settings.theme,
+          sidebarWidth: settings.sidebarWidth,
+        }
+      : null,
   });
 });
 

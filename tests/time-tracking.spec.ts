@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { mockAuthenticated, mockTasksApi } from './helpers/auth';
 
 // Parse minutes from time display text like "5m / 15m" or "1h 30m / 2h"
 function parseMinutes(text: string): number {
@@ -19,6 +20,10 @@ function parseMinutes(text: string): number {
 
 test.describe('Time Tracking', () => {
   test('should not show time flash when entering task', async ({ page }) => {
+    // Setup auth and API mocks
+    await mockAuthenticated(page);
+    await mockTasksApi(page);
+
     // Collect console logs
     const consoleLogs: string[] = [];
     page.on('console', (msg) => {
@@ -31,8 +36,6 @@ test.describe('Time Tracking', () => {
     });
 
     await page.goto('http://localhost:5173');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
 
     // Create a task
     const addTaskInput = page.getByPlaceholder('Add a new task...');

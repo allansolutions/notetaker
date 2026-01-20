@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useTimeTracking, flushPendingSessions } from './useTimeTracking';
+import { useTimeTracking } from './useTimeTracking';
 import { TimeSession } from '../types';
 
 describe('useTimeTracking', () => {
@@ -120,14 +120,15 @@ describe('useTimeTracking', () => {
   });
 
   describe('endCurrentSession', () => {
-    it('calls onSessionComplete with completed session', () => {
+    it('calls onSessionComplete with completed session when duration >= 1 minute', () => {
       const onSessionComplete = vi.fn();
       const { result } = renderHook(() =>
         useTimeTracking({ ...defaultProps, onSessionComplete })
       );
 
+      // Advance by more than 1 minute (minimum session duration)
       act(() => {
-        vi.advanceTimersByTime(5000);
+        vi.advanceTimersByTime(70000); // 70 seconds
       });
 
       act(() => {
@@ -140,6 +141,24 @@ describe('useTimeTracking', () => {
           endTime: expect.any(Number),
         })
       );
+    });
+
+    it('does not call onSessionComplete when duration < 1 minute', () => {
+      const onSessionComplete = vi.fn();
+      const { result } = renderHook(() =>
+        useTimeTracking({ ...defaultProps, onSessionComplete })
+      );
+
+      // Advance by less than 1 minute
+      act(() => {
+        vi.advanceTimersByTime(5000); // 5 seconds
+      });
+
+      act(() => {
+        result.current.endCurrentSession();
+      });
+
+      expect(onSessionComplete).not.toHaveBeenCalled();
     });
 
     it('sets isActive to false', () => {
@@ -213,93 +232,5 @@ describe('useTimeTracking', () => {
       const parsed = JSON.parse(saved!);
       expect(parsed.taskId).toBe('task-1');
     });
-  });
-
-  describe('pending sessions', () => {
-    it('flushes pending sessions on mount', () => {
-      const onSessionComplete = vi.fn();
-      const pendingSessions = [
-        {
-          taskId: 'task-1',
-          session: { id: 's1', startTime: 0, endTime: 300000 }, // 5 min
-        },
-      ];
-      localStorage.setItem(
-        'notetaker-pending-sessions',
-        JSON.stringify(pendingSessions)
-      );
-
-      renderHook(() => useTimeTracking({ ...defaultProps, onSessionComplete }));
-
-      expect(onSessionComplete).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 's1' })
-      );
-    });
-
-    it('only flushes pending sessions for current task', () => {
-      const onSessionComplete = vi.fn();
-      const pendingSessions = [
-        {
-          taskId: 'task-1',
-          session: { id: 's1', startTime: 0, endTime: 300000 },
-        },
-        {
-          taskId: 'other-task',
-          session: { id: 's2', startTime: 0, endTime: 300000 },
-        },
-      ];
-      localStorage.setItem(
-        'notetaker-pending-sessions',
-        JSON.stringify(pendingSessions)
-      );
-
-      renderHook(() => useTimeTracking({ ...defaultProps, onSessionComplete }));
-
-      // Should only call with s1
-      expect(onSessionComplete).toHaveBeenCalledTimes(1);
-      expect(onSessionComplete).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 's1' })
-      );
-
-      // Other task's session should remain
-      const remaining = localStorage.getItem('notetaker-pending-sessions');
-      expect(remaining).not.toBeNull();
-      const parsed = JSON.parse(remaining!);
-      expect(parsed).toHaveLength(1);
-      expect(parsed[0].taskId).toBe('other-task');
-    });
-  });
-});
-
-describe('flushPendingSessions', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it('returns empty array when no pending sessions', () => {
-    const result = flushPendingSessions();
-    expect(result).toEqual([]);
-  });
-
-  it('returns and clears all pending sessions', () => {
-    const pendingSessions = [
-      {
-        taskId: 'task-1',
-        session: { id: 's1', startTime: 0, endTime: 300000 },
-      },
-      {
-        taskId: 'task-2',
-        session: { id: 's2', startTime: 0, endTime: 600000 },
-      },
-    ];
-    localStorage.setItem(
-      'notetaker-pending-sessions',
-      JSON.stringify(pendingSessions)
-    );
-
-    const result = flushPendingSessions();
-
-    expect(result).toHaveLength(2);
-    expect(localStorage.getItem('notetaker-pending-sessions')).toBeNull();
   });
 });

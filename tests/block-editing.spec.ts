@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { mockAuthenticated, mockTasksApi } from './helpers/auth';
 
 test.describe('Todo checkbox deletion', () => {
   test.beforeEach(async ({ page }) => {
+    // Setup auth and API mocks
+    await mockAuthenticated(page);
+    await mockTasksApi(page);
+
     await page.goto('http://localhost:5173');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
 
     // Create a task and navigate to its detail view
     const addTaskInput = page.getByPlaceholder('Add a new task...');
@@ -215,9 +218,11 @@ test.describe('Todo checkbox deletion', () => {
 
 test.describe('Block Editing', () => {
   test.beforeEach(async ({ page }) => {
+    // Setup auth and API mocks
+    await mockAuthenticated(page);
+    await mockTasksApi(page);
+
     await page.goto('http://localhost:5173');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
 
     // Create a task and navigate to its detail view
     const addTaskInput = page.getByPlaceholder('Add a new task...');
