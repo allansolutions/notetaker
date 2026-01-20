@@ -30,6 +30,13 @@ export interface GoogleTokens {
   token_type: string;
 }
 
+export interface GoogleCalendarAttendee {
+  email: string;
+  displayName?: string;
+  self?: boolean;
+  responseStatus?: 'needsAction' | 'declined' | 'tentative' | 'accepted';
+}
+
 export interface GoogleCalendarEvent {
   id: string;
   summary?: string;
@@ -45,6 +52,7 @@ export interface GoogleCalendarEvent {
     timeZone?: string;
   };
   htmlLink?: string;
+  attendees?: GoogleCalendarAttendee[];
 }
 
 export interface GoogleCalendarResponse {

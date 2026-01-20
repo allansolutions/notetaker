@@ -31,6 +31,16 @@ function formatHour(hour: number): string {
   return `${displayHour}:00 ${period}`;
 }
 
+function isToday(timestamp: number): boolean {
+  const date = new Date(timestamp);
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+}
+
 export function Agenda({
   tasks,
   calendarEvents = [],
@@ -41,8 +51,11 @@ export function Agenda({
     (_, i) => AGENDA_START_HOUR + i
   );
 
-  // Show all tasks that have a startTime (every task should have one)
-  const scheduledTasks = tasks.filter((task) => task.startTime !== undefined);
+  // Show tasks that have a startTime and are scheduled for today
+  const scheduledTasks = tasks.filter(
+    (task) =>
+      task.startTime !== undefined && task.dueDate && isToday(task.dueDate)
+  );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;

@@ -85,6 +85,13 @@ describe('Icons', () => {
 });
 
 describe('Sidebar', () => {
+  // Helper to get today's date at midnight
+  const getTodayTimestamp = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today.getTime();
+  };
+
   const createMockTask = (overrides: Partial<Task> = {}): Task => ({
     id: `task-${Date.now()}`,
     type: 'admin',
@@ -94,6 +101,7 @@ describe('Sidebar', () => {
     blocks: [],
     startTime: 360,
     duration: 60,
+    dueDate: getTodayTimestamp(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
     ...overrides,

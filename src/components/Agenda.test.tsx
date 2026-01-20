@@ -3,12 +3,20 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { Agenda, snapToGrid, SNAP_GRID_SIZE } from './Agenda';
 import { Task } from '../types';
 
+// Helper to get today's date at midnight
+const getTodayTimestamp = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today.getTime();
+};
+
 const createTask = (
   id: string,
   title: string,
   scheduled?: boolean,
   startTime?: number,
-  duration?: number
+  duration?: number,
+  dueDate?: number
 ): Task => ({
   id,
   type: 'admin',
@@ -19,6 +27,7 @@ const createTask = (
   scheduled,
   startTime,
   duration,
+  dueDate,
   createdAt: Date.now(),
   updatedAt: Date.now(),
 });
@@ -48,16 +57,35 @@ describe('Agenda', () => {
     expect(screen.queryByTestId('agenda-block-2')).not.toBeInTheDocument();
   });
 
-  it('renders scheduled tasks', () => {
-    const tasks = [createTask('1', 'Scheduled task', true, 540, 60)]; // 9:00 AM
+  it('renders scheduled tasks with dueDate set to today', () => {
+    const tasks = [
+      createTask('1', 'Scheduled task', true, 540, 60, getTodayTimestamp()),
+    ]; // 9:00 AM
     render(<Agenda {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByTestId('agenda-block-1')).toBeInTheDocument();
     expect(screen.getByText('Scheduled task')).toBeInTheDocument();
   });
 
+  it('does not render tasks with dueDate not set to today', () => {
+    const yesterday = getTodayTimestamp() - 86400000;
+    const tomorrow = getTodayTimestamp() + 86400000;
+    const tasks = [
+      createTask('1', 'Yesterday task', true, 540, 60, yesterday),
+      createTask('2', 'Tomorrow task', true, 540, 60, tomorrow),
+      createTask('3', 'No date task', true, 540, 60, undefined),
+    ];
+    render(<Agenda {...defaultProps} tasks={tasks} />);
+
+    expect(screen.queryByTestId('agenda-block-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('agenda-block-2')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('agenda-block-3')).not.toBeInTheDocument();
+  });
+
   it('positions task based on startTime', () => {
-    const tasks = [createTask('1', 'Morning task', true, 480, 60)]; // 8:00 AM (2 hours after agenda start)
+    const tasks = [
+      createTask('1', 'Morning task', true, 480, 60, getTodayTimestamp()),
+    ]; // 8:00 AM (2 hours after agenda start)
     render(<Agenda {...defaultProps} tasks={tasks} />);
 
     const block = screen.getByTestId('agenda-block-1');
@@ -66,7 +94,9 @@ describe('Agenda', () => {
   });
 
   it('sizes task based on duration', () => {
-    const tasks = [createTask('1', 'Long task', true, 540, 120)]; // 2 hours
+    const tasks = [
+      createTask('1', 'Long task', true, 540, 120, getTodayTimestamp()),
+    ]; // 2 hours
     render(<Agenda {...defaultProps} tasks={tasks} />);
 
     const block = screen.getByTestId('agenda-block-1');
@@ -75,14 +105,14 @@ describe('Agenda', () => {
   });
 
   it('shows "Untitled" for tasks with empty title', () => {
-    const tasks = [createTask('1', '', true, 540, 60)];
+    const tasks = [createTask('1', '', true, 540, 60, getTodayTimestamp())];
     render(<Agenda {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByText('Untitled')).toBeInTheDocument();
   });
 
   it('has a resize handle on each task', () => {
-    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const tasks = [createTask('1', 'Task', true, 540, 60, getTodayTimestamp())];
     render(<Agenda {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByTestId('agenda-block-resize-1')).toBeInTheDocument();
@@ -220,7 +250,7 @@ describe('AgendaBlock resize', () => {
   });
 
   it('changes duration with keyboard arrow keys', () => {
-    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const tasks = [createTask('1', 'Task', true, 540, 60, getTodayTimestamp())];
     const onUpdateTask = vi.fn();
     render(
       <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
@@ -235,7 +265,7 @@ describe('AgendaBlock resize', () => {
   });
 
   it('decreases duration with ArrowUp key', () => {
-    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const tasks = [createTask('1', 'Task', true, 540, 60, getTodayTimestamp())];
     const onUpdateTask = vi.fn();
     render(
       <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
@@ -250,7 +280,7 @@ describe('AgendaBlock resize', () => {
   });
 
   it('respects minimum duration when decreasing', () => {
-    const tasks = [createTask('1', 'Task', true, 540, 15)]; // Already at minimum
+    const tasks = [createTask('1', 'Task', true, 540, 15, getTodayTimestamp())]; // Already at minimum
     const onUpdateTask = vi.fn();
     render(
       <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
@@ -265,7 +295,7 @@ describe('AgendaBlock resize', () => {
   });
 
   it('ignores non-arrow keys', () => {
-    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const tasks = [createTask('1', 'Task', true, 540, 60, getTodayTimestamp())];
     const onUpdateTask = vi.fn();
     render(
       <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
@@ -280,7 +310,7 @@ describe('AgendaBlock resize', () => {
   });
 
   it('updates duration on mouse drag resize', () => {
-    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const tasks = [createTask('1', 'Task', true, 540, 60, getTodayTimestamp())];
     const onUpdateTask = vi.fn();
     render(
       <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />
@@ -298,7 +328,7 @@ describe('AgendaBlock resize', () => {
   });
 
   it('stops resize on mouse up', () => {
-    const tasks = [createTask('1', 'Task', true, 540, 60)];
+    const tasks = [createTask('1', 'Task', true, 540, 60, getTodayTimestamp())];
     const onUpdateTask = vi.fn();
     render(
       <Agenda {...defaultProps} tasks={tasks} onUpdateTask={onUpdateTask} />

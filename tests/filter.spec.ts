@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthenticated, mockTasksApi } from './helpers/auth';
+import {
+  mockAuthenticated,
+  mockTasksApi,
+  addTaskViaModal,
+} from './helpers/auth';
 
 test.describe('Column Filters', () => {
   test.beforeEach(async ({ page }) => {
@@ -10,29 +14,8 @@ test.describe('Column Filters', () => {
     await page.goto('http://localhost:5173');
     await page.waitForSelector('[data-testid="sidebar"]');
 
-    // Add a task
-    const addTaskInput = page.getByPlaceholder('Add a new task...');
-    await addTaskInput.fill('Test Task');
-    await page.keyboard.press('Enter');
-
-    // Dismiss the estimate gate modal by clicking a preset
-    const estimateButton = page.getByRole('button', { name: '15m' });
-    await estimateButton.click();
-
-    // Wait for task detail view
-    await page.waitForSelector('.block-input');
-
-    // Go back to spreadsheet
-    const backButton = page.getByRole('button', { name: /back/i });
-    await backButton.click();
-
-    // Wait for spreadsheet view and task to be visible
-    await page.waitForSelector('[data-testid="sidebar"]');
-    await expect(
-      page
-        .locator('[data-testid^="task-row-"]')
-        .getByRole('button', { name: 'Test Task' })
-    ).toBeVisible();
+    // Add a task via modal (stays on spreadsheet after creation)
+    await addTaskViaModal(page, 'Test Task');
   });
 
   test('filter button is visible on hover', async ({ page }) => {

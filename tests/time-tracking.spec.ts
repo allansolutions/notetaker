@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthenticated, mockTasksApi } from './helpers/auth';
+import {
+  mockAuthenticated,
+  mockTasksApi,
+  addTaskViaModal,
+  navigateToTaskDetail,
+} from './helpers/auth';
 
 // Parse minutes from time display text like "5m / 15m" or "1h 30m / 2h"
 function parseMinutes(text: string): number {
@@ -37,17 +42,11 @@ test.describe('Time Tracking', () => {
 
     await page.goto('http://localhost:5173');
 
-    // Create a task
-    const addTaskInput = page.getByPlaceholder('Add a new task...');
-    await addTaskInput.fill('Time Test Task');
-    await page.keyboard.press('Enter');
+    // Create a task (stays on spreadsheet after creation)
+    await addTaskViaModal(page, 'Time Test Task');
 
-    // Set estimate to enable time tracking
-    const estimateButton = page.getByRole('button', { name: '15m' });
-    await estimateButton.click();
-
-    // Wait for the task detail view and time display to appear
-    await page.waitForSelector('.block-input');
+    // Navigate to task detail view
+    await navigateToTaskDetail(page, 'Time Test Task');
 
     // Get the time display element
     const timeDisplay = page.locator('button:has-text("/")').first();
@@ -63,8 +62,8 @@ test.describe('Time Tracking', () => {
     const backButton = page.getByRole('button', { name: 'Back' });
     await backButton.click();
 
-    // Wait for list view
-    await expect(addTaskInput).toBeVisible();
+    // Wait for list view (look for add task button)
+    await expect(page.getByRole('button', { name: 'Add task' })).toBeVisible();
     await page.waitForTimeout(100);
 
     // Navigate back to the task - click the task row button specifically
@@ -120,14 +119,11 @@ test.describe('Time Tracking', () => {
     await page.goto('http://localhost:5173');
     await page.waitForSelector('[data-testid="sidebar"]');
 
-    // Create a task
-    const addTaskInput = page.getByPlaceholder('Add a new task...');
-    await addTaskInput.fill('Session Test Task');
-    await page.keyboard.press('Enter');
+    // Create a task (stays on spreadsheet after creation)
+    await addTaskViaModal(page, 'Session Test Task');
 
-    // Set estimate
-    await page.getByRole('button', { name: '15m' }).click();
-    await page.waitForSelector('.block-input');
+    // Navigate to task detail view
+    await navigateToTaskDetail(page, 'Session Test Task');
 
     // Wait 2 seconds to accumulate some time
     await page.waitForTimeout(2000);
@@ -141,7 +137,7 @@ test.describe('Time Tracking', () => {
 
     // Navigate away
     await page.getByRole('button', { name: 'Back' }).click();
-    await expect(addTaskInput).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add task' })).toBeVisible();
 
     // Small wait
     await page.waitForTimeout(200);

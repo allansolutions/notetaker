@@ -64,7 +64,9 @@ interface TasksContextType {
     title?: string,
     type?: TaskType,
     status?: TaskStatus,
-    importance?: TaskImportance
+    importance?: TaskImportance,
+    estimate?: number,
+    dueDate?: number
   ) => Promise<Task | null>;
   updateTaskById: (id: string, updates: Partial<Task>) => Promise<void>;
   removeTask: (id: string) => Promise<void>;
@@ -133,7 +135,9 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       title: string = '',
       type: TaskType = 'admin',
       status: TaskStatus = 'todo',
-      importance: TaskImportance = 'mid'
+      importance: TaskImportance = 'mid',
+      estimate?: number,
+      dueDate?: number
     ): Promise<Task | null> => {
       try {
         const apiTask = await taskApi.create({
@@ -145,6 +149,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           scheduled: false,
           startTime: AGENDA_START_HOUR * 60,
           duration: DEFAULT_DURATION,
+          estimate,
+          dueDate,
         });
 
         const newTask = toTask(apiTask, []);

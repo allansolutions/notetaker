@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthenticated, mockTasksApi } from './helpers/auth';
+import {
+  mockAuthenticated,
+  mockTasksApi,
+  addTaskViaModal,
+  navigateToTaskDetail,
+} from './helpers/auth';
 
 test('Visual check of spreadsheet view', async ({ page }) => {
   // Setup auth and API mocks before navigating
@@ -15,30 +20,8 @@ test('Visual check of spreadsheet view', async ({ page }) => {
     fullPage: true,
   });
 
-  // Add a task
-  const addTaskInput = page.getByPlaceholder('Add a new task...');
-  await addTaskInput.fill('Test Task');
-  await page.keyboard.press('Enter');
-
-  // Dismiss the estimate gate modal by clicking a preset
-  const estimateButton = page.getByRole('button', { name: '15m' });
-  await estimateButton.click();
-
-  // Wait for task detail view
-  await page.waitForSelector('.block-input');
-
-  // Screenshot of task detail
-  await page.screenshot({
-    path: 'test-results/task-detail.png',
-    fullPage: true,
-  });
-
-  // Go back to spreadsheet
-  const backButton = page.getByRole('button', { name: /back/i });
-  await backButton.click();
-
-  // Wait for spreadsheet view
-  await page.waitForSelector('[data-testid="sidebar"]');
+  // Add a task via modal (stays on spreadsheet after creation)
+  await addTaskViaModal(page, 'Test Task');
 
   // Screenshot of spreadsheet with task
   await page.screenshot({
@@ -52,4 +35,13 @@ test('Visual check of spreadsheet view', async ({ page }) => {
       .locator('[data-testid^="task-row-"]')
       .getByRole('button', { name: 'Test Task' })
   ).toBeVisible();
+
+  // Navigate to task detail by clicking the task
+  await navigateToTaskDetail(page, 'Test Task');
+
+  // Screenshot of task detail
+  await page.screenshot({
+    path: 'test-results/task-detail.png',
+    fullPage: true,
+  });
 });

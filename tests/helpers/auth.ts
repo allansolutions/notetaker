@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 
 export const mockUser = {
   id: 'test-user-1',
@@ -100,7 +100,7 @@ export async function mockTasksApi(
         scheduled: body.scheduled ?? false,
         startTime: body.startTime ?? 360, // 6:00 AM default
         duration: body.duration ?? 30,
-        estimate: body.estimate, // undefined triggers EstimateGate
+        estimate: body.estimate,
         dueDate: body.dueDate,
         orderIndex: tasks.length,
         createdAt: now,
@@ -184,4 +184,73 @@ export async function mockTasksApi(
       await route.continue();
     }
   });
+}
+
+/**
+ * Adds a task using the Add Task modal.
+ * Opens the modal, fills in required fields, and submits.
+ * After submission, the user stays on the spreadsheet view.
+ */
+export async function addTaskViaModal(
+  page: Page,
+  title: string,
+  options: {
+    type?: string;
+    importance?: string;
+    status?: string;
+    estimate?: string;
+  } = {}
+): Promise<void> {
+  const {
+    type = 'admin',
+    importance = 'mid',
+    status,
+    estimate = '15m',
+  } = options;
+
+  // Click the add task button
+  await page.getByRole('button', { name: 'Add task' }).click();
+
+  // Wait for modal to open
+  const modal = page.getByRole('dialog', { name: 'Add Task' });
+  await expect(modal).toBeVisible();
+
+  // Fill in required fields - use specific selectors within the modal
+  await modal.getByLabel('Type').selectOption(type);
+  await modal.getByLabel('Task').fill(title);
+  await modal.getByLabel('Importance').selectOption(importance);
+
+  // Select estimate preset
+  await modal.getByRole('button', { name: estimate }).click();
+
+  // Optionally change status (defaults to 'todo')
+  if (status) {
+    await modal.getByLabel('Status').selectOption(status);
+  }
+
+  // Click Create
+  await modal.getByRole('button', { name: 'Create' }).click();
+
+  // Wait for task to appear in spreadsheet
+  await expect(
+    page
+      .locator('[data-testid^="task-row-"]')
+      .getByRole('button', { name: title })
+  ).toBeVisible();
+}
+
+/**
+ * Navigates to a task's detail view by clicking on it in the spreadsheet.
+ */
+export async function navigateToTaskDetail(
+  page: Page,
+  taskTitle: string
+): Promise<void> {
+  const taskRow = page
+    .locator('[data-testid^="task-row-"]')
+    .getByRole('button', { name: taskTitle });
+  await taskRow.click();
+
+  // Wait for task detail view to load
+  await page.waitForSelector('.block-input');
 }

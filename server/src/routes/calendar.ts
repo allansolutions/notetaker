@@ -6,6 +6,7 @@ import { getSession } from '../services/session';
 import {
   fetchCalendarEvents,
   transformGoogleEvent,
+  isDeclinedByUser,
 } from '../services/google-calendar';
 
 export const calendarRoutes = new Hono<{
@@ -39,7 +40,10 @@ calendarRoutes.get('/events', async (c) => {
       session.googleAccessToken,
       date
     );
-    const events = googleEvents.map(transformGoogleEvent);
+    // Filter out events the user has declined
+    const events = googleEvents
+      .filter((event) => !isDeclinedByUser(event))
+      .map(transformGoogleEvent);
 
     return c.json({ events });
   } catch (err) {

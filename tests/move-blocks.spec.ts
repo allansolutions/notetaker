@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthenticated, mockTasksApi } from './helpers/auth';
+import {
+  mockAuthenticated,
+  mockTasksApi,
+  addTaskViaModal,
+  navigateToTaskDetail,
+} from './helpers/auth';
 
 test.describe('Task Detail View', () => {
   test.beforeEach(async ({ page }) => {
@@ -9,17 +14,11 @@ test.describe('Task Detail View', () => {
 
     await page.goto('http://localhost:5173');
 
-    // Create a task and navigate to its detail view
-    const addTaskInput = page.getByPlaceholder('Add a new task...');
-    await addTaskInput.fill('Test Task');
-    await page.keyboard.press('Enter');
+    // Create a task (stays on spreadsheet after creation)
+    await addTaskViaModal(page, 'Test Task');
 
-    // Dismiss the estimate gate modal by clicking a preset
-    const estimateButton = page.getByRole('button', { name: '15m' });
-    await estimateButton.click();
-
-    // Wait for the task detail view to load
-    await page.waitForSelector('.block-input');
+    // Navigate to task detail view
+    await navigateToTaskDetail(page, 'Test Task');
   });
 
   test('can edit task title', async ({ page }) => {
