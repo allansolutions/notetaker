@@ -1,13 +1,13 @@
 echo "Formatting staged files..."
-./node_modules/.bin/lint-staged < /dev/null
+bunx lint-staged < /dev/null
 
 echo ""
-./node_modules/.bin/eslint . < /dev/null
+bun run lint < /dev/null
 
 echo ""
-./node_modules/.bin/tsc --noEmit < /dev/null
+bunx tsc --noEmit < /dev/null
 
 echo ""
 # Run tests with coverage threshold check (80% minimum)
 # This ensures new code has tests before it can be committed
-npm run test:coverage
+bun run test:coverage
