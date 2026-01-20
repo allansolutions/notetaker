@@ -208,6 +208,25 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// Helper to determine row background based on due date
+function getRowDateClass(dueDate: number | undefined): string {
+  if (!dueDate) return '';
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const taskDate = new Date(dueDate);
+  taskDate.setHours(0, 0, 0, 0);
+
+  if (taskDate.getTime() === today.getTime()) {
+    return 'bg-today';
+  }
+  if (taskDate.getTime() < today.getTime()) {
+    return 'bg-overdue';
+  }
+  return '';
+}
+
 interface SortableRowProps {
   row: ReturnType<
     ReturnType<typeof useReactTable<Task>>['getRowModel']
@@ -232,11 +251,13 @@ function SortableRow({ row, onDelete }: SortableRowProps) {
     zIndex: isDragging ? 1 : 0,
   };
 
+  const dateClass = getRowDateClass(row.original.dueDate);
+
   return (
     <tr
       ref={setNodeRef}
       style={style}
-      className="group hover:bg-hover border-b border-border"
+      className={`group hover:bg-hover border-b border-border ${dateClass}`}
       data-testid={`task-row-${row.original.id}`}
     >
       <td className="py-1 w-8">

@@ -1236,6 +1236,59 @@ describe('TaskTable', () => {
       ]);
     });
   });
+
+  describe('date-based row styling', () => {
+    it('applies no date styling to tasks without due date', () => {
+      const tasks = [createMockTask({ id: 'task-1', dueDate: undefined })];
+      render(<TaskTable {...defaultProps} tasks={tasks} />);
+
+      const row = screen.getByTestId('task-row-task-1');
+      expect(row).not.toHaveClass('bg-overdue');
+      expect(row).not.toHaveClass('bg-today');
+    });
+
+    it('applies bg-overdue to tasks with due date in the past', () => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(12, 0, 0, 0);
+
+      const tasks = [
+        createMockTask({ id: 'task-1', dueDate: yesterday.getTime() }),
+      ];
+      render(<TaskTable {...defaultProps} tasks={tasks} />);
+
+      const row = screen.getByTestId('task-row-task-1');
+      expect(row).toHaveClass('bg-overdue');
+    });
+
+    it('applies bg-today to tasks with due date today', () => {
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+
+      const tasks = [
+        createMockTask({ id: 'task-1', dueDate: today.getTime() }),
+      ];
+      render(<TaskTable {...defaultProps} tasks={tasks} />);
+
+      const row = screen.getByTestId('task-row-task-1');
+      expect(row).toHaveClass('bg-today');
+    });
+
+    it('applies no date styling to tasks with due date in the future', () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(12, 0, 0, 0);
+
+      const tasks = [
+        createMockTask({ id: 'task-1', dueDate: tomorrow.getTime() }),
+      ];
+      render(<TaskTable {...defaultProps} tasks={tasks} />);
+
+      const row = screen.getByTestId('task-row-task-1');
+      expect(row).not.toHaveClass('bg-overdue');
+      expect(row).not.toHaveClass('bg-today');
+    });
+  });
 });
 
 describe('ColumnFilter', () => {
