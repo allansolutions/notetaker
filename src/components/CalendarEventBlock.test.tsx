@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CalendarEventBlock } from './CalendarEventBlock';
+import {
+  CalendarEventBlock,
+  formatEventTime,
+  COMPACT_HEIGHT_THRESHOLD,
+} from './CalendarEventBlock';
 import type { CalendarEvent } from '../types';
 
 describe('CalendarEventBlock', () => {
@@ -188,5 +192,71 @@ describe('CalendarEventBlock', () => {
     const block = screen.getByTestId('calendar-event-block');
     expect(block).not.toHaveAttribute('role');
     expect(block).not.toHaveAttribute('tabIndex');
+  });
+
+  describe('compact display for short events', () => {
+    it('uses compact layout when height is at or below threshold', () => {
+      // 30-minute event: height = (30/60) * 48 - 2 = 22px, which is <= 24
+      const shortEvent = { ...baseEvent, duration: 30 };
+      render(<CalendarEventBlock event={shortEvent} hourHeight={hourHeight} />);
+
+      // Compact format shows "Summary, time"
+      expect(screen.getByText(/Team Meeting, 10am/)).toBeInTheDocument();
+    });
+
+    it('uses regular layout when height is above threshold', () => {
+      // 60-minute event: height = (60/60) * 48 - 2 = 46px, which is > 24
+      render(<CalendarEventBlock event={baseEvent} hourHeight={hourHeight} />);
+
+      // Regular format shows just the summary
+      expect(screen.getByText('Team Meeting')).toBeInTheDocument();
+      // Time should not be appended
+      expect(screen.queryByText(/10am/)).not.toBeInTheDocument();
+    });
+
+    it('shows time with minutes in compact layout', () => {
+      const eventWithMinutes = {
+        ...baseEvent,
+        startTime: 708, // 11:48 AM
+        duration: 15,
+      };
+      render(
+        <CalendarEventBlock event={eventWithMinutes} hourHeight={hourHeight} />
+      );
+
+      expect(screen.getByText(/Team Meeting, 11:48am/)).toBeInTheDocument();
+    });
+
+    it('exports COMPACT_HEIGHT_THRESHOLD constant', () => {
+      expect(COMPACT_HEIGHT_THRESHOLD).toBe(24);
+    });
+  });
+
+  describe('formatEventTime', () => {
+    it('formats morning times without minutes', () => {
+      expect(formatEventTime(540)).toBe('9am'); // 9:00 AM
+      expect(formatEventTime(600)).toBe('10am'); // 10:00 AM
+    });
+
+    it('formats afternoon times without minutes', () => {
+      expect(formatEventTime(720)).toBe('12pm'); // 12:00 PM (noon)
+      expect(formatEventTime(780)).toBe('1pm'); // 1:00 PM
+      expect(formatEventTime(840)).toBe('2pm'); // 2:00 PM
+    });
+
+    it('formats times with minutes', () => {
+      expect(formatEventTime(545)).toBe('9:05am'); // 9:05 AM
+      expect(formatEventTime(708)).toBe('11:48am'); // 11:48 AM
+      expect(formatEventTime(810)).toBe('1:30pm'); // 1:30 PM
+    });
+
+    it('handles midnight correctly', () => {
+      expect(formatEventTime(0)).toBe('12am'); // 12:00 AM
+    });
+
+    it('handles 11 PM correctly', () => {
+      expect(formatEventTime(1380)).toBe('11pm'); // 23:00
+      expect(formatEventTime(1410)).toBe('11:30pm'); // 23:30
+    });
   });
 });

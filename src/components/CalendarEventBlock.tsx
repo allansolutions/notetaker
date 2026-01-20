@@ -6,6 +6,22 @@ interface CalendarEventBlockProps {
   hourHeight: number;
 }
 
+// Threshold below which we use compact single-line display
+const COMPACT_HEIGHT_THRESHOLD = 24;
+
+function formatEventTime(startTime: number): string {
+  const hours = Math.floor(startTime / 60);
+  const minutes = startTime % 60;
+  const period = hours >= 12 ? 'pm' : 'am';
+  const displayHour = hours % 12 || 12;
+  if (minutes === 0) {
+    return `${displayHour}${period}`;
+  }
+  return `${displayHour}:${minutes.toString().padStart(2, '0')}${period}`;
+}
+
+export { formatEventTime, COMPACT_HEIGHT_THRESHOLD };
+
 export function CalendarEventBlock({
   event,
   hourHeight,
@@ -35,7 +51,7 @@ export function CalendarEventBlock({
   return (
     <div
       data-testid="calendar-event-block"
-      className={`absolute left-16 right-1 bg-calendar rounded text-xs text-inverted overflow-hidden select-none ${event.htmlLink ? 'cursor-pointer' : ''}`}
+      className={`absolute left-16 right-1 bg-calendar rounded text-inverted overflow-hidden select-none ${event.htmlLink ? 'cursor-pointer' : ''}`}
       style={{
         top: topPosition,
         height,
@@ -46,12 +62,20 @@ export function CalendarEventBlock({
       tabIndex={event.htmlLink ? 0 : undefined}
       onKeyDown={event.htmlLink ? handleKeyDown : undefined}
     >
-      <div className="px-2 py-1">
-        <div className="truncate font-medium">{event.summary}</div>
-        {event.description && height > 30 && (
-          <div className="truncate opacity-80">{event.description}</div>
-        )}
-      </div>
+      {height <= COMPACT_HEIGHT_THRESHOLD ? (
+        <div className="px-1.5 h-full flex items-center text-[11px]">
+          <span className="truncate">
+            {event.summary}, {formatEventTime(event.startTime)}
+          </span>
+        </div>
+      ) : (
+        <div className="px-2 py-1 text-xs">
+          <div className="truncate font-medium">{event.summary}</div>
+          {event.description && height > 30 && (
+            <div className="truncate opacity-80">{event.description}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
