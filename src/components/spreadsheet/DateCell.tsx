@@ -17,23 +17,11 @@ function formatDate(timestamp: number): string {
 export function DateCell({ value, onChange }: DateCellProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleClick = () => {
-    setIsOpen(true);
-  };
-
-  const handleClose = () => {
-    setIsOpen(false);
-  };
-
-  const handleChange = (date: number | undefined) => {
-    onChange(date);
-  };
-
   return (
     <>
       <button
         type="button"
-        onClick={handleClick}
+        onClick={() => setIsOpen(true)}
         className="flex items-center gap-1 px-2 py-1 text-small rounded hover:bg-hover transition-colors min-w-[60px]"
       >
         {value ? (
@@ -48,8 +36,8 @@ export function DateCell({ value, onChange }: DateCellProps) {
       {isOpen && (
         <DatePickerModal
           value={value}
-          onChange={handleChange}
-          onClose={handleClose}
+          onChange={onChange}
+          onClose={() => setIsOpen(false)}
         />
       )}
     </>

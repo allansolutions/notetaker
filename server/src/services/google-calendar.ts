@@ -136,12 +136,9 @@ export function transformGoogleEvent(
   const isAllDay = !event.start.dateTime;
 
   let startTime = 0;
-  let duration = 0;
+  let duration = 24 * 60;
 
-  if (isAllDay) {
-    startTime = 0;
-    duration = 24 * 60;
-  } else if (event.start.dateTime && event.end.dateTime) {
+  if (!isAllDay && event.start.dateTime && event.end.dateTime) {
     const startDate = new Date(event.start.dateTime);
     const endDate = new Date(event.end.dateTime);
 

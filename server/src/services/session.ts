@@ -60,8 +60,5 @@ export async function deleteSession(
 }
 
 export function isTokenExpired(session: Session): boolean {
-  if (!session.googleTokenExpiry) {
-    return true;
-  }
-  return Date.now() >= session.googleTokenExpiry;
+  return !session.googleTokenExpiry || Date.now() >= session.googleTokenExpiry;
 }

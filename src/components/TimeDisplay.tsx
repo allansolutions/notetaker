@@ -7,11 +7,9 @@ interface TimeDisplayProps {
 }
 
 function formatMinutes(minutes: number): string {
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
+  if (hours === 0) return `${mins}m`;
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 

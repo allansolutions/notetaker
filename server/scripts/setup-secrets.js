@@ -8,11 +8,7 @@ const rl = createInterface({
 });
 
 function prompt(question) {
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      resolve(answer);
-    });
-  });
+  return new Promise((resolve) => rl.question(question, resolve));
 }
 
 async function main() {

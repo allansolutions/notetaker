@@ -108,18 +108,16 @@ export function Agenda({
             ))}
 
           {/* Scheduled tasks */}
-          {scheduledTasks.map((task) => {
-            if (!task.startTime) return null;
-
-            return (
+          {scheduledTasks
+            .filter((task) => task.startTime !== undefined)
+            .map((task) => (
               <AgendaBlock
                 key={task.id}
                 task={task}
                 hourHeight={HOUR_HEIGHT}
                 onUpdateTask={(updates) => onUpdateTask(task.id, updates)}
               />
-            );
-          })}
+            ))}
         </div>
       </DndContext>
     </div>

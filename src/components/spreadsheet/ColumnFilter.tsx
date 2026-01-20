@@ -160,15 +160,17 @@ export function ColumnFilter({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const isActive =
-    filterValue !== null &&
-    ((filterValue.type === 'multiselect' && filterValue.selected.size > 0) ||
-      (filterValue.type === 'text' && filterValue.value.trim() !== '') ||
-      (filterValue.type === 'date' && filterValue.value !== null));
-
-  const handleClearFilter = () => {
-    onFilterChange(null);
-  };
+  const isActive = (() => {
+    if (!filterValue) return false;
+    switch (filterValue.type) {
+      case 'multiselect':
+        return filterValue.selected.size > 0;
+      case 'text':
+        return filterValue.value.trim() !== '';
+      case 'date':
+        return filterValue.value !== null;
+    }
+  })();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -237,7 +239,7 @@ export function ColumnFilter({
                 variant="ghost"
                 size="icon-sm"
                 className="size-5 text-muted-foreground hover:text-destructive"
-                onClick={handleClearFilter}
+                onClick={() => onFilterChange(null)}
                 title="Clear filter"
               >
                 <X className="size-3" />

@@ -18,9 +18,16 @@ export function CalendarEventBlock({
   const displayDuration = Math.max(event.duration, MIN_DURATION);
   const height = (displayDuration / 60) * hourHeight;
 
-  const handleClick = () => {
+  const openLink = () => {
     if (event.htmlLink) {
       window.open(event.htmlLink, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openLink();
     }
   };
 
@@ -33,19 +40,10 @@ export function CalendarEventBlock({
         height,
         zIndex: 0,
       }}
-      onClick={event.htmlLink ? handleClick : undefined}
+      onClick={event.htmlLink ? openLink : undefined}
       role={event.htmlLink ? 'button' : undefined}
       tabIndex={event.htmlLink ? 0 : undefined}
-      onKeyDown={
-        event.htmlLink
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleClick();
-              }
-            }
-          : undefined
-      }
+      onKeyDown={event.htmlLink ? handleKeyDown : undefined}
     >
       <div className="px-2 py-1">
         <div className="truncate font-medium">{event.summary}</div>

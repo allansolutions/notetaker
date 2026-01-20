@@ -49,20 +49,16 @@ export function DatePickerModal({
 
   const handlePrevMonth = () => {
     if (viewMonth === 0) {
-      setViewMonth(11);
       setViewYear(viewYear - 1);
-    } else {
-      setViewMonth(viewMonth - 1);
     }
+    setViewMonth((viewMonth + 11) % 12);
   };
 
   const handleNextMonth = () => {
     if (viewMonth === 11) {
-      setViewMonth(0);
       setViewYear(viewYear + 1);
-    } else {
-      setViewMonth(viewMonth + 1);
     }
+    setViewMonth((viewMonth + 1) % 12);
   };
 
   const handleSelectDay = (day: number) => {
