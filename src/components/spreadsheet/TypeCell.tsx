@@ -12,7 +12,7 @@ export function TypeCell({ value, onChange }: TypeCellProps) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as TaskType)}
-      className={`w-full border-none outline-none cursor-pointer appearance-none rounded px-2 py-1 text-small font-medium ${colors.bg} ${colors.text}`}
+      className={`min-w-[120px] border-none outline-none cursor-pointer appearance-none rounded px-2 py-1 text-small font-medium ${colors.bg} ${colors.text}`}
     >
       {TASK_TYPE_OPTIONS.map((opt) => (
         <option key={opt.value} value={opt.value}>

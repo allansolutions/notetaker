@@ -159,7 +159,11 @@ function SortableRow({ row, onDelete }: SortableRowProps) {
         </div>
       </td>
       {row.getVisibleCells().map((cell) => (
-        <td key={cell.id} className="py-1">
+        <td
+          key={cell.id}
+          className="py-1"
+          style={{ width: cell.column.getSize() }}
+        >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
       ))}
@@ -191,7 +195,7 @@ export function TaskTable({
             onChange={(value) => onUpdateTask(row.original.id, { type: value })}
           />
         ),
-        size: 120,
+        size: 140,
         sortingFn: 'alphanumeric',
       }),
       columnHelper.accessor('title', {
