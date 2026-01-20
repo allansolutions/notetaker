@@ -30,9 +30,10 @@ describe('TaskNotesEditor', () => {
   });
 
   describe('rendering', () => {
-    it('renders empty state with new-line input', () => {
+    it('renders empty state with no tasks', () => {
       render(<TaskNotesEditor {...defaultProps} />);
-      expect(screen.getByTestId('new-line-newline-end')).toBeInTheDocument();
+      // No tasks means no content rendered
+      expect(document.querySelector('.w-full')).toBeInTheDocument();
     });
 
     it('renders task headers', () => {
@@ -61,22 +62,6 @@ describe('TaskNotesEditor', () => {
       render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
 
       expect(screen.getByText('Block content')).toBeInTheDocument();
-    });
-
-    it('renders new-line inputs after each task', () => {
-      const tasks = [
-        createMockTask({ id: 'task-1', title: 'Task One' }),
-        createMockTask({ id: 'task-2', title: 'Task Two' }),
-      ];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
-
-      expect(
-        screen.getByTestId('new-line-newline-after-task-1')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('new-line-newline-after-task-2')
-      ).toBeInTheDocument();
-      expect(screen.getByTestId('new-line-newline-end')).toBeInTheDocument();
     });
 
     it('renders edit button for each task', () => {
@@ -238,60 +223,89 @@ describe('TaskNotesEditor', () => {
     });
   });
 
-  describe('task creation', () => {
-    it('shows type modal when typing $ prefix and pressing Enter', () => {
-      render(<TaskNotesEditor {...defaultProps} />);
+  describe('task creation from last block', () => {
+    it('shows type modal when typing $ prefix and pressing Enter in last block', () => {
+      const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+      const tasks = [createMockTask({ id: 'task-1', blocks })];
+      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
 
-      const input = screen.getByTestId('new-line-newline-end');
-      input.textContent = '$ New task';
-      fireEvent.input(input);
-      fireEvent.keyDown(input, { key: 'Enter' });
+      // Find the last block (which is also the only block)
+      const blockInput = document.querySelector('.block-input');
+      blockInput!.textContent = '$ New task';
+      fireEvent.keyDown(blockInput!, { key: 'Enter' });
 
       expect(screen.getByText('Select Task Type')).toBeInTheDocument();
     });
 
-    it('does not show type modal for regular text', () => {
-      render(<TaskNotesEditor {...defaultProps} />);
+    it('does not show type modal for regular text in last block', () => {
+      const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+      const tasks = [createMockTask({ id: 'task-1', blocks })];
+      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
 
-      const input = screen.getByTestId('new-line-newline-end');
-      input.textContent = 'Regular text';
-      fireEvent.input(input);
-      fireEvent.keyDown(input, { key: 'Enter' });
+      const blockInput = document.querySelector('.block-input');
+      blockInput!.textContent = 'Regular text';
+      fireEvent.keyDown(blockInput!, { key: 'Enter' });
 
       expect(screen.queryByText('Select Task Type')).not.toBeInTheDocument();
     });
 
     it('does not show type modal for empty $ prefix', () => {
-      render(<TaskNotesEditor {...defaultProps} />);
+      const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+      const tasks = [createMockTask({ id: 'task-1', blocks })];
+      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
 
-      const input = screen.getByTestId('new-line-newline-end');
-      input.textContent = '$  ';
-      fireEvent.input(input);
-      fireEvent.keyDown(input, { key: 'Enter' });
+      const blockInput = document.querySelector('.block-input');
+      blockInput!.textContent = '$  ';
+      fireEvent.keyDown(blockInput!, { key: 'Enter' });
 
+      expect(screen.queryByText('Select Task Type')).not.toBeInTheDocument();
+    });
+
+    it('does not trigger task creation from non-last block', () => {
+      const blocks: Block[] = [
+        { id: 'b1', type: 'paragraph', content: '' },
+        { id: 'b2', type: 'paragraph', content: '' },
+      ];
+      const tasks = [createMockTask({ id: 'task-1', blocks })];
+      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+
+      // Find the first block (not the last)
+      const blockInputs = document.querySelectorAll('.block-input');
+      const firstBlockInput = blockInputs[0];
+      firstBlockInput.textContent = '$ Task from first block';
+      fireEvent.keyDown(firstBlockInput, { key: 'Enter' });
+
+      // Should NOT show type modal
       expect(screen.queryByText('Select Task Type')).not.toBeInTheDocument();
     });
 
     it('calls onAddTask when type is selected and creates first block', async () => {
       const onAddTask = vi.fn().mockResolvedValue({ id: 'new-task' });
       const onUpdateTask = vi.fn();
+      const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+      const tasks = [createMockTask({ id: 'task-1', blocks })];
       render(
         <TaskNotesEditor
           {...defaultProps}
+          tasks={tasks}
           onAddTask={onAddTask}
           onUpdateTask={onUpdateTask}
         />
       );
 
-      const input = screen.getByTestId('new-line-newline-end');
-      input.textContent = '$ Buy groceries';
-      fireEvent.input(input);
-      fireEvent.keyDown(input, { key: 'Enter' });
+      const blockInput = document.querySelector('.block-input');
+      blockInput!.textContent = '$ Buy groceries';
+      fireEvent.keyDown(blockInput!, { key: 'Enter' });
 
       // Select a type
       fireEvent.click(screen.getByText('Personal'));
 
-      expect(onAddTask).toHaveBeenCalledWith('Buy groceries', 'personal', null);
+      // Should insert after task-1
+      expect(onAddTask).toHaveBeenCalledWith(
+        'Buy groceries',
+        'personal',
+        'task-1'
+      );
 
       // Should also create a first block for the new task (after async completes)
       await waitFor(() => {
@@ -303,13 +317,38 @@ describe('TaskNotesEditor', () => {
       });
     });
 
-    it('closes type modal on cancel', () => {
-      render(<TaskNotesEditor {...defaultProps} />);
+    it('clears last block content after task creation', async () => {
+      const onAddTask = vi.fn().mockResolvedValue({ id: 'new-task' });
+      const onUpdateTask = vi.fn();
+      const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+      const tasks = [createMockTask({ id: 'task-1', blocks })];
+      render(
+        <TaskNotesEditor
+          {...defaultProps}
+          tasks={tasks}
+          onAddTask={onAddTask}
+          onUpdateTask={onUpdateTask}
+        />
+      );
 
-      const input = screen.getByTestId('new-line-newline-end');
-      input.textContent = '$ New task';
-      fireEvent.input(input);
-      fireEvent.keyDown(input, { key: 'Enter' });
+      const blockInput = document.querySelector('.block-input');
+      blockInput!.textContent = '$ New Task';
+      fireEvent.keyDown(blockInput!, { key: 'Enter' });
+
+      // The block should be cleared
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+        blocks: [{ id: 'b1', type: 'paragraph', content: '' }],
+      });
+    });
+
+    it('closes type modal on cancel', () => {
+      const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+      const tasks = [createMockTask({ id: 'task-1', blocks })];
+      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+
+      const blockInput = document.querySelector('.block-input');
+      blockInput!.textContent = '$ New task';
+      fireEvent.keyDown(blockInput!, { key: 'Enter' });
 
       expect(screen.getByText('Select Task Type')).toBeInTheDocument();
 
@@ -318,120 +357,16 @@ describe('TaskNotesEditor', () => {
 
       expect(screen.queryByText('Select Task Type')).not.toBeInTheDocument();
     });
-
-    it('adds block to existing task from new-line after task', () => {
-      const onUpdateTask = vi.fn();
-      const tasks = [createMockTask({ id: 'task-1', blocks: [] })];
-      render(
-        <TaskNotesEditor
-          {...defaultProps}
-          tasks={tasks}
-          onUpdateTask={onUpdateTask}
-        />
-      );
-
-      const input = screen.getByTestId('new-line-newline-after-task-1');
-      input.textContent = 'New block content';
-      fireEvent.input(input);
-      fireEvent.keyDown(input, { key: 'Enter' });
-
-      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
-        blocks: expect.arrayContaining([
-          expect.objectContaining({ content: 'New block content' }),
-        ]),
-      });
-    });
-
-    it('detects markdown prefixes when adding blocks', () => {
-      const onUpdateTask = vi.fn();
-      const tasks = [createMockTask({ id: 'task-1', blocks: [] })];
-      render(
-        <TaskNotesEditor
-          {...defaultProps}
-          tasks={tasks}
-          onUpdateTask={onUpdateTask}
-        />
-      );
-
-      const input = screen.getByTestId('new-line-newline-after-task-1');
-      input.textContent = '- Bullet item';
-      fireEvent.input(input);
-      fireEvent.keyDown(input, { key: 'Enter' });
-
-      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
-        blocks: expect.arrayContaining([
-          expect.objectContaining({ type: 'bullet', content: 'Bullet item' }),
-        ]),
-      });
-    });
-
-    it('saves content to task on blur (when losing focus)', () => {
-      const onUpdateTask = vi.fn();
-      const tasks = [createMockTask({ id: 'task-1', blocks: [] })];
-      render(
-        <TaskNotesEditor
-          {...defaultProps}
-          tasks={tasks}
-          onUpdateTask={onUpdateTask}
-        />
-      );
-
-      const input = screen.getByTestId('new-line-newline-after-task-1');
-      input.textContent = 'Content saved on blur';
-      fireEvent.input(input);
-      fireEvent.blur(input);
-
-      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
-        blocks: expect.arrayContaining([
-          expect.objectContaining({ content: 'Content saved on blur' }),
-        ]),
-      });
-    });
-
-    it('does not save $ prefix content on blur (only on Enter)', () => {
-      const onUpdateTask = vi.fn();
-      const tasks = [createMockTask({ id: 'task-1', blocks: [] })];
-      render(
-        <TaskNotesEditor
-          {...defaultProps}
-          tasks={tasks}
-          onUpdateTask={onUpdateTask}
-        />
-      );
-
-      const input = screen.getByTestId('new-line-newline-after-task-1');
-      input.textContent = '$ Task title';
-      fireEvent.input(input);
-      fireEvent.blur(input);
-
-      // Should not save task creation syntax as a block
-      expect(onUpdateTask).not.toHaveBeenCalled();
-    });
-
-    it('clears input after blur-save', () => {
-      const onUpdateTask = vi.fn();
-      const tasks = [createMockTask({ id: 'task-1', blocks: [] })];
-      render(
-        <TaskNotesEditor
-          {...defaultProps}
-          tasks={tasks}
-          onUpdateTask={onUpdateTask}
-        />
-      );
-
-      const input = screen.getByTestId('new-line-newline-after-task-1');
-      input.textContent = 'Blur content';
-      fireEvent.input(input);
-      fireEvent.blur(input);
-
-      expect(input.textContent).toBe('');
-    });
   });
 
   describe('navigation', () => {
     it('moves focus up on ArrowUp in header', () => {
       const tasks = [
-        createMockTask({ id: 'task-1', title: 'Task One' }),
+        createMockTask({
+          id: 'task-1',
+          title: 'Task One',
+          blocks: [{ id: 'b1', type: 'paragraph', content: 'Block 1' }],
+        }),
         createMockTask({ id: 'task-2', title: 'Task Two' }),
       ];
       render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
@@ -440,38 +375,25 @@ describe('TaskNotesEditor', () => {
       fireEvent.focus(header2);
       fireEvent.keyDown(header2, { key: 'ArrowUp' });
 
-      // Previous item (newline-after-task-1) should exist
-      expect(
-        screen.getByTestId('new-line-newline-after-task-1')
-      ).toBeInTheDocument();
+      // Should have moved focus up (to Block 1 content)
+      expect(screen.getByText('Block 1')).toBeInTheDocument();
     });
 
     it('moves focus down on ArrowDown in header', () => {
-      const tasks = [createMockTask({ id: 'task-1', title: 'Task One' })];
+      const blocks: Block[] = [
+        { id: 'b1', type: 'paragraph', content: 'First block' },
+      ];
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Task One', blocks }),
+      ];
       render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
 
       const header = screen.getByTestId('task-header-task-1');
       fireEvent.focus(header);
       fireEvent.keyDown(header, { key: 'ArrowDown' });
 
-      // Next item (newline-after-task-1) should exist
-      expect(
-        screen.getByTestId('new-line-newline-after-task-1')
-      ).toBeInTheDocument();
-    });
-
-    it('moves focus up on ArrowUp in new-line input', () => {
-      const tasks = [createMockTask({ id: 'task-1', title: 'Task One' })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
-
-      const newLine = screen.getByTestId('new-line-newline-end');
-      fireEvent.focus(newLine);
-      fireEvent.keyDown(newLine, { key: 'ArrowUp' });
-
-      // Previous item should exist
-      expect(
-        screen.getByTestId('new-line-newline-after-task-1')
-      ).toBeInTheDocument();
+      // First block should exist
+      expect(screen.getByText('First block')).toBeInTheDocument();
     });
   });
 });

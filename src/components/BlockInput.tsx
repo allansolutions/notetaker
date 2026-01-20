@@ -26,6 +26,10 @@ interface BlockInputProps {
   onToggleCollapse?: (id: string) => void;
   /** Cursor offset to use when focusing this block (for merge operations) */
   pendingCursorOffset?: number | null;
+  /** True if this is the last block of its task (enables $ task creation) */
+  isLastBlock?: boolean;
+  /** Callback when user types $ prefix and presses Enter in last block */
+  onTaskCreate?: (title: string) => void;
 }
 
 const wrapperBaseClasses: Partial<Record<BlockType, string>> = {
@@ -71,6 +75,8 @@ export function BlockInput({
   isCollapsed,
   onToggleCollapse,
   pendingCursorOffset,
+  isLastBlock,
+  onTaskCreate,
 }: BlockInputProps) {
   const inputRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -249,6 +255,20 @@ export function BlockInput({
     }
   };
 
+  // Handle task creation via $ prefix in last block
+  const tryTaskCreation = (text: string): boolean => {
+    if (!isLastBlock || !text.startsWith('$ ')) return false;
+    const title = text.slice(2).trim();
+    if (!title || !onTaskCreate) return false;
+
+    onTaskCreate(title);
+    if (inputRef.current) {
+      inputRef.current.textContent = '';
+    }
+    onUpdate(block.id, '', 'paragraph');
+    return true;
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (handleMetaShortcut(e)) return;
 
@@ -262,6 +282,7 @@ export function BlockInput({
     switch (e.key) {
       case 'Enter':
         e.preventDefault();
+        if (tryTaskCreation(text)) return;
         handleEnterKey(text, sel);
         break;
       case 'ArrowUp':

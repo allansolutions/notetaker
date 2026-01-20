@@ -9,8 +9,7 @@ import {
 import { Task, Block, BlockType, TaskType, TASK_TYPE_COLORS } from '../types';
 import { BlockInput } from './BlockInput';
 import { TypeSelectionModal } from './TypeSelectionModal';
-import { detectBlockType, stripPrefix, generateId } from '../utils/markdown';
-import { blockTypeClasses } from '../utils/block-styles';
+import { generateId } from '../utils/markdown';
 import { getNumberedIndex } from '../utils/block-operations';
 import { PencilIcon } from './icons';
 
@@ -34,8 +33,7 @@ type NotesItem =
       block: Block;
       blockIndex: number;
       itemId: string;
-    }
-  | { kind: 'new-line'; itemId: string };
+    };
 
 function createBlock(type: BlockType = 'paragraph', content = ''): Block {
   return { id: generateId(), type, content };
@@ -132,88 +130,6 @@ function TaskHeader({
   );
 }
 
-// New line input for creating new content or tasks
-function NewLineInput({
-  isFocused,
-  onFocus,
-  onArrowUp,
-  onEnter,
-  onBlur,
-  itemId,
-}: {
-  isFocused: boolean;
-  onFocus: () => void;
-  onArrowUp: () => void;
-  onEnter: (content: string) => void;
-  onBlur: (content: string) => void;
-  itemId: string;
-}) {
-  const inputRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef('');
-
-  useEffect(() => {
-    if (isFocused && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isFocused]);
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    switch (e.key) {
-      case 'ArrowUp':
-        e.preventDefault();
-        onArrowUp();
-        break;
-      case 'Enter': {
-        e.preventDefault();
-        // Use the tracked content, not textContent (more reliable)
-        const text = contentRef.current;
-        onEnter(text);
-        if (inputRef.current) {
-          inputRef.current.textContent = '';
-        }
-        contentRef.current = '';
-        break;
-      }
-    }
-  };
-
-  const handleInput = () => {
-    const text = inputRef.current?.textContent || '';
-    contentRef.current = text;
-  };
-
-  const handleBlur = () => {
-    const text = contentRef.current.trim();
-    if (text && !text.startsWith('$ ')) {
-      // Save non-task content on blur
-      onBlur(text);
-      if (inputRef.current) {
-        inputRef.current.textContent = '';
-      }
-      contentRef.current = '';
-    }
-  };
-
-  return (
-    <div className="flex items-center my-px">
-      <div
-        ref={inputRef}
-        role="textbox"
-        tabIndex={0}
-        contentEditable
-        suppressContentEditableWarning
-        className={`block-input w-full outline-none border-none py-[3px] px-0.5 min-h-[1.5em] whitespace-pre-wrap break-words focus:bg-focus-bg focus:rounded-sm ${blockTypeClasses.paragraph}`}
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        onFocus={onFocus}
-        onBlur={handleBlur}
-        data-placeholder="Type $ to create a new task..."
-        data-testid={`new-line-${itemId}`}
-      />
-    </div>
-  );
-}
-
 export function TaskNotesEditor({
   tasks,
   onUpdateTask,
@@ -228,7 +144,7 @@ export function TaskNotesEditor({
   >(null);
   const pendingFocusRef = useRef<string | null>(null);
 
-  // Build a flat list of all items (headers + blocks + new lines between tasks)
+  // Build a flat list of all items (headers + blocks)
   const items = useMemo(() => {
     const result: NotesItem[] = [];
 
@@ -250,18 +166,6 @@ export function TaskNotesEditor({
           itemId: `block-${task.id}-${block.id}`,
         });
       });
-
-      // New line after each task's blocks (for adding content to this task)
-      result.push({
-        kind: 'new-line',
-        itemId: `newline-after-${task.id}`,
-      });
-    });
-
-    // Final new line for creating new tasks
-    result.push({
-      kind: 'new-line',
-      itemId: 'newline-end',
     });
 
     return result;
@@ -274,19 +178,6 @@ export function TaskNotesEditor({
       pendingFocusRef.current = null;
     }
   }, [items]);
-
-  // Find task associated with a new-line item
-  const getTaskForNewLine = useCallback(
-    (itemId: string): Task | null => {
-      if (itemId === 'newline-end') return null;
-      const match = itemId.match(/^newline-after-(.+)$/);
-      if (match) {
-        return tasks.find((t) => t.id === match[1]) || null;
-      }
-      return null;
-    },
-    [tasks]
-  );
 
   // Navigation helpers
   const focusPrevious = useCallback(
@@ -406,62 +297,11 @@ export function TaskNotesEditor({
     [tasks, onUpdateTask]
   );
 
-  // Add a block to a task (shared logic for Enter and Blur)
-  const addBlockToTask = useCallback(
-    (task: Task, content: string, setFocus: boolean = true) => {
-      const detectedType = detectBlockType(content);
-      const blockContent =
-        detectedType !== 'paragraph'
-          ? stripPrefix(content, detectedType)
-          : content;
-      const newBlock = createBlock(detectedType, blockContent);
-      const newBlocks = [...task.blocks, newBlock];
-      onUpdateTask(task.id, { blocks: newBlocks });
-      if (setFocus) {
-        pendingFocusRef.current = `block-${task.id}-${newBlock.id}`;
-      }
-    },
-    [onUpdateTask]
-  );
-
-  // Handle adding new block to a task from new-line input (on Enter)
-  const handleNewLineEnter = useCallback(
-    async (itemId: string, content: string) => {
-      // Check for $ prefix (task creation)
-      if (content.startsWith('$ ')) {
-        const title = content.slice(2).trim();
-        if (title) {
-          // Determine where to insert the new task
-          // If itemId is 'newline-end', insert at end (after last task)
-          // If itemId is 'newline-after-{taskId}', insert after that task
-          const insertAfterTask = getTaskForNewLine(itemId);
-          setPendingInsertAfterTaskId(insertAfterTask?.id ?? null);
-          setPendingTaskTitle(title);
-        }
-        return;
-      }
-
-      // Adding block to existing task
-      const task = getTaskForNewLine(itemId);
-      if (task && content.trim()) {
-        addBlockToTask(task, content.trim(), true);
-      }
-      // At the very end - ignore non-$ content (user must use $ prefix to create a task)
-    },
-    [getTaskForNewLine, addBlockToTask]
-  );
-
-  // Handle saving content when new-line input loses focus (on blur)
-  const handleNewLineBlur = useCallback(
-    (itemId: string, content: string) => {
-      // Only save to existing tasks (not at the very end where $ is required)
-      const task = getTaskForNewLine(itemId);
-      if (task && content.trim()) {
-        addBlockToTask(task, content.trim(), false);
-      }
-    },
-    [getTaskForNewLine, addBlockToTask]
-  );
+  // Handle task creation from $ prefix in last block
+  const handleTaskCreate = useCallback((taskId: string, title: string) => {
+    setPendingInsertAfterTaskId(taskId);
+    setPendingTaskTitle(title);
+  }, []);
 
   // Handle task type selection
   const handleTypeSelect = useCallback(
@@ -541,6 +381,7 @@ export function TaskNotesEditor({
 
         if (item.kind === 'block') {
           const { task, block, blockIndex } = item;
+          const isLastBlock = blockIndex === task.blocks.length - 1;
           return (
             <BlockInput
               key={item.itemId}
@@ -563,20 +404,8 @@ export function TaskNotesEditor({
               onMoveUp={() => {}}
               onMoveDown={() => {}}
               numberedIndex={getNumberedIndex(task.blocks, blockIndex)}
-            />
-          );
-        }
-
-        if (item.kind === 'new-line') {
-          return (
-            <NewLineInput
-              key={item.itemId}
-              isFocused={focusedItemId === item.itemId}
-              onFocus={() => setFocusedItemId(item.itemId)}
-              onArrowUp={() => focusPrevious(item.itemId)}
-              onEnter={(content) => handleNewLineEnter(item.itemId, content)}
-              onBlur={(content) => handleNewLineBlur(item.itemId, content)}
-              itemId={item.itemId}
+              isLastBlock={isLastBlock}
+              onTaskCreate={(title) => handleTaskCreate(task.id, title)}
             />
           );
         }

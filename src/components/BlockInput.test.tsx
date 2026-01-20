@@ -735,4 +735,132 @@ describe('BlockInput', () => {
       expect(input?.getAttribute('data-placeholder')).toBe('');
     });
   });
+
+  describe('task creation with $ prefix', () => {
+    it('calls onTaskCreate when $ prefix typed in last block and Enter pressed', async () => {
+      const onTaskCreate = vi.fn();
+      const props = createMockProps({ content: '' });
+      render(
+        <BlockInput
+          {...props}
+          isFocused={true}
+          isLastBlock={true}
+          onTaskCreate={onTaskCreate}
+        />
+      );
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = '$ New Task';
+      fireEvent.keyDown(input!, { key: 'Enter' });
+
+      expect(onTaskCreate).toHaveBeenCalledWith('New Task');
+      expect(props.onEnter).not.toHaveBeenCalled();
+    });
+
+    it('clears block content after task creation', async () => {
+      const onTaskCreate = vi.fn();
+      const props = createMockProps({ content: '' });
+      render(
+        <BlockInput
+          {...props}
+          isFocused={true}
+          isLastBlock={true}
+          onTaskCreate={onTaskCreate}
+        />
+      );
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = '$ New Task';
+      fireEvent.keyDown(input!, { key: 'Enter' });
+
+      expect(props.onUpdate).toHaveBeenCalledWith('test-1', '', 'paragraph');
+    });
+
+    it('does not call onTaskCreate for non-last blocks', async () => {
+      const onTaskCreate = vi.fn();
+      const props = createMockProps({ content: '' });
+      render(
+        <BlockInput
+          {...props}
+          isFocused={true}
+          isLastBlock={false}
+          onTaskCreate={onTaskCreate}
+        />
+      );
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = '$ New Task';
+      fireEvent.keyDown(input!, { key: 'Enter' });
+
+      expect(onTaskCreate).not.toHaveBeenCalled();
+      expect(props.onEnter).toHaveBeenCalled();
+    });
+
+    it('does not call onTaskCreate when isLastBlock is not set', async () => {
+      const onTaskCreate = vi.fn();
+      const props = createMockProps({ content: '' });
+      render(
+        <BlockInput {...props} isFocused={true} onTaskCreate={onTaskCreate} />
+      );
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = '$ New Task';
+      fireEvent.keyDown(input!, { key: 'Enter' });
+
+      expect(onTaskCreate).not.toHaveBeenCalled();
+      expect(props.onEnter).toHaveBeenCalled();
+    });
+
+    it('does not call onTaskCreate for empty title after $ prefix', async () => {
+      const onTaskCreate = vi.fn();
+      const props = createMockProps({ content: '' });
+      render(
+        <BlockInput
+          {...props}
+          isFocused={true}
+          isLastBlock={true}
+          onTaskCreate={onTaskCreate}
+        />
+      );
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = '$  ';
+      fireEvent.keyDown(input!, { key: 'Enter' });
+
+      expect(onTaskCreate).not.toHaveBeenCalled();
+      expect(props.onEnter).toHaveBeenCalled();
+    });
+
+    it('treats $ as regular text when not followed by space', async () => {
+      const onTaskCreate = vi.fn();
+      const props = createMockProps({ content: '' });
+      render(
+        <BlockInput
+          {...props}
+          isFocused={true}
+          isLastBlock={true}
+          onTaskCreate={onTaskCreate}
+        />
+      );
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = '$100';
+      fireEvent.keyDown(input!, { key: 'Enter' });
+
+      expect(onTaskCreate).not.toHaveBeenCalled();
+      expect(props.onEnter).toHaveBeenCalled();
+    });
+
+    it('does not call onTaskCreate when onTaskCreate is not provided', async () => {
+      const props = createMockProps({ content: '' });
+      render(<BlockInput {...props} isFocused={true} isLastBlock={true} />);
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = '$ New Task';
+      fireEvent.keyDown(input!, { key: 'Enter' });
+
+      // Should fall through to regular Enter handling
+      expect(props.onEnter).toHaveBeenCalled();
+    });
+  });
 });

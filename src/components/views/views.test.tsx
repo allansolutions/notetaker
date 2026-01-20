@@ -341,8 +341,8 @@ describe('FullDayNotesView', () => {
 
   it('renders TaskNotesEditor when onAddTask is provided even with no tasks', () => {
     render(<FullDayNotesView {...defaultProps} />);
-    // Should show the new-line input for creating tasks
-    expect(screen.getByTestId('new-line-newline-end')).toBeInTheDocument();
+    // Should show the editor container
+    expect(document.querySelector('.w-full')).toBeInTheDocument();
   });
 
   it('renders task titles', () => {
@@ -470,61 +470,62 @@ describe('FullDayNotesView', () => {
     expect(header.className).toContain('text-title');
   });
 
-  it('renders new-line input for creating tasks', () => {
-    render(<FullDayNotesView {...defaultProps} />);
+  it('shows type modal when typing $ prefix in last block and pressing Enter', () => {
+    const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+    const tasks = [createMockTask({ id: 'task-1', blocks })];
+    render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
-    const newLineInput = screen.getByTestId('new-line-newline-end');
-    expect(newLineInput).toBeInTheDocument();
-    expect(newLineInput.getAttribute('data-placeholder')).toBe(
-      'Type $ to create a new task...'
-    );
-  });
-
-  it('shows type modal when typing $ prefix and pressing Enter', () => {
-    render(<FullDayNotesView {...defaultProps} />);
-
-    const input = screen.getByTestId('new-line-newline-end');
     // For contentEditable, we need to set textContent directly
-    input.textContent = '$ Test task';
-    fireEvent.input(input);
-    fireEvent.keyDown(input, { key: 'Enter' });
+    const blockInput = document.querySelector('.block-input');
+    blockInput!.textContent = '$ Test task';
+    fireEvent.keyDown(blockInput!, { key: 'Enter' });
 
     expect(screen.getByText('Select Task Type')).toBeInTheDocument();
   });
 
-  it('does not show type modal when typing without $ prefix', () => {
-    render(<FullDayNotesView {...defaultProps} />);
+  it('does not show type modal when typing without $ prefix in last block', () => {
+    const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+    const tasks = [createMockTask({ id: 'task-1', blocks })];
+    render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
-    const input = screen.getByTestId('new-line-newline-end');
-    input.textContent = 'Test task';
-    fireEvent.input(input);
-    fireEvent.keyDown(input, { key: 'Enter' });
+    const blockInput = document.querySelector('.block-input');
+    blockInput!.textContent = 'Test task';
+    fireEvent.keyDown(blockInput!, { key: 'Enter' });
 
     expect(screen.queryByText('Select Task Type')).not.toBeInTheDocument();
   });
 
   it('calls onAddTask when type is selected from modal', async () => {
     const onAddTask = vi.fn().mockResolvedValue({ id: 'new-task' });
-    render(<FullDayNotesView {...defaultProps} onAddTask={onAddTask} />);
+    const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+    const tasks = [createMockTask({ id: 'task-1', blocks })];
+    render(
+      <FullDayNotesView {...defaultProps} tasks={tasks} onAddTask={onAddTask} />
+    );
 
-    const input = screen.getByTestId('new-line-newline-end');
-    input.textContent = '$ Buy groceries';
-    fireEvent.input(input);
-    fireEvent.keyDown(input, { key: 'Enter' });
+    const blockInput = document.querySelector('.block-input');
+    blockInput!.textContent = '$ Buy groceries';
+    fireEvent.keyDown(blockInput!, { key: 'Enter' });
 
     // Click a type option
     fireEvent.click(screen.getByText('Personal'));
 
-    expect(onAddTask).toHaveBeenCalledWith('Buy groceries', 'personal', null);
+    // Insert after task-1 (the task we typed in)
+    expect(onAddTask).toHaveBeenCalledWith(
+      'Buy groceries',
+      'personal',
+      'task-1'
+    );
   });
 
   it('closes type modal on Escape', () => {
-    render(<FullDayNotesView {...defaultProps} />);
+    const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
+    const tasks = [createMockTask({ id: 'task-1', blocks })];
+    render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
-    const input = screen.getByTestId('new-line-newline-end');
-    input.textContent = '$ Test task';
-    fireEvent.input(input);
-    fireEvent.keyDown(input, { key: 'Enter' });
+    const blockInput = document.querySelector('.block-input');
+    blockInput!.textContent = '$ Test task';
+    fireEvent.keyDown(blockInput!, { key: 'Enter' });
 
     expect(screen.getByText('Select Task Type')).toBeInTheDocument();
 
@@ -534,20 +535,23 @@ describe('FullDayNotesView', () => {
     expect(screen.queryByText('Select Task Type')).not.toBeInTheDocument();
   });
 
-  it('provides new-line inputs between tasks', () => {
+  it('renders blocks for all tasks', () => {
     const tasks = [
-      createMockTask({ id: 'task-1', title: 'Task One' }),
-      createMockTask({ id: 'task-2', title: 'Task Two' }),
+      createMockTask({
+        id: 'task-1',
+        title: 'Task One',
+        blocks: [{ id: 'b1', type: 'paragraph', content: 'Block One' }],
+      }),
+      createMockTask({
+        id: 'task-2',
+        title: 'Task Two',
+        blocks: [{ id: 'b2', type: 'paragraph', content: 'Block Two' }],
+      }),
     ];
     render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
-    // Should have new-line after each task plus one at the end
-    expect(
-      screen.getByTestId('new-line-newline-after-task-1')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('new-line-newline-after-task-2')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('new-line-newline-end')).toBeInTheDocument();
+    // Should have blocks from both tasks
+    expect(screen.getByText('Block One')).toBeInTheDocument();
+    expect(screen.getByText('Block Two')).toBeInTheDocument();
   });
 });
