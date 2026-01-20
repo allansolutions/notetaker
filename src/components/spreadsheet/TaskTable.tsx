@@ -407,14 +407,15 @@ export function TaskTable({
         },
       }),
       columnHelper.accessor('estimate', {
-        header: 'Estimate',
+        header: 'Time',
         cell: ({ row, getValue }) => (
           <EstimateCell
             value={getValue() as number | undefined}
+            sessions={row.original.sessions}
             onChange={(estimate) => onUpdateTask(row.original.id, { estimate })}
           />
         ),
-        size: 90,
+        size: 130,
         sortingFn: (rowA, rowB) => {
           const a = rowA.original.estimate ?? Infinity;
           const b = rowB.original.estimate ?? Infinity;

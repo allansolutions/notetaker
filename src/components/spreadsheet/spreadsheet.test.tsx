@@ -201,7 +201,7 @@ describe('TaskTable', () => {
     expect(screen.getByText('Task')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('Importance')).toBeInTheDocument();
-    expect(screen.getByText('Estimate')).toBeInTheDocument();
+    expect(screen.getByText('Time')).toBeInTheDocument();
     expect(screen.getByText('Date')).toBeInTheDocument();
   });
 
