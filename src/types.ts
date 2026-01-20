@@ -58,7 +58,7 @@ export interface Task {
   type: TaskType;
   title: string;
   status: TaskStatus;
-  importance: TaskImportance;
+  importance?: TaskImportance;
   blocks: Block[];
   scheduled?: boolean;
   startTime?: number;

@@ -325,7 +325,7 @@ export function TaskTable({
         matchesMultiselect(filters.type, task.type) &&
         matchesTextFilter(filters.title, task.title) &&
         matchesMultiselect(filters.status, task.status) &&
-        matchesMultiselect(filters.importance, task.importance) &&
+        matchesMultiselect(filters.importance, task.importance ?? '') &&
         (skipDueDateFilter || matchesDateFilter(filters.dueDate, task.dueDate))
       );
     });
@@ -389,7 +389,7 @@ export function TaskTable({
         header: 'Importance',
         cell: ({ row, getValue }) => (
           <ImportanceCell
-            value={getValue() as TaskImportance}
+            value={getValue()}
             onChange={(value) =>
               onUpdateTask(row.original.id, { importance: value })
             }
@@ -397,8 +397,12 @@ export function TaskTable({
         ),
         size: 100,
         sortingFn: (rowA, rowB) => {
-          const a = IMPORTANCE_ORDER[rowA.original.importance];
-          const b = IMPORTANCE_ORDER[rowB.original.importance];
+          const a = rowA.original.importance
+            ? IMPORTANCE_ORDER[rowA.original.importance]
+            : -1;
+          const b = rowB.original.importance
+            ? IMPORTANCE_ORDER[rowB.original.importance]
+            : -1;
           return a - b;
         },
       }),

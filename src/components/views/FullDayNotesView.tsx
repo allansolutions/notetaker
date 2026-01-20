@@ -1,116 +1,49 @@
-import { Task, Block, BlockType, TASK_TYPE_COLORS } from '../../types';
+import { Task, TaskType } from '../../types';
 import { BackButton } from '../BackButton';
-import { blockTypeClasses } from '../../utils/block-styles';
+import { TaskNotesEditor } from '../TaskNotesEditor';
 
 interface FullDayNotesViewProps {
   tasks: Task[];
   onSelectTask: (id: string) => void;
   onBack: () => void;
-}
-
-function getPrefix(type: BlockType, index: number): string {
-  switch (type) {
-    case 'bullet':
-      return '\u2022';
-    case 'numbered':
-      return `${index + 1}.`;
-    case 'todo':
-      return '\u2610';
-    case 'todo-checked':
-      return '\u2611';
-    default:
-      return '';
-  }
-}
-
-function ReadOnlyBlock({ block, index }: { block: Block; index: number }) {
-  if (block.type === 'divider') {
-    return <hr className="my-4 border-border" />;
-  }
-
-  const prefix = getPrefix(block.type, index);
-
-  return (
-    <div className="flex my-px">
-      {prefix && <span className="w-6 shrink-0 text-muted">{prefix}</span>}
-      <div className={blockTypeClasses[block.type]}>
-        {block.content || '\u00A0'}
-      </div>
-    </div>
-  );
-}
-
-function TaskSection({
-  task,
-  onSelectTask,
-}: {
-  task: Task;
-  onSelectTask: (id: string) => void;
-}) {
-  let numberedIndex = 0;
-  const colors = TASK_TYPE_COLORS[task.type];
-
-  return (
-    <div className="mb-8">
-      <button
-        type="button"
-        onClick={() => onSelectTask(task.id)}
-        className="text-left w-full group"
-      >
-        <h2
-          className={`text-title leading-tight font-bold mb-2 px-2 py-1 rounded ${colors.bg} ${colors.text} group-hover:underline`}
-        >
-          {task.title || 'Untitled'}
-        </h2>
-      </button>
-
-      {task.blocks.length > 0 && (
-        <div className="pl-0">
-          {task.blocks.map((block, i) => {
-            if (block.type === 'numbered') {
-              numberedIndex++;
-            } else {
-              numberedIndex = 0;
-            }
-            return (
-              <ReadOnlyBlock
-                key={block.id}
-                block={block}
-                index={block.type === 'numbered' ? numberedIndex - 1 : i}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  onUpdateTask?: (id: string, updates: Partial<Task>) => void;
+  onAddTask?: (
+    title: string,
+    type: TaskType,
+    insertAfterTaskId?: string | null
+  ) => Promise<Task | null>;
 }
 
 export function FullDayNotesView({
   tasks,
   onSelectTask,
   onBack,
+  onUpdateTask,
+  onAddTask,
 }: FullDayNotesViewProps) {
+  // Default no-op handlers if not provided
+  const handleUpdateTask = onUpdateTask || (() => {});
+  const handleAddTask = onAddTask || (async () => null);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-4 mb-6">
         <BackButton onClick={onBack} />
-        <h1 className="text-lg font-semibold text-primary">Notes</h1>
+        <h1 className="text-lg font-semibold text-primary">Task Notes</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {tasks.length === 0 ? (
+        {tasks.length === 0 && !onAddTask ? (
           <p className="text-muted italic">
             No tasks match the current filters.
           </p>
         ) : (
-          tasks.map((task) => (
-            <TaskSection
-              key={task.id}
-              task={task}
-              onSelectTask={onSelectTask}
-            />
-          ))
+          <TaskNotesEditor
+            tasks={tasks}
+            onUpdateTask={handleUpdateTask}
+            onAddTask={handleAddTask}
+            onSelectTask={onSelectTask}
+          />
         )}
       </div>
     </div>

@@ -6,7 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { TasksProvider } from './context/TasksContext';
-import { ViewType, Task } from './types';
+import { ViewType, TaskType } from './types';
 import { SpreadsheetView } from './components/views/SpreadsheetView';
 import { AddTaskData } from './components/AddTaskModal';
 import { TaskDetailView } from './components/views/TaskDetailView';
@@ -38,7 +38,6 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState<ViewType>('spreadsheet');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [visibleTasks, setVisibleTasks] = useState<Task[]>([]);
 
   const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
     SIDEBAR_WIDTH_KEY,
@@ -111,6 +110,33 @@ function AppContent() {
     [addTask]
   );
 
+  const handleInlineTaskCreate = useCallback(
+    async (
+      title: string,
+      type: TaskType,
+      insertAfterTaskId?: string | null
+    ) => {
+      // Find the index to insert at
+      let insertAtIndex: number | undefined;
+      if (insertAfterTaskId) {
+        const afterIndex = tasks.findIndex((t) => t.id === insertAfterTaskId);
+        if (afterIndex !== -1) {
+          insertAtIndex = afterIndex + 1;
+        }
+      }
+      return addTask(
+        title,
+        type,
+        'todo',
+        undefined,
+        undefined,
+        undefined,
+        insertAtIndex
+      );
+    },
+    [addTask, tasks]
+  );
+
   const selectedTask = selectedTaskId
     ? tasks.find((t) => t.id === selectedTaskId)
     : null;
@@ -135,9 +161,11 @@ function AppContent() {
       case 'full-day-notes':
         return (
           <FullDayNotesView
-            tasks={visibleTasks}
+            tasks={tasks}
             onSelectTask={handleSelectTask}
             onBack={handleBackToSpreadsheet}
+            onUpdateTask={updateTaskById}
+            onAddTask={handleInlineTaskCreate}
           />
         );
       case 'spreadsheet':
@@ -151,7 +179,6 @@ function AppContent() {
             onSelectTask={handleSelectTask}
             onAddTask={handleAddTask}
             onNavigateToFullDayNotes={handleNavigateToFullDayNotes}
-            onVisibleTasksChange={setVisibleTasks}
           />
         );
     }

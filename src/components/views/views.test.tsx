@@ -44,9 +44,9 @@ describe('SpreadsheetView', () => {
     expect(screen.getByRole('tab', { name: /this week/i })).toBeInTheDocument();
   });
 
-  it('renders View notes button', () => {
+  it('renders Task Notes button', () => {
     render(<SpreadsheetView {...defaultProps} />);
-    expect(screen.getByText('View notes')).toBeInTheDocument();
+    expect(screen.getByText('Task Notes')).toBeInTheDocument();
   });
 
   it('calls onNavigateToFullDayNotes when button is clicked', () => {
@@ -58,7 +58,7 @@ describe('SpreadsheetView', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('View notes'));
+    fireEvent.click(screen.getByText('Task Notes'));
     expect(onNavigateToFullDayNotes).toHaveBeenCalled();
   });
 
@@ -308,11 +308,13 @@ describe('FullDayNotesView', () => {
     tasks: [] as Task[],
     onSelectTask: vi.fn(),
     onBack: vi.fn(),
+    onUpdateTask: vi.fn(),
+    onAddTask: vi.fn().mockResolvedValue(null),
   };
 
-  it('renders header', () => {
+  it('renders header with "Task Notes"', () => {
     render(<FullDayNotesView {...defaultProps} />);
-    expect(screen.getByText('Notes')).toBeInTheDocument();
+    expect(screen.getByText('Task Notes')).toBeInTheDocument();
   });
 
   it('renders back button', () => {
@@ -328,17 +330,25 @@ describe('FullDayNotesView', () => {
     expect(onBack).toHaveBeenCalled();
   });
 
-  it('shows empty state when no tasks', () => {
-    render(<FullDayNotesView {...defaultProps} />);
+  it('shows empty state when no tasks and no onAddTask', () => {
+    render(
+      <FullDayNotesView tasks={[]} onSelectTask={vi.fn()} onBack={vi.fn()} />
+    );
     expect(
       screen.getByText('No tasks match the current filters.')
     ).toBeInTheDocument();
   });
 
+  it('renders TaskNotesEditor when onAddTask is provided even with no tasks', () => {
+    render(<FullDayNotesView {...defaultProps} />);
+    // Should show the new-line input for creating tasks
+    expect(screen.getByTestId('new-line-newline-end')).toBeInTheDocument();
+  });
+
   it('renders task titles', () => {
     const tasks = [
-      createMockTask({ title: 'Task One' }),
-      createMockTask({ title: 'Task Two' }),
+      createMockTask({ id: 'task-1', title: 'Task One' }),
+      createMockTask({ id: 'task-2', title: 'Task Two' }),
     ];
     render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
@@ -347,13 +357,21 @@ describe('FullDayNotesView', () => {
   });
 
   it('renders "Untitled" for tasks without title', () => {
-    const tasks = [createMockTask({ title: '' })];
+    const tasks = [createMockTask({ id: 'task-1', title: '' })];
     render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByText('Untitled')).toBeInTheDocument();
   });
 
-  it('calls onSelectTask when task title is clicked', () => {
+  it('shows edit icon on task titles', () => {
+    const tasks = [createMockTask({ id: 'task-1', title: 'My Task' })];
+    render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
+
+    const editButton = screen.getByLabelText('Edit My Task');
+    expect(editButton).toBeInTheDocument();
+  });
+
+  it('calls onSelectTask when edit icon is clicked', () => {
     const onSelectTask = vi.fn();
     const tasks = [createMockTask({ id: 'task-1', title: 'Click Me' })];
     render(
@@ -364,7 +382,7 @@ describe('FullDayNotesView', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Click Me'));
+    fireEvent.click(screen.getByLabelText('Edit Click Me'));
     expect(onSelectTask).toHaveBeenCalledWith('task-1');
   });
 
@@ -373,7 +391,7 @@ describe('FullDayNotesView', () => {
       { id: 'b1', type: 'paragraph', content: 'Paragraph content' },
       { id: 'b2', type: 'bullet', content: 'Bullet item' },
     ];
-    const tasks = [createMockTask({ blocks })];
+    const tasks = [createMockTask({ id: 'task-1', blocks })];
     render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByText('Paragraph content')).toBeInTheDocument();
@@ -382,7 +400,7 @@ describe('FullDayNotesView', () => {
 
   it('renders bullet prefix for bullet blocks', () => {
     const blocks: Block[] = [{ id: 'b1', type: 'bullet', content: 'Bullet' }];
-    const tasks = [createMockTask({ blocks })];
+    const tasks = [createMockTask({ id: 'task-1', blocks })];
     render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByText('•')).toBeInTheDocument();
@@ -393,28 +411,25 @@ describe('FullDayNotesView', () => {
       { id: 'b1', type: 'numbered', content: 'First' },
       { id: 'b2', type: 'numbered', content: 'Second' },
     ];
-    const tasks = [createMockTask({ blocks })];
+    const tasks = [createMockTask({ id: 'task-1', blocks })];
     render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
     expect(screen.getByText('1.')).toBeInTheDocument();
     expect(screen.getByText('2.')).toBeInTheDocument();
   });
 
-  it('renders todo checkbox for todo blocks', () => {
-    const blocks: Block[] = [
-      { id: 'b1', type: 'todo', content: 'Todo item' },
-      { id: 'b2', type: 'todo-checked', content: 'Done item' },
-    ];
-    const tasks = [createMockTask({ blocks })];
+  it('renders todo blocks with checkbox', () => {
+    const blocks: Block[] = [{ id: 'b1', type: 'todo', content: 'Todo item' }];
+    const tasks = [createMockTask({ id: 'task-1', blocks })];
     render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
-    expect(screen.getByText('☐')).toBeInTheDocument();
-    expect(screen.getByText('☑')).toBeInTheDocument();
+    // BlockInput renders todo with aria-label
+    expect(screen.getByLabelText('Mark as complete')).toBeInTheDocument();
   });
 
   it('renders divider blocks', () => {
     const blocks: Block[] = [{ id: 'b1', type: 'divider', content: '' }];
-    const tasks = [createMockTask({ blocks })];
+    const tasks = [createMockTask({ id: 'task-1', blocks })];
     const { container } = render(
       <FullDayNotesView {...defaultProps} tasks={tasks} />
     );
@@ -422,7 +437,7 @@ describe('FullDayNotesView', () => {
     expect(container.querySelector('hr')).toBeInTheDocument();
   });
 
-  it('applies task type background colors to task titles', () => {
+  it('applies task type background colors to task headers', () => {
     const taskTypes: TaskType[] = [
       'admin',
       'operations',
@@ -431,25 +446,108 @@ describe('FullDayNotesView', () => {
     ];
 
     taskTypes.forEach((type) => {
-      const tasks = [createMockTask({ type, title: `${type} Task` })];
+      const tasks = [
+        createMockTask({ id: `task-${type}`, type, title: `${type} Task` }),
+      ];
       const { unmount } = render(
         <FullDayNotesView {...defaultProps} tasks={tasks} />
       );
 
-      const heading = screen.getByRole('heading', { name: `${type} Task` });
+      const header = screen.getByTestId(`task-header-task-${type}`);
       const colors = TASK_TYPE_COLORS[type];
 
-      expect(heading.className).toContain(colors.bg.split(' ')[0]);
-      expect(heading.className).toContain(colors.text.split(' ')[0]);
+      expect(header.className).toContain(colors.bg.split(' ')[0]);
+      expect(header.className).toContain(colors.text.split(' ')[0]);
       unmount();
     });
   });
 
-  it('renders task titles with larger text-title class', () => {
-    const tasks = [createMockTask({ title: 'Large Title Task' })];
+  it('renders task headers with text-title class', () => {
+    const tasks = [createMockTask({ id: 'task-1', title: 'Large Title Task' })];
     render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
 
-    const heading = screen.getByRole('heading', { name: 'Large Title Task' });
-    expect(heading.className).toContain('text-title');
+    const header = screen.getByTestId('task-header-task-1');
+    expect(header.className).toContain('text-title');
+  });
+
+  it('renders new-line input for creating tasks', () => {
+    render(<FullDayNotesView {...defaultProps} />);
+
+    const newLineInput = screen.getByTestId('new-line-newline-end');
+    expect(newLineInput).toBeInTheDocument();
+    expect(newLineInput.getAttribute('data-placeholder')).toBe(
+      'Type $ to create a new task...'
+    );
+  });
+
+  it('shows type modal when typing $ prefix and pressing Enter', () => {
+    render(<FullDayNotesView {...defaultProps} />);
+
+    const input = screen.getByTestId('new-line-newline-end');
+    // For contentEditable, we need to set textContent directly
+    input.textContent = '$ Test task';
+    fireEvent.input(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(screen.getByText('Select Task Type')).toBeInTheDocument();
+  });
+
+  it('does not show type modal when typing without $ prefix', () => {
+    render(<FullDayNotesView {...defaultProps} />);
+
+    const input = screen.getByTestId('new-line-newline-end');
+    input.textContent = 'Test task';
+    fireEvent.input(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(screen.queryByText('Select Task Type')).not.toBeInTheDocument();
+  });
+
+  it('calls onAddTask when type is selected from modal', async () => {
+    const onAddTask = vi.fn().mockResolvedValue({ id: 'new-task' });
+    render(<FullDayNotesView {...defaultProps} onAddTask={onAddTask} />);
+
+    const input = screen.getByTestId('new-line-newline-end');
+    input.textContent = '$ Buy groceries';
+    fireEvent.input(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    // Click a type option
+    fireEvent.click(screen.getByText('Personal'));
+
+    expect(onAddTask).toHaveBeenCalledWith('Buy groceries', 'personal', null);
+  });
+
+  it('closes type modal on Escape', () => {
+    render(<FullDayNotesView {...defaultProps} />);
+
+    const input = screen.getByTestId('new-line-newline-end');
+    input.textContent = '$ Test task';
+    fireEvent.input(input);
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(screen.getByText('Select Task Type')).toBeInTheDocument();
+
+    // Press Escape to close
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByText('Select Task Type')).not.toBeInTheDocument();
+  });
+
+  it('provides new-line inputs between tasks', () => {
+    const tasks = [
+      createMockTask({ id: 'task-1', title: 'Task One' }),
+      createMockTask({ id: 'task-2', title: 'Task Two' }),
+    ];
+    render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
+
+    // Should have new-line after each task plus one at the end
+    expect(
+      screen.getByTestId('new-line-newline-after-task-1')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('new-line-newline-after-task-2')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('new-line-newline-end')).toBeInTheDocument();
   });
 });

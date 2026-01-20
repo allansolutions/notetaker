@@ -66,7 +66,8 @@ interface TasksContextType {
     status?: TaskStatus,
     importance?: TaskImportance,
     estimate?: number,
-    dueDate?: number
+    dueDate?: number,
+    insertAtIndex?: number
   ) => Promise<Task | null>;
   updateTaskById: (id: string, updates: Partial<Task>) => Promise<void>;
   removeTask: (id: string) => Promise<void>;
@@ -137,7 +138,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       status: TaskStatus = 'todo',
       importance: TaskImportance = 'mid',
       estimate?: number,
-      dueDate?: number
+      dueDate?: number,
+      insertAtIndex?: number
     ): Promise<Task | null> => {
       try {
         const apiTask = await taskApi.create({
@@ -154,7 +156,20 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         });
 
         const newTask = toTask(apiTask, []);
-        setTasks((prev) => [...prev, newTask]);
+        setTasks((prev) => {
+          if (
+            insertAtIndex !== undefined &&
+            insertAtIndex >= 0 &&
+            insertAtIndex <= prev.length
+          ) {
+            // Insert at specific position
+            const newTasks = [...prev];
+            newTasks.splice(insertAtIndex, 0, newTask);
+            return newTasks;
+          }
+          // Default: add to end
+          return [...prev, newTask];
+        });
         return newTask;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create task');

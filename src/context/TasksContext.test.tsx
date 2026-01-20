@@ -135,7 +135,52 @@ describe('TasksContext', () => {
       });
 
       expect(createdTask).toBeNull();
-      expect(result.current.error).toBe('Create failed');
+      await waitFor(() => {
+        expect(result.current.error).toBe('Create failed');
+      });
+    });
+
+    it('creates task with only title and type (no importance)', async () => {
+      const createdTask = {
+        id: 'new-task-1',
+        userId: 'user-1',
+        type: 'personal',
+        title: 'Test Task',
+        status: 'todo',
+        importance: 'mid',
+        blocks: [],
+        scheduled: false,
+        startTime: 360,
+        duration: 60,
+        orderIndex: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      vi.mocked(apiClient.taskApi.create).mockResolvedValueOnce(createdTask);
+
+      const { result } = renderHook(() => useTasks(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      const newTask = await act(async () => {
+        return result.current.addTask('Test Task', 'personal', 'todo');
+      });
+
+      expect(newTask).not.toBeNull();
+      expect(newTask?.title).toBe('Test Task');
+      expect(newTask?.type).toBe('personal');
+      expect(apiClient.taskApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Test Task',
+          type: 'personal',
+          status: 'todo',
+          importance: 'mid', // Default value
+        })
+      );
     });
 
     it('handles error when updating task fails and reverts', async () => {

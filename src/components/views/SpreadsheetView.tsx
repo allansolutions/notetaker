@@ -55,7 +55,7 @@ export function SpreadsheetView({
           className="text-small text-muted hover:text-primary flex items-center gap-1"
         >
           <DocumentIcon />
-          View notes
+          Task Notes
         </button>
         <DateFilterTabs
           activePreset={dateFilterPreset}
