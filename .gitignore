@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+bun.lockb
 
 # Build output
 dist/
@@ -12,3 +13,11 @@ tsconfig.tsbuildinfo
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Server secrets
+server/.dev.vars
+server/.wrangler/
+
+# Frontend environment
+.env
+.env.local

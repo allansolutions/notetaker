@@ -1,0 +1,5 @@
+# Copy this file to .dev.vars and fill in your values
+# Get these from Google Cloud Console: https://console.cloud.google.com
+
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret

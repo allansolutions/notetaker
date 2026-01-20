@@ -1,0 +1,17 @@
+name = "notetaker-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+minify = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "notetaker"
+database_id = "cb647e37-4934-4c95-b719-351875eed9a7"
+
+[vars]
+FRONTEND_URL = "http://localhost:5173"
+# GOOGLE_CLIENT_ID is set via wrangler secret or .dev.vars
+
+# For local development, copy .dev.vars.example to .dev.vars
+# and fill in your secrets
+

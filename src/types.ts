@@ -132,3 +132,21 @@ export const AGENDA_END_HOUR = 23;
 export const SNAP_INTERVAL = 15;
 export const DEFAULT_DURATION = 60;
 export const MIN_DURATION = 15;
+
+// Calendar integration types
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  startTime: number; // Minutes since midnight (matches Task)
+  duration: number; // Minutes
+  isAllDay: boolean;
+  htmlLink?: string;
+}
+
+export interface GoogleAuthState {
+  isConnected: boolean;
+  isLoading: boolean;
+  email?: string;
+  error?: string;
+}

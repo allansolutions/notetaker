@@ -2,15 +2,18 @@ import { DndContext, DragEndEvent, Modifier } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   Task,
+  CalendarEvent,
   AGENDA_END_HOUR,
   AGENDA_START_HOUR,
   SNAP_INTERVAL,
 } from '../types';
 import { CurrentTimeLine } from './CurrentTimeLine';
 import { AgendaBlock } from './AgendaBlock';
+import { CalendarEventBlock } from './CalendarEventBlock';
 
 interface AgendaProps {
   tasks: Task[];
+  calendarEvents?: CalendarEvent[];
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
 }
 
@@ -28,7 +31,11 @@ function formatHour(hour: number): string {
   return `${displayHour}:00 ${period}`;
 }
 
-export function Agenda({ tasks, onUpdateTask }: AgendaProps) {
+export function Agenda({
+  tasks,
+  calendarEvents = [],
+  onUpdateTask,
+}: AgendaProps) {
   const hours = Array.from(
     { length: AGENDA_END_HOUR - AGENDA_START_HOUR },
     (_, i) => AGENDA_START_HOUR + i
@@ -88,6 +95,17 @@ export function Agenda({ tasks, onUpdateTask }: AgendaProps) {
 
           {/* Current time line */}
           <CurrentTimeLine hourHeight={HOUR_HEIGHT} />
+
+          {/* Calendar events (behind tasks) */}
+          {calendarEvents
+            .filter((event) => !event.isAllDay)
+            .map((event) => (
+              <CalendarEventBlock
+                key={`cal-${event.id}`}
+                event={event}
+                hourHeight={HOUR_HEIGHT}
+              />
+            ))}
 
           {/* Scheduled tasks */}
           {scheduledTasks.map((task) => {
