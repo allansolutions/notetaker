@@ -1,4 +1,4 @@
-import { Task, Block, BlockType } from '../../types';
+import { Task, Block, BlockType, TASK_TYPE_COLORS } from '../../types';
 import { BackButton } from '../BackButton';
 import { blockTypeClasses } from '../../utils/block-styles';
 
@@ -48,6 +48,7 @@ function TaskSection({
   onSelectTask: (id: string) => void;
 }) {
   let numberedIndex = 0;
+  const colors = TASK_TYPE_COLORS[task.type];
 
   return (
     <div className="mb-8">
@@ -56,7 +57,9 @@ function TaskSection({
         onClick={() => onSelectTask(task.id)}
         className="text-left w-full group"
       >
-        <h2 className="text-h1 leading-tight font-bold text-primary group-hover:text-accent-fg group-hover:underline mb-2">
+        <h2
+          className={`text-title leading-tight font-bold mb-2 px-2 py-1 rounded ${colors.bg} ${colors.text} group-hover:underline`}
+        >
           {task.title || 'Untitled'}
         </h2>
       </button>

@@ -101,6 +101,7 @@
     monospace;
 
   /* Type scale (based on 1rem = 16px) */
+  --text-title: 2.25rem; /* 36px - task titles in notes view */
   --text-h1: 1.875rem; /* 30px */
   --text-h2: 1.5rem; /* 24px */
   --text-h3: 1.25rem; /* 20px */

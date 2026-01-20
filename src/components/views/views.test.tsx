@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { SpreadsheetView } from './SpreadsheetView';
 import { TaskDetailView } from './TaskDetailView';
 import { FullDayNotesView } from './FullDayNotesView';
-import { Task, Block } from '../../types';
+import { Task, Block, TASK_TYPE_COLORS, TaskType } from '../../types';
 
 const createMockTask = (overrides: Partial<Task> = {}): Task => ({
   id: `task-${Date.now()}-${Math.random()}`,
@@ -420,5 +420,36 @@ describe('FullDayNotesView', () => {
     );
 
     expect(container.querySelector('hr')).toBeInTheDocument();
+  });
+
+  it('applies task type background colors to task titles', () => {
+    const taskTypes: TaskType[] = [
+      'admin',
+      'operations',
+      'business-dev',
+      'personal',
+    ];
+
+    taskTypes.forEach((type) => {
+      const tasks = [createMockTask({ type, title: `${type} Task` })];
+      const { unmount } = render(
+        <FullDayNotesView {...defaultProps} tasks={tasks} />
+      );
+
+      const heading = screen.getByRole('heading', { name: `${type} Task` });
+      const colors = TASK_TYPE_COLORS[type];
+
+      expect(heading.className).toContain(colors.bg.split(' ')[0]);
+      expect(heading.className).toContain(colors.text.split(' ')[0]);
+      unmount();
+    });
+  });
+
+  it('renders task titles with larger text-title class', () => {
+    const tasks = [createMockTask({ title: 'Large Title Task' })];
+    render(<FullDayNotesView {...defaultProps} tasks={tasks} />);
+
+    const heading = screen.getByRole('heading', { name: 'Large Title Task' });
+    expect(heading.className).toContain('text-title');
   });
 });
