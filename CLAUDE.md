@@ -82,6 +82,20 @@ Only use `eslint-disable` when you've genuinely evaluated alternatives and deter
 
 Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
 
+### Playwright MCP
+
+Only use Playwright MCP tools when:
+
+- Explicitly asked to automate browser interactions
+- Debugging a visual or E2E test failure that can't be diagnosed from logs/code alone
+- Need to verify actual rendered UI behavior
+
+Do NOT use Playwright MCP for:
+
+- Reading test files or test output (use Read/Grep)
+- Understanding what tests do (read the code)
+- General development tasks
+
 ## UI Components
 
 When adding new UI components (dropdowns, modals, popovers, form elements, etc.), check shadcn/ui first before building custom components. Only build custom if shadcn/ui doesn't have what's needed or if a pre-existing project dependency already provides the functionality.
