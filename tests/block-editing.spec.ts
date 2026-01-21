@@ -89,7 +89,7 @@ test.describe('Todo checkbox deletion', () => {
     await expect(checkbox).toBeVisible();
 
     // Click somewhere else first (e.g., the title) to lose focus
-    await page.locator('input[placeholder="Task title"]').click();
+    await page.locator('textarea[placeholder="Task title"]').click();
     await page.waitForTimeout(50);
 
     // Now click back on the first block - this simulates user clicking into it
@@ -170,7 +170,7 @@ test.describe('Todo checkbox deletion', () => {
     await expect(firstBlock).toHaveText('');
 
     // Click away to lose focus
-    await page.locator('input[placeholder="Task title"]').click();
+    await page.locator('textarea[placeholder="Task title"]').click();
     await page.waitForTimeout(100);
 
     // Click back into the empty todo block

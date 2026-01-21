@@ -191,8 +191,10 @@ test.describe('Archive View', () => {
     // Click on task
     await page.getByRole('button', { name: 'Done Task' }).click();
 
-    // Should show task detail view - input with task title as value
-    await expect(page.locator('input[value="Done Task"]')).toBeVisible();
+    // Should show task detail view - textarea with task title as value
+    await expect(
+      page.locator('textarea[placeholder="Task title"]')
+    ).toHaveValue('Done Task');
     await expect(page.getByRole('button', { name: /back/i })).toBeVisible();
   });
 

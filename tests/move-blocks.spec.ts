@@ -22,7 +22,7 @@ test.describe('Task Detail View', () => {
   });
 
   test('can edit task title', async ({ page }) => {
-    const titleInput = page.locator('input[type="text"]').first();
+    const titleInput = page.locator('textarea[placeholder="Task title"]');
 
     // Clear and type new title
     await titleInput.fill('Updated Task Title');
