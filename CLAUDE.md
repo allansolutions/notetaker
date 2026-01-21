@@ -9,6 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npx playwright test` - Run Playwright e2e tests (requires dev server running)
 - `npx playwright test tests/visual.spec.ts` - Run a single test file
 
+**Note:** Assume the dev server is always running. Do not start it manually.
+
 ## Architecture
 
 This is a Notion-style block-based note editor built with React, TypeScript, and Vite.

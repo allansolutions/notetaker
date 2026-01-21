@@ -21,6 +21,23 @@ import { getNumberedIndex } from '../utils/block-operations';
 import { PencilIcon } from './icons';
 import { useMultiTaskTimeTracking } from '../hooks/useMultiTaskTimeTracking';
 
+function formatMinutes(minutes: number): string {
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  }
+  return `${minutes}m`;
+}
+
+function calculateTimeSpent(sessions: TimeSession[] | undefined): number {
+  if (!sessions || sessions.length === 0) return 0;
+  return sessions.reduce((total, session) => {
+    const end = session.endTime ?? Date.now();
+    return total + (end - session.startTime);
+  }, 0);
+}
+
 interface TaskNotesEditorProps {
   tasks: Task[];
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
@@ -74,6 +91,7 @@ function TaskHeader({
   task,
   isFocused,
   isTracking,
+  elapsedMs,
   onFocus,
   onArrowUp,
   onArrowDown,
@@ -84,6 +102,7 @@ function TaskHeader({
   task: Task;
   isFocused: boolean;
   isTracking: boolean;
+  elapsedMs: number;
   onFocus: () => void;
   onArrowUp: () => void;
   onArrowDown: () => void;
@@ -134,14 +153,26 @@ function TaskHeader({
     onTitleChange(text);
   };
 
+  // Calculate time spent including current elapsed time if tracking
+  const baseTimeSpentMs = calculateTimeSpent(task.sessions);
+  const totalTimeSpentMs = isTracking
+    ? baseTimeSpentMs + elapsedMs
+    : baseTimeSpentMs;
+  const timeSpentMinutes = Math.floor(totalTimeSpentMs / 60000);
+  const hasEstimate = task.estimate !== undefined && task.estimate > 0;
+  const isOverEstimate =
+    hasEstimate && totalTimeSpentMs > task.estimate! * 60000;
+  const showTimeDisplay = isTracking && hasEstimate;
+
   return (
-    <div className="group flex items-center gap-2 mb-2">
-      {isTracking && (
+    <div className="group relative flex items-center gap-2 mb-2">
+      {showTimeDisplay && (
         <span
-          className="size-2 rounded-full bg-green-500 animate-pulse shrink-0"
-          title="Timer active"
-          data-testid={`tracking-indicator-${task.id}`}
-        />
+          className={`absolute right-full mr-2 text-small whitespace-nowrap ${isOverEstimate ? 'text-red-500' : 'text-muted'}`}
+          data-testid={`time-display-${task.id}`}
+        >
+          {formatMinutes(timeSpentMinutes)} / {formatMinutes(task.estimate!)}
+        </span>
       )}
       <div
         ref={inputRef}
@@ -194,7 +225,7 @@ export function TaskNotesEditor({
   }, [focusedItemId]);
 
   // Time tracking hook
-  const { trackingTaskId } = useMultiTaskTimeTracking({
+  const { trackingTaskId, elapsedMs } = useMultiTaskTimeTracking({
     activeTaskId: activeTrackingTaskId,
     tasks,
     onAddSession: onAddSession || (() => {}),
@@ -414,7 +445,7 @@ export function TaskNotesEditor({
   );
 
   return (
-    <div className="w-full">
+    <div className="w-full pl-20">
       {items.map((item) => {
         if (item.kind === 'task-header') {
           return (
@@ -423,6 +454,7 @@ export function TaskNotesEditor({
                 task={item.task}
                 isFocused={focusedItemId === item.itemId}
                 isTracking={trackingTaskId === item.task.id}
+                elapsedMs={trackingTaskId === item.task.id ? elapsedMs : 0}
                 onFocus={() => setFocusedItemId(item.itemId)}
                 onArrowUp={() => focusPrevious(item.itemId)}
                 onArrowDown={() => focusNext(item.itemId)}

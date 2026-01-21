@@ -414,7 +414,7 @@ describe('TaskNotesEditor', () => {
       vi.useRealTimers();
     });
 
-    it('shows tracking indicator when focus is on a block of task with estimate', () => {
+    it('shows time display only for currently tracking task', () => {
       const blocks: Block[] = [
         { id: 'b1', type: 'paragraph', content: 'Block content' },
       ];
@@ -428,41 +428,21 @@ describe('TaskNotesEditor', () => {
       ];
       render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
 
-      // Focus on the block
-      const blockInput = screen.getByText('Block content');
-      fireEvent.focus(blockInput);
-
-      // Should show tracking indicator
+      // Time display should NOT be visible initially (no tracking)
       expect(
-        screen.getByTestId('tracking-indicator-task-1')
-      ).toBeInTheDocument();
-    });
-
-    it('does not show tracking indicator when focus is on header', () => {
-      const blocks: Block[] = [
-        { id: 'b1', type: 'paragraph', content: 'Block content' },
-      ];
-      const tasks = [
-        createMockTask({
-          id: 'task-1',
-          title: 'Task One',
-          blocks,
-          estimate: 30,
-        }),
-      ];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
-
-      // Focus on the header
-      const header = screen.getByTestId('task-header-task-1');
-      fireEvent.focus(header);
-
-      // Should NOT show tracking indicator
-      expect(
-        screen.queryByTestId('tracking-indicator-task-1')
+        screen.queryByTestId('time-display-task-1')
       ).not.toBeInTheDocument();
+
+      // Focus on the block to start tracking
+      fireEvent.focus(screen.getByText('Block content'));
+
+      // Now time display should be visible
+      const timeDisplay = screen.getByTestId('time-display-task-1');
+      expect(timeDisplay).toBeInTheDocument();
+      expect(timeDisplay).toHaveTextContent('0m / 30m');
     });
 
-    it('does not show tracking indicator for task without estimate', () => {
+    it('does not show time display for task without estimate', () => {
       const blocks: Block[] = [
         { id: 'b1', type: 'paragraph', content: 'Block content' },
       ];
@@ -472,16 +452,15 @@ describe('TaskNotesEditor', () => {
       render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
 
       // Focus on the block
-      const blockInput = screen.getByText('Block content');
-      fireEvent.focus(blockInput);
+      fireEvent.focus(screen.getByText('Block content'));
 
-      // Should NOT show tracking indicator
+      // Should NOT show time display (no estimate)
       expect(
-        screen.queryByTestId('tracking-indicator-task-1')
+        screen.queryByTestId('time-display-task-1')
       ).not.toBeInTheDocument();
     });
 
-    it('moves tracking indicator when switching between tasks', () => {
+    it('moves time display when switching between tasks', () => {
       const blocks1: Block[] = [
         { id: 'b1', type: 'paragraph', content: 'Task 1 block' },
       ];
@@ -499,28 +478,28 @@ describe('TaskNotesEditor', () => {
           id: 'task-2',
           title: 'Task Two',
           blocks: blocks2,
-          estimate: 30,
+          estimate: 60,
         }),
       ];
       render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
 
       // Focus on task 1's block
       fireEvent.focus(screen.getByText('Task 1 block'));
+
+      // Only task 1 should show time display
+      expect(screen.getByTestId('time-display-task-1')).toBeInTheDocument();
       expect(
-        screen.getByTestId('tracking-indicator-task-1')
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('tracking-indicator-task-2')
+        screen.queryByTestId('time-display-task-2')
       ).not.toBeInTheDocument();
 
       // Switch to task 2's block
       fireEvent.focus(screen.getByText('Task 2 block'));
+
+      // Now only task 2 should show time display
       expect(
-        screen.queryByTestId('tracking-indicator-task-1')
+        screen.queryByTestId('time-display-task-1')
       ).not.toBeInTheDocument();
-      expect(
-        screen.getByTestId('tracking-indicator-task-2')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('time-display-task-2')).toBeInTheDocument();
     });
 
     it('calls onAddSession when switching tasks after minimum duration', async () => {
