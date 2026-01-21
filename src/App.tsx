@@ -805,7 +805,13 @@ export function AppContent() {
     <div
       className={`flex min-h-screen ${isResizing ? 'select-none cursor-col-resize' : ''}`}
     >
-      <div className="flex-1 max-w-[var(--width-content)] mx-auto py-20 px-24">
+      <div
+        className={`flex-1 mx-auto py-20 px-24 ${
+          currentView === 'spreadsheet'
+            ? 'max-w-[var(--width-content-wide)]'
+            : 'max-w-[var(--width-content)]'
+        }`}
+      >
         {renderView()}
       </div>
       <CommandPalette

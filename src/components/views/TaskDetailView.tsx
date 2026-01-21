@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { Task, Block, TimeSession } from '../../types';
 import { Editor, createBlock } from '../Editor';
 import { BackButton } from '../BackButton';
@@ -29,6 +29,31 @@ export function TaskDetailView({
 }: TaskDetailViewProps) {
   const [title, setTitle] = useState(task.title);
   const [showSessionsModal, setShowSessionsModal] = useState(false);
+  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(
+    new Set()
+  );
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize title textarea
+  useLayoutEffect(() => {
+    const textarea = titleRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [title]);
+
+  const handleToggleCollapse = useCallback((id: string) => {
+    setCollapsedBlockIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   const hasEstimate = task.estimate != null && task.estimate > 0;
   const estimateMinutes = hasEstimate ? task.estimate! : 0;
@@ -60,9 +85,9 @@ export function TaskDetailView({
   }, [title, task.id, task.title, onUpdateTask]);
 
   const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      (e.target as HTMLInputElement).blur();
+      (e.target as HTMLTextAreaElement).blur();
     }
   }, []);
 
@@ -111,18 +136,24 @@ export function TaskDetailView({
         />
       </div>
 
-      <input
-        type="text"
+      <textarea
+        ref={titleRef}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onBlur={handleTitleBlur}
         onKeyDown={handleTitleKeyDown}
         placeholder="Task title"
-        className="text-2xl font-bold text-primary bg-transparent border-none outline-none mb-6 w-full"
+        rows={1}
+        className="text-2xl font-bold text-primary bg-transparent border-none outline-none mb-6 w-full resize-none overflow-hidden"
       />
 
       <div className="flex-1">
-        <Editor blocks={blocks} setBlocks={setBlocks} />
+        <Editor
+          blocks={blocks}
+          setBlocks={setBlocks}
+          collapsedBlockIds={collapsedBlockIds}
+          onToggleCollapse={handleToggleCollapse}
+        />
       </div>
 
       {showSessionsModal && hasEstimate && (

@@ -129,6 +129,7 @@
 
   /* Layout containers */
   --width-content: 900px;
+  --width-content-wide: 1300px;
   --width-sidebar: 240px;
 
   /* ===== RADII ===== */

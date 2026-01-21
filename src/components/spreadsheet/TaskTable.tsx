@@ -334,7 +334,7 @@ export function TaskTable({
             onChange={(value) => onUpdateTask(row.original.id, { type: value })}
           />
         ),
-        size: 140,
+        size: 120,
         sortingFn: 'alphanumeric',
       }),
       columnHelper.accessor('title', {
@@ -345,6 +345,7 @@ export function TaskTable({
             onClick={() => onSelectTask(row.original.id)}
           />
         ),
+        size: 500,
         sortingFn: 'alphanumeric',
       }),
       columnHelper.accessor('status', {
@@ -357,7 +358,7 @@ export function TaskTable({
             }
           />
         ),
-        size: 180,
+        size: 110,
         sortingFn: (rowA, rowB) => {
           const a = STATUS_ORDER[rowA.original.status];
           const b = STATUS_ORDER[rowB.original.status];
@@ -394,7 +395,7 @@ export function TaskTable({
             onChange={(estimate) => onUpdateTask(row.original.id, { estimate })}
           />
         ),
-        size: 130,
+        size: 105,
         sortingFn: (rowA, rowB) => {
           const a = rowA.original.estimate ?? Infinity;
           const b = rowB.original.estimate ?? Infinity;
@@ -411,7 +412,7 @@ export function TaskTable({
             }
           />
         ),
-        size: 100,
+        size: 75,
         sortingFn: (rowA, rowB) => {
           const a = rowA.original.dueDate ?? Infinity;
           const b = rowB.original.dueDate ?? Infinity;
@@ -511,7 +512,7 @@ export function TaskTable({
         modifiers={[restrictToVerticalAxis]}
         onDragEnd={handleDragEnd}
       >
-        <table className="w-full text-small">
+        <table className="w-full text-small table-fixed">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
