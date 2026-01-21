@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { TimeSession } from '../types';
+import { parseTimeInput } from '../utils/time-parsing';
 
 interface SessionsModalProps {
   sessions: TimeSession[];
   estimateMinutes: number;
   onUpdateSession: (sessionId: string, updates: Partial<TimeSession>) => void;
   onDeleteSession: (sessionId: string) => void;
+  onAddSession: (session: TimeSession) => void;
   onUpdateEstimate: (estimate: number) => void;
   onClose: () => void;
 }
@@ -81,18 +83,27 @@ const ESTIMATE_PRESETS = [
   { label: '4h', minutes: 240 },
 ];
 
+function generateSessionId(): string {
+  return `session-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 export function SessionsModal({
   sessions,
   estimateMinutes,
   onUpdateSession,
   onDeleteSession,
+  onAddSession,
   onUpdateEstimate,
   onClose,
 }: SessionsModalProps) {
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [editingEstimate, setEditingEstimate] = useState(false);
   const [estimateValue, setEstimateValue] = useState(String(estimateMinutes));
+  const [isAddingEntry, setIsAddingEntry] = useState(false);
+  const [newEntryValue, setNewEntryValue] = useState('');
+  const [addEntryError, setAddEntryError] = useState(false);
   const estimateInputRef = useRef<HTMLInputElement>(null);
+  const addEntryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editingEstimate) {
@@ -100,6 +111,55 @@ export function SessionsModal({
       estimateInputRef.current?.select();
     }
   }, [editingEstimate]);
+
+  useEffect(() => {
+    if (isAddingEntry) {
+      addEntryInputRef.current?.focus();
+    }
+  }, [isAddingEntry]);
+
+  const handleAddEntrySave = () => {
+    const trimmed = newEntryValue.trim();
+    if (!trimmed) {
+      setIsAddingEntry(false);
+      setNewEntryValue('');
+      setAddEntryError(false);
+      return;
+    }
+    const minutes = parseTimeInput(trimmed);
+    if (minutes === undefined) {
+      setAddEntryError(true);
+      return;
+    }
+    const endTime = Date.now();
+    const startTime = endTime - minutesToMs(minutes);
+    const session: TimeSession = {
+      id: generateSessionId(),
+      startTime,
+      endTime,
+    };
+    onAddSession(session);
+    setIsAddingEntry(false);
+    setNewEntryValue('');
+    setAddEntryError(false);
+  };
+
+  const handleAddEntryKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAddEntrySave();
+    } else if (e.key === 'Escape') {
+      setIsAddingEntry(false);
+      setNewEntryValue('');
+      setAddEntryError(false);
+    }
+  };
+
+  const handleAddEntryChange = (value: string) => {
+    setNewEntryValue(value);
+    if (addEntryError) {
+      setAddEntryError(false);
+    }
+  };
 
   const handleEstimateSave = () => {
     const newEstimate = parseInt(estimateValue, 10);
@@ -216,87 +276,133 @@ export function SessionsModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          {sessions.length === 0 ? (
-            <p className="text-muted text-center py-8">
-              No sessions recorded yet
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {sessions.map((session) => {
-                const isComplete = session.endTime !== undefined;
-                // Only show duration for completed sessions
-                const duration = isComplete
-                  ? session.endTime! - session.startTime
-                  : 0;
-                const isEditing = editing?.sessionId === session.id;
+          <div className="space-y-2">
+            {sessions.length === 0 && !isAddingEntry && (
+              <p className="text-muted text-center py-8">
+                No sessions recorded yet
+              </p>
+            )}
+            {sessions.map((session) => {
+              const isComplete = session.endTime !== undefined;
+              // Only show duration for completed sessions
+              const duration = isComplete
+                ? session.endTime! - session.startTime
+                : 0;
+              const isEditing = editing?.sessionId === session.id;
 
-                return (
-                  <div
-                    key={session.id}
-                    className="flex items-center gap-3 p-3 rounded-md bg-hover"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-small text-muted truncate">
-                        {formatDate(session.startTime)}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {isEditing ? (
-                        <EditInput
-                          value={editing.minutes}
-                          onChange={(value) =>
-                            setEditing({ ...editing, minutes: value })
-                          }
-                          onKeyDown={(e) => handleKeyDown(e, session)}
-                          onBlur={() => handleEditSave(session)}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleEditStart(session)}
-                          disabled={!isComplete}
-                          className={`px-2 py-1 text-sm rounded font-medium ${
-                            isComplete
-                              ? 'text-primary hover:bg-surface cursor-pointer'
-                              : 'text-muted cursor-default'
-                          }`}
-                          title={
-                            isComplete ? 'Click to edit' : 'Active session'
-                          }
-                        >
-                          {isComplete ? formatDuration(duration) : 'Active'}
-                          {!isComplete && (
-                            <span className="ml-1 inline-block size-2 rounded-full bg-green-500 animate-pulse" />
-                          )}
-                        </button>
-                      )}
-
-                      {isComplete && (
-                        <button
-                          type="button"
-                          onClick={() => onDeleteSession(session.id)}
-                          className="p-1 text-muted hover:text-red-500 transition-colors"
-                          title="Delete session"
-                        >
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                          >
-                            <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4" />
-                          </svg>
-                        </button>
-                      )}
+              return (
+                <div
+                  key={session.id}
+                  className="flex items-center gap-3 p-3 rounded-md bg-hover"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-small text-muted truncate">
+                      {formatDate(session.startTime)}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+
+                  <div className="flex items-center gap-2">
+                    {isEditing ? (
+                      <EditInput
+                        value={editing.minutes}
+                        onChange={(value) =>
+                          setEditing({ ...editing, minutes: value })
+                        }
+                        onKeyDown={(e) => handleKeyDown(e, session)}
+                        onBlur={() => handleEditSave(session)}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleEditStart(session)}
+                        disabled={!isComplete}
+                        className={`px-2 py-1 text-sm rounded font-medium ${
+                          isComplete
+                            ? 'text-primary hover:bg-surface cursor-pointer'
+                            : 'text-muted cursor-default'
+                        }`}
+                        title={isComplete ? 'Click to edit' : 'Active session'}
+                      >
+                        {isComplete ? formatDuration(duration) : 'Active'}
+                        {!isComplete && (
+                          <span className="ml-1 inline-block size-2 rounded-full bg-green-500 animate-pulse" />
+                        )}
+                      </button>
+                    )}
+
+                    {isComplete && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteSession(session.id)}
+                        className="p-1 text-muted hover:text-red-500 transition-colors"
+                        title="Delete session"
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Add Entry Form */}
+            {isAddingEntry && (
+              <div
+                className={`flex items-center gap-3 p-3 rounded-md bg-hover border border-dashed ${addEntryError ? 'border-red-500' : 'border-border'}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-small text-muted">Manual entry</div>
+                  {addEntryError && (
+                    <div className="text-xs text-red-500 mt-1">
+                      Invalid format (e.g., 30, 1h, 1h 30m)
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={addEntryInputRef}
+                    type="text"
+                    placeholder="e.g., 30m"
+                    value={newEntryValue}
+                    onChange={(e) => handleAddEntryChange(e.target.value)}
+                    onKeyDown={handleAddEntryKeyDown}
+                    onBlur={handleAddEntrySave}
+                    className={`w-20 px-2 py-1 text-sm rounded bg-surface border text-primary focus:outline-none focus:ring-2 ${addEntryError ? 'border-red-500 focus:ring-red-500' : 'border-border focus:ring-blue-500'}`}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Add Entry Button */}
+            {!isAddingEntry && (
+              <button
+                type="button"
+                onClick={() => setIsAddingEntry(true)}
+                className="flex items-center gap-2 w-full p-3 rounded-md text-muted hover:bg-hover hover:text-primary transition-colors"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path d="M8 3v10M3 8h10" />
+                </svg>
+                <span className="text-sm">Add entry</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="p-4 border-t border-border space-y-3">

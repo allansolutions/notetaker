@@ -7,6 +7,7 @@ describe('SessionsModal', () => {
   const mockOnClose = vi.fn();
   const mockOnUpdateSession = vi.fn();
   const mockOnDeleteSession = vi.fn();
+  const mockOnAddSession = vi.fn();
   const mockOnUpdateEstimate = vi.fn();
 
   beforeEach(() => {
@@ -28,6 +29,7 @@ describe('SessionsModal', () => {
     estimateMinutes: 60,
     onUpdateSession: mockOnUpdateSession,
     onDeleteSession: mockOnDeleteSession,
+    onAddSession: mockOnAddSession,
     onUpdateEstimate: mockOnUpdateEstimate,
     onClose: mockOnClose,
   };
@@ -491,6 +493,229 @@ describe('SessionsModal', () => {
       await waitFor(() => {
         expect(mockOnUpdateEstimate).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('manual time entry', () => {
+    it('shows Add entry button', () => {
+      render(<SessionsModal {...defaultProps} />);
+      expect(
+        screen.getByRole('button', { name: /add entry/i })
+      ).toBeInTheDocument();
+    });
+
+    it('clicking Add entry button shows input form', () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+      expect(screen.getByPlaceholderText('e.g., 30m')).toBeInTheDocument();
+      expect(screen.getByText('Manual entry')).toBeInTheDocument();
+    });
+
+    it('hides empty state message when adding entry', () => {
+      render(<SessionsModal {...defaultProps} sessions={[]} />);
+      expect(screen.getByText('No sessions recorded yet')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+      expect(
+        screen.queryByText('No sessions recorded yet')
+      ).not.toBeInTheDocument();
+    });
+
+    it('pressing Enter saves manual entry with plain number', async () => {
+      const beforeTime = Date.now();
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: '30' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnAddSession).toHaveBeenCalledTimes(1);
+        const session = mockOnAddSession.mock.calls[0][0];
+        expect(session.id).toMatch(/^session-/);
+        expect(session.endTime).toBeGreaterThanOrEqual(beforeTime);
+        expect(session.endTime - session.startTime).toBe(30 * 60000);
+      });
+    });
+
+    it('accepts JIRA-style format with minutes suffix', async () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: '45m' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnAddSession).toHaveBeenCalledTimes(1);
+        const session = mockOnAddSession.mock.calls[0][0];
+        expect(session.endTime - session.startTime).toBe(45 * 60000);
+      });
+    });
+
+    it('accepts JIRA-style format with hours', async () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: '2h' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnAddSession).toHaveBeenCalledTimes(1);
+        const session = mockOnAddSession.mock.calls[0][0];
+        expect(session.endTime - session.startTime).toBe(120 * 60000);
+      });
+    });
+
+    it('accepts JIRA-style format with hours and minutes', async () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: '1h 30m' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnAddSession).toHaveBeenCalledTimes(1);
+        const session = mockOnAddSession.mock.calls[0][0];
+        expect(session.endTime - session.startTime).toBe(90 * 60000);
+      });
+    });
+
+    it('blur saves manual entry', async () => {
+      const beforeTime = Date.now();
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: '45' } });
+      fireEvent.blur(input);
+
+      await waitFor(() => {
+        expect(mockOnAddSession).toHaveBeenCalledTimes(1);
+        const session = mockOnAddSession.mock.calls[0][0];
+        expect(session.endTime).toBeGreaterThanOrEqual(beforeTime);
+        expect(session.endTime - session.startTime).toBe(45 * 60000);
+      });
+    });
+
+    it('pressing Escape cancels manual entry', async () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: '30' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      await waitFor(() => {
+        expect(mockOnAddSession).not.toHaveBeenCalled();
+        expect(
+          screen.queryByPlaceholderText('e.g., 30m')
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /add entry/i })
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('shows error for invalid entry and keeps form open', async () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: 'abc' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnAddSession).not.toHaveBeenCalled();
+        expect(
+          screen.getByText('Invalid format (e.g., 30, 1h, 1h 30m)')
+        ).toBeInTheDocument();
+        // Form should still be open
+        expect(screen.getByPlaceholderText('e.g., 30m')).toBeInTheDocument();
+      });
+    });
+
+    it('clears error when user types again', async () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: 'abc' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Invalid format (e.g., 30, 1h, 1h 30m)')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.change(input, { target: { value: '30' } });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText('Invalid format (e.g., 30, 1h, 1h 30m)')
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows error for zero duration entry', async () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: '0' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnAddSession).not.toHaveBeenCalled();
+        expect(
+          screen.getByText('Invalid format (e.g., 30, 1h, 1h 30m)')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('shows error for negative duration entry', async () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.change(input, { target: { value: '-10' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockOnAddSession).not.toHaveBeenCalled();
+        expect(
+          screen.getByText('Invalid format (e.g., 30, 1h, 1h 30m)')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('closes form without error when empty and blur', async () => {
+      render(<SessionsModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add entry/i }));
+
+      const input = screen.getByPlaceholderText('e.g., 30m');
+      fireEvent.blur(input);
+
+      await waitFor(() => {
+        expect(mockOnAddSession).not.toHaveBeenCalled();
+        expect(
+          screen.queryByText('Invalid format (e.g., 30, 1h, 1h 30m)')
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /add entry/i })
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('shows Add entry button alongside existing sessions', () => {
+      const sessions = [createSession('s1', Date.now() - 3600000, Date.now())];
+      render(<SessionsModal {...defaultProps} sessions={sessions} />);
+      expect(
+        screen.getByRole('button', { name: /add entry/i })
+      ).toBeInTheDocument();
     });
   });
 });

@@ -123,6 +123,13 @@ export function TaskDetailView({
     [task.id, onUpdateTask]
   );
 
+  const handleAddManualSession = useCallback(
+    (session: TimeSession) => {
+      onAddSession(task.id, session);
+    },
+    [task.id, onAddSession]
+  );
+
   return (
     <div className="flex flex-col h-full relative">
       <div className="flex items-center justify-between mb-6">
@@ -162,6 +169,7 @@ export function TaskDetailView({
           estimateMinutes={task.estimate!}
           onUpdateSession={handleUpdateSession}
           onDeleteSession={handleDeleteSession}
+          onAddSession={handleAddManualSession}
           onUpdateEstimate={handleUpdateEstimate}
           onClose={() => setShowSessionsModal(false)}
         />
