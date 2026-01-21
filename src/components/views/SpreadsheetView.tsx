@@ -4,6 +4,7 @@ import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
 import { DocumentIcon, ArchiveIcon } from '../icons';
 import { AddTaskData } from '../AddTaskModal';
 import { DateFilterMenu } from '../DateFilterMenu';
+import { DateFilterTitle } from '../DateFilterTitle';
 import { matchesDatePreset } from '../../utils/date-filters';
 
 export interface SpreadsheetFilterState {
@@ -193,6 +194,12 @@ export function SpreadsheetView({
           Archive
         </button>
       </div>
+
+      <DateFilterTitle
+        preset={dateFilterPreset}
+        specificDate={dateFilterDate}
+        dateRange={dateFilterRange}
+      />
 
       <TaskTable
         tasks={tasks}

@@ -604,6 +604,11 @@ export function AppContent() {
             onUpdateTask={updateTaskById}
             onAddTask={handleInlineTaskCreate}
             onAddSession={addSession}
+            dateFilterPreset={
+              taskNotesContext?.originalFilters.dateFilterPreset
+            }
+            dateFilterDate={taskNotesContext?.originalFilters.dateFilterDate}
+            dateFilterRange={taskNotesContext?.originalFilters.dateFilterRange}
           />
         );
       case 'archive':

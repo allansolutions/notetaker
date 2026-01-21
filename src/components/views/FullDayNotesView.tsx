@@ -1,6 +1,13 @@
-import { Task, TaskType, TimeSession } from '../../types';
+import {
+  Task,
+  TaskType,
+  TimeSession,
+  DateFilterPreset,
+  DateRange,
+} from '../../types';
 import { BackButton } from '../BackButton';
 import { TaskNotesEditor } from '../TaskNotesEditor';
+import { DateFilterTitle } from '../DateFilterTitle';
 
 interface FullDayNotesViewProps {
   tasks: Task[];
@@ -13,6 +20,9 @@ interface FullDayNotesViewProps {
     insertAfterTaskId?: string | null
   ) => Promise<Task | null>;
   onAddSession?: (taskId: string, session: TimeSession) => void;
+  dateFilterPreset?: DateFilterPreset;
+  dateFilterDate?: number | null;
+  dateFilterRange?: DateRange | null;
 }
 
 export function FullDayNotesView({
@@ -22,6 +32,9 @@ export function FullDayNotesView({
   onUpdateTask,
   onAddTask,
   onAddSession,
+  dateFilterPreset = 'all',
+  dateFilterDate,
+  dateFilterRange,
 }: FullDayNotesViewProps) {
   // Default no-op handlers if not provided
   const handleUpdateTask = onUpdateTask || (() => {});
@@ -35,6 +48,11 @@ export function FullDayNotesView({
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        <DateFilterTitle
+          preset={dateFilterPreset}
+          specificDate={dateFilterDate}
+          dateRange={dateFilterRange}
+        />
         {tasks.length === 0 && !onAddTask ? (
           <p className="text-muted italic">
             No tasks match the current filters.
