@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { mockAuthenticated, mockTasksApi } from './helpers/auth';
 
 test.describe('Agenda', () => {
