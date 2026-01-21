@@ -33,6 +33,7 @@ interface SpreadsheetViewProps {
   onNavigateToArchive: () => void;
   onVisibleTasksChange?: (tasks: Task[]) => void;
   initialFilters?: SpreadsheetFilterState;
+  onFilterStateChange?: (state: SpreadsheetFilterState) => void;
 }
 
 export function SpreadsheetView({
@@ -46,6 +47,7 @@ export function SpreadsheetView({
   onNavigateToArchive,
   onVisibleTasksChange,
   initialFilters,
+  onFilterStateChange,
 }: SpreadsheetViewProps) {
   const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>(
     initialFilters?.dateFilterPreset ?? 'all'
@@ -66,6 +68,10 @@ export function SpreadsheetView({
       initialFiltersApplied.current = true;
     }
   }, [initialFilters]);
+
+  useEffect(() => {
+    onFilterStateChange?.({ filters, dateFilterPreset });
+  }, [filters, dateFilterPreset, onFilterStateChange]);
 
   // Calculate counts for each preset
   const presetCounts = useMemo(() => {

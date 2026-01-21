@@ -6,7 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { TasksProvider } from './context/TasksContext';
-import { ViewType, TaskType } from './types';
+import { ViewType, TaskType, TASK_TYPE_OPTIONS } from './types';
 import {
   SpreadsheetView,
   SpreadsheetFilterState,
@@ -19,11 +19,11 @@ import { Sidebar } from './components/Sidebar';
 import { LoginPage } from './components/LoginPage';
 import { AuthGuard } from './components/AuthGuard';
 import { MigrationPrompt } from './components/MigrationPrompt';
+import { CommandPalette } from './components/CommandPalette';
 import {
   doesTaskMatchFilters,
   hasActiveFilters,
 } from './utils/filter-matching';
-import './styles/main.css';
 
 interface TaskNotesContext {
   originalFilters: SpreadsheetFilterState;
@@ -35,7 +35,18 @@ const DEFAULT_SIDEBAR_WIDTH = 240;
 const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 500;
 
-function AppContent() {
+const createEmptyFilterState = (): SpreadsheetFilterState => ({
+  filters: {
+    type: null,
+    title: null,
+    status: null,
+    importance: null,
+    dueDate: null,
+  },
+  dateFilterPreset: 'all',
+});
+
+export function AppContent() {
   const {
     tasks,
     addTask,
@@ -51,6 +62,9 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState<ViewType>('spreadsheet');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [spreadsheetViewKey, setSpreadsheetViewKey] = useState(0);
+  const [visibleTaskIds, setVisibleTaskIds] = useState<string[]>([]);
 
   // Task notes context - tracks filter state when navigating to task notes
   const [taskNotesContext, setTaskNotesContext] =
@@ -58,6 +72,8 @@ function AppContent() {
   // Return filters - filters to apply when returning to spreadsheet from task notes
   const [returnFilters, setReturnFilters] =
     useState<SpreadsheetFilterState | null>(null);
+  const [spreadsheetFilterState, setSpreadsheetFilterState] =
+    useState<SpreadsheetFilterState>(createEmptyFilterState());
 
   const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
     SIDEBAR_WIDTH_KEY,
@@ -136,6 +152,185 @@ function AppContent() {
     setCurrentView('archive');
   }, []);
 
+  // Split tasks into active and archived
+  const activeTasks = useMemo(
+    () => tasks.filter((t) => t.status !== 'done'),
+    [tasks]
+  );
+  const doneTasks = useMemo(
+    () => tasks.filter((t) => t.status === 'done'),
+    [tasks]
+  );
+
+  const handleCommandNavigateToTaskNotes = useCallback(() => {
+    if (currentView === 'full-day-notes') return;
+    const fallbackVisibleTaskIds = activeTasks
+      .filter((task) => doesTaskMatchFilters(task, spreadsheetFilterState))
+      .map((task) => task.id);
+    const nextVisibleTaskIds =
+      visibleTaskIds.length > 0 ? visibleTaskIds : fallbackVisibleTaskIds;
+    handleNavigateToFullDayNotes(spreadsheetFilterState, nextVisibleTaskIds);
+  }, [
+    activeTasks,
+    currentView,
+    handleNavigateToFullDayNotes,
+    spreadsheetFilterState,
+    visibleTaskIds,
+  ]);
+
+  const handleCommandSetPreset = useCallback(
+    (preset: SpreadsheetFilterState['dateFilterPreset']) => {
+      if (spreadsheetFilterState.dateFilterPreset === preset) {
+        return;
+      }
+
+      const nextFilterState: SpreadsheetFilterState = {
+        ...spreadsheetFilterState,
+        dateFilterPreset: preset,
+      };
+
+      setSpreadsheetFilterState(nextFilterState);
+      setTaskNotesContext((prev) => {
+        if (!prev) return prev;
+        return { ...prev, originalFilters: nextFilterState };
+      });
+
+      if (currentView === 'spreadsheet') {
+        setReturnFilters(nextFilterState);
+        setSpreadsheetViewKey((prev) => prev + 1);
+      }
+    },
+    [currentView, spreadsheetFilterState]
+  );
+
+  const handleCommandSetTypeFilter = useCallback(
+    (type: TaskType) => {
+      const currentTypeFilter = spreadsheetFilterState.filters.type;
+      if (
+        currentTypeFilter?.type === 'multiselect' &&
+        currentTypeFilter.selected.size === 1 &&
+        currentTypeFilter.selected.has(type)
+      ) {
+        return;
+      }
+
+      const nextFilterState: SpreadsheetFilterState = {
+        ...spreadsheetFilterState,
+        filters: {
+          ...spreadsheetFilterState.filters,
+          type: { type: 'multiselect', selected: new Set([type]) },
+        },
+      };
+
+      setSpreadsheetFilterState(nextFilterState);
+      setTaskNotesContext((prev) => {
+        if (!prev) return prev;
+        return { ...prev, originalFilters: nextFilterState };
+      });
+
+      if (currentView === 'spreadsheet') {
+        setReturnFilters(nextFilterState);
+        setSpreadsheetViewKey((prev) => prev + 1);
+      }
+    },
+    [currentView, spreadsheetFilterState]
+  );
+
+  const handleCommandClearFilters = useCallback(() => {
+    const emptyFilters = createEmptyFilterState();
+    const isAlreadyEmpty =
+      spreadsheetFilterState.dateFilterPreset === 'all' &&
+      Object.values(spreadsheetFilterState.filters).every((filter) => {
+        if (!filter) return true;
+        if (filter.type === 'multiselect') return filter.selected.size === 0;
+        if (filter.type === 'text') return filter.value.trim() === '';
+        if (filter.type === 'date') return filter.value === null;
+        if (filter.type === 'title-enhanced') {
+          return (
+            filter.searchText.trim() === '' && filter.selectedTaskIds === null
+          );
+        }
+        return true;
+      });
+
+    if (isAlreadyEmpty) return;
+
+    setSpreadsheetFilterState(emptyFilters);
+    setTaskNotesContext((prev) => {
+      if (!prev) return prev;
+      return { ...prev, originalFilters: emptyFilters };
+    });
+
+    if (currentView === 'spreadsheet') {
+      setReturnFilters(emptyFilters);
+      setSpreadsheetViewKey((prev) => prev + 1);
+    }
+  }, [currentView, spreadsheetFilterState]);
+
+  const commandPaletteCommands = useMemo(
+    () => [
+      {
+        id: 'view-all',
+        label: 'Filter: All',
+        keywords: ['view', 'tasks', 'all', 'filter'],
+        onExecute: () => handleCommandSetPreset('all'),
+      },
+      {
+        id: 'filter-clear',
+        label: 'Filter: Clear',
+        keywords: ['clear', 'filters', 'reset'],
+        onExecute: handleCommandClearFilters,
+      },
+      {
+        id: 'view-today',
+        label: 'Filter: Today',
+        keywords: ['view', 'tasks', 'today', 'filter'],
+        onExecute: () => handleCommandSetPreset('today'),
+      },
+      {
+        id: 'view-tomorrow',
+        label: 'Filter: Tomorrow',
+        keywords: ['view', 'tasks', 'tomorrow', 'filter'],
+        onExecute: () => handleCommandSetPreset('tomorrow'),
+      },
+      {
+        id: 'view-this-week',
+        label: 'Filter: This Week',
+        keywords: ['view', 'tasks', 'week', 'filter'],
+        onExecute: () => handleCommandSetPreset('this-week'),
+      },
+      {
+        id: 'view-task-notes',
+        label: 'Task: Notes',
+        keywords: ['notes', 'full day', 'view'],
+        onExecute: handleCommandNavigateToTaskNotes,
+      },
+      {
+        id: 'view-task-list',
+        label: 'Task: List',
+        keywords: ['list', 'tasks', 'view', 'spreadsheet'],
+        onExecute: () => {
+          if (currentView !== 'spreadsheet') {
+            setCurrentView('spreadsheet');
+          }
+        },
+      },
+      ...TASK_TYPE_OPTIONS.map((option) => ({
+        id: `task-type-${option.value}`,
+        label: `Type: ${option.label}`,
+        keywords: ['task', 'type', option.label.toLowerCase()],
+        onExecute: () => handleCommandSetTypeFilter(option.value),
+      })),
+    ],
+    [
+      currentView,
+      handleCommandSetPreset,
+      handleCommandClearFilters,
+      handleCommandNavigateToTaskNotes,
+      handleCommandSetTypeFilter,
+    ]
+  );
+
   const handleAddTask = useCallback(
     async (data: AddTaskData) => {
       await addTask(
@@ -175,17 +370,13 @@ function AppContent() {
       );
 
       // If we're in task notes with active filters, check if the new task matches
-      if (
-        newTask &&
-        taskNotesContext &&
-        hasActiveFilters(taskNotesContext.originalFilters)
-      ) {
-        const matchesFilters = doesTaskMatchFilters(
-          newTask,
-          taskNotesContext.originalFilters
-        );
+      if (newTask && taskNotesContext) {
+        const hasFilters = hasActiveFilters(taskNotesContext.originalFilters);
+        const matchesFilters = hasFilters
+          ? doesTaskMatchFilters(newTask, taskNotesContext.originalFilters)
+          : true;
 
-        // Add new task to pinned tasks so it shows in notes view
+        // Always pin the new task so it shows immediately in notes view.
         setTaskNotesContext((prev) => {
           if (!prev) return prev;
           return {
@@ -194,7 +385,7 @@ function AppContent() {
           };
         });
 
-        if (!matchesFilters) {
+        if (hasFilters && !matchesFilters) {
           // Task doesn't match original filters - set up return filters
           // Clear all filters except title, set title to show pinned tasks + new task
           setReturnFilters({
@@ -226,29 +417,32 @@ function AppContent() {
     ? tasks.find((t) => t.id === selectedTaskId)
     : null;
 
-  // Split tasks into active and archived
-  const activeTasks = useMemo(
-    () => tasks.filter((t) => t.status !== 'done'),
-    [tasks]
-  );
-  const doneTasks = useMemo(
-    () => tasks.filter((t) => t.status === 'done'),
-    [tasks]
-  );
-
   // Filter tasks for task notes view based on pinned task IDs
   const filteredTasksForNotes = useMemo(() => {
-    if (!taskNotesContext || taskNotesContext.pinnedTaskIds.length === 0) {
-      // No filters active - show all tasks
-      return tasks;
-    }
-    const pinnedSet = new Set(taskNotesContext.pinnedTaskIds);
-    return tasks.filter((t) => pinnedSet.has(t.id));
-  }, [tasks, taskNotesContext]);
+    const baseTasks =
+      taskNotesContext && taskNotesContext.pinnedTaskIds.length > 0
+        ? tasks.filter((t) => taskNotesContext.pinnedTaskIds.includes(t.id))
+        : tasks;
+    return baseTasks.filter((task) =>
+      doesTaskMatchFilters(task, spreadsheetFilterState)
+    );
+  }, [tasks, taskNotesContext, spreadsheetFilterState]);
 
   // Handle clearing return filters after they've been applied
   const handleClearReturnFilters = useCallback(() => {
     setReturnFilters(null);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isMetaK = event.metaKey && event.key.toLowerCase() === 'k';
+      if (!isMetaK) return;
+      event.preventDefault();
+      setIsCommandPaletteOpen((open) => !open);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const renderView = () => {
@@ -300,6 +494,7 @@ function AppContent() {
         }
         return (
           <SpreadsheetView
+            key={spreadsheetViewKey}
             tasks={activeTasks}
             onUpdateTask={updateTaskById}
             onDeleteTask={removeTask}
@@ -309,6 +504,10 @@ function AppContent() {
             onNavigateToFullDayNotes={handleNavigateToFullDayNotes}
             onNavigateToArchive={handleNavigateToArchive}
             initialFilters={initialFilters}
+            onFilterStateChange={setSpreadsheetFilterState}
+            onVisibleTasksChange={(tasks) =>
+              setVisibleTaskIds(tasks.map((task) => task.id))
+            }
           />
         );
       }
@@ -322,6 +521,11 @@ function AppContent() {
       <div className="flex-1 max-w-[var(--width-content)] mx-auto py-20 px-24">
         {renderView()}
       </div>
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        commands={commandPaletteCommands}
+        onClose={() => setIsCommandPaletteOpen(false)}
+      />
       <div
         data-testid="sidebar"
         className="shrink-0 bg-surface-alt sticky top-0 h-screen overflow-y-auto flex"

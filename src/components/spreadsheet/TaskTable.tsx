@@ -306,27 +306,6 @@ export function TaskTable({
     });
   }, [tasksFilteredByOtherColumns, filters.title]);
 
-  const hasActiveFilters = useMemo(() => {
-    return Object.values(filters).some((f) => {
-      if (!f) return false;
-      if (f.type === 'multiselect') return f.selected.size > 0;
-      if (f.type === 'text') return f.value.trim() !== '';
-      if (f.type === 'date') return f.value !== null;
-      if (f.type === 'title-enhanced') {
-        return f.searchText.trim() !== '' || f.selectedTaskIds !== null;
-      }
-      return false;
-    });
-  }, [filters]);
-
-  const clearAllFilters = useCallback(() => {
-    if (isControlled && onFiltersChange) {
-      onFiltersChange(defaultFilters);
-    } else {
-      setInternalFilters(defaultFilters);
-    }
-  }, [isControlled, onFiltersChange]);
-
   const columns = useMemo(
     () => [
       columnHelper.accessor('type', {
@@ -508,20 +487,6 @@ export function TaskTable({
 
   return (
     <div className="w-full">
-      {hasActiveFilters && (
-        <div className="flex items-center justify-between mb-2 px-2 py-1 bg-primary/5 border border-primary/20 rounded text-xs">
-          <span className="text-primary">
-            Showing {filteredTasks.length} of {tasks.length} tasks
-          </span>
-          <button
-            type="button"
-            onClick={clearAllFilters}
-            className="text-muted hover:text-primary"
-          >
-            Clear all filters
-          </button>
-        </div>
-      )}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

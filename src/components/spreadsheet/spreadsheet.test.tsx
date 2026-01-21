@@ -829,67 +829,6 @@ describe('TaskTable', () => {
       expect(titles).toEqual(['Today Task']);
     });
 
-    it('shows filter count when filters are active', () => {
-      const tasks = [
-        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
-        createMockTask({
-          id: 'task-2',
-          title: 'Personal Task',
-          type: 'personal',
-        }),
-        createMockTask({
-          id: 'task-3',
-          title: 'Fitness Task',
-          type: 'fitness',
-        }),
-      ];
-
-      const { container } = render(
-        <TaskTable {...defaultProps} tasks={tasks} />
-      );
-
-      // Open type filter
-      const filterButton = getFilterButton(container, 0)!;
-      fireEvent.click(filterButton);
-
-      // Select only 'admin'
-      fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
-
-      // Should show filter count message
-      expect(screen.getByText('Showing 1 of 3 tasks')).toBeInTheDocument();
-      expect(screen.getByText('Clear all filters')).toBeInTheDocument();
-    });
-
-    it('clears all filters when clicking clear all button', () => {
-      const tasks = [
-        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
-        createMockTask({
-          id: 'task-2',
-          title: 'Personal Task',
-          type: 'personal',
-        }),
-      ];
-
-      const { container } = render(
-        <TaskTable {...defaultProps} tasks={tasks} />
-      );
-
-      // Apply filter
-      const filterButton = getFilterButton(container, 0)!;
-      fireEvent.click(filterButton);
-      fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
-
-      // Verify filter is active
-      expect(getRowTitles()).toEqual(['Admin Task']);
-
-      // Clear all filters
-      fireEvent.click(screen.getByText('Clear all filters'));
-
-      // All tasks should be visible
-      const titles = getRowTitles();
-      expect(titles).toEqual(['Admin Task', 'Personal Task']);
-    });
-
     it('combines multiple filters', () => {
       const tasks = [
         createMockTask({
@@ -1353,34 +1292,6 @@ describe('TaskTable', () => {
       );
       fireEvent.click(filterButtons[0]);
       fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
-
-      expect(onFiltersChange).toHaveBeenCalled();
-    });
-
-    it('calls onFiltersChange when clearing filters in controlled mode', () => {
-      const onFiltersChange = vi.fn();
-      const filters = {
-        type: { type: 'multiselect' as const, selected: new Set(['admin']) },
-        title: null,
-        status: null,
-        importance: null,
-        dueDate: null,
-      };
-      const tasks = [
-        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
-      ];
-
-      render(
-        <TaskTable
-          {...defaultProps}
-          tasks={tasks}
-          filters={filters}
-          onFiltersChange={onFiltersChange}
-        />
-      );
-
-      // Click clear all filters
-      fireEvent.click(screen.getByText('Clear all filters'));
 
       expect(onFiltersChange).toHaveBeenCalled();
     });
