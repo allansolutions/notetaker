@@ -538,6 +538,12 @@ export function AppContent() {
           }
         },
       },
+      {
+        id: 'view-archive',
+        label: 'Task: Archive',
+        keywords: ['archive', 'completed', 'done', 'tasks'],
+        onExecute: handleNavigateToArchive,
+      },
       ...TASK_TYPE_OPTIONS.map((option) => ({
         id: `task-type-${option.value}`,
         label: `Type: ${option.label}`,
@@ -554,6 +560,7 @@ export function AppContent() {
       handleCommandNewTask,
       handleCommandMarkDone,
       handleCommandSetTypeFilter,
+      handleNavigateToArchive,
       selectedTaskId,
       focusedNotesTaskId,
     ]
