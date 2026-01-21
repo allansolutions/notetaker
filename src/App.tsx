@@ -860,7 +860,7 @@ export function AppContent() {
     >
       <div
         className={`flex-1 mx-auto py-20 px-24 ${
-          currentView === 'spreadsheet'
+          currentView === 'spreadsheet' || currentView === 'archive'
             ? 'max-w-[var(--width-content-wide)]'
             : 'max-w-[var(--width-content)]'
         }`}
