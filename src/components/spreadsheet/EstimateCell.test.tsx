@@ -33,19 +33,22 @@ describe('EstimateCell', () => {
 
     it('renders time spent and estimate when estimate exists', () => {
       render(<EstimateCell value={30} onChange={mockOnChange} />);
-      expect(screen.getByText('0m /')).toBeInTheDocument();
+      expect(screen.getByText('0m')).toBeInTheDocument();
+      expect(screen.getByText('/')).toBeInTheDocument();
       expect(screen.getByText('30m')).toBeInTheDocument();
     });
 
     it('formats hours correctly', () => {
       render(<EstimateCell value={120} onChange={mockOnChange} />);
-      expect(screen.getByText('0m /')).toBeInTheDocument();
+      expect(screen.getByText('0m')).toBeInTheDocument();
+      expect(screen.getByText('/')).toBeInTheDocument();
       expect(screen.getByText('2h')).toBeInTheDocument();
     });
 
     it('formats hours and minutes correctly', () => {
       render(<EstimateCell value={90} onChange={mockOnChange} />);
-      expect(screen.getByText('0m /')).toBeInTheDocument();
+      expect(screen.getByText('0m')).toBeInTheDocument();
+      expect(screen.getByText('/')).toBeInTheDocument();
       expect(screen.getByText('1h 30m')).toBeInTheDocument();
     });
 
@@ -56,7 +59,8 @@ describe('EstimateCell', () => {
       render(
         <EstimateCell value={60} sessions={sessions} onChange={mockOnChange} />
       );
-      expect(screen.getByText('30m /')).toBeInTheDocument();
+      expect(screen.getByText('30m')).toBeInTheDocument();
+      expect(screen.getByText('/')).toBeInTheDocument();
       expect(screen.getByText('1h')).toBeInTheDocument();
     });
 
@@ -67,7 +71,7 @@ describe('EstimateCell', () => {
       render(
         <EstimateCell value={60} sessions={sessions} onChange={mockOnChange} />
       );
-      const timeSpent = screen.getByText('1h 30m /');
+      const timeSpent = screen.getByText('1h 30m');
       expect(timeSpent).toHaveClass('text-red-500');
     });
   });

@@ -108,10 +108,19 @@ export function EstimateCell({ value, sessions, onChange }: EstimateCellProps) {
   };
 
   return (
-    <div className="flex items-center gap-1 px-2 py-1 text-small whitespace-nowrap">
+    <div className="flex items-center px-2 py-1 text-small whitespace-nowrap">
       {value !== undefined && (
-        <span className={isOverEstimate ? 'text-red-500' : 'text-muted'}>
-          {formatMinutes(timeSpentMinutes)} /
+        <span
+          className={`w-[52px] shrink-0 ${isOverEstimate ? 'text-red-500' : 'text-muted'}`}
+        >
+          {formatMinutes(timeSpentMinutes)}
+        </span>
+      )}
+      {value !== undefined && (
+        <span
+          className={`w-3 shrink-0 text-center ${isOverEstimate ? 'text-red-500' : 'text-muted'}`}
+        >
+          /
         </span>
       )}
       {renderEstimateControl()}
