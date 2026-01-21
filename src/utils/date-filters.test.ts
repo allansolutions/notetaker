@@ -7,7 +7,9 @@ import {
   isOnDate,
   isInDateRange,
   matchesDatePreset,
+  getSingleDateFromFilter,
 } from './date-filters';
+import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
 
 describe('startOfDay', () => {
   it('sets time to midnight', () => {
@@ -401,6 +403,92 @@ describe('matchesDatePreset', () => {
       const dueDate = new Date(2024, 5, 15, 14, 30).getTime();
       // TypeScript won't let us pass an unknown preset, so we cast
       expect(matchesDatePreset(dueDate, 'unknown-preset' as 'all')).toBe(true);
+    });
+  });
+});
+
+describe('getSingleDateFromFilter', () => {
+  const createFilterState = (
+    preset: SpreadsheetFilterState['dateFilterPreset'],
+    dateFilterDate?: number | null,
+    dateFilterRange?: SpreadsheetFilterState['dateFilterRange']
+  ): SpreadsheetFilterState => ({
+    filters: {
+      type: null,
+      title: null,
+      status: null,
+      importance: null,
+      dueDate: null,
+    },
+    dateFilterPreset: preset,
+    dateFilterDate: dateFilterDate ?? null,
+    dateFilterRange: dateFilterRange ?? null,
+  });
+
+  describe('today preset', () => {
+    it('returns start of today', () => {
+      const now = new Date(2024, 5, 15, 14, 30);
+      const filterState = createFilterState('today');
+      const result = getSingleDateFromFilter(filterState, now);
+      expect(result).toBe(new Date(2024, 5, 15, 0, 0, 0, 0).getTime());
+    });
+  });
+
+  describe('tomorrow preset', () => {
+    it('returns start of tomorrow', () => {
+      const now = new Date(2024, 5, 15, 14, 30);
+      const filterState = createFilterState('tomorrow');
+      const result = getSingleDateFromFilter(filterState, now);
+      expect(result).toBe(new Date(2024, 5, 16, 0, 0, 0, 0).getTime());
+    });
+
+    it('handles month boundary correctly', () => {
+      const now = new Date(2024, 5, 30, 14, 30); // June 30
+      const filterState = createFilterState('tomorrow');
+      const result = getSingleDateFromFilter(filterState, now);
+      expect(result).toBe(new Date(2024, 6, 1, 0, 0, 0, 0).getTime()); // July 1
+    });
+  });
+
+  describe('specific-date preset', () => {
+    it('returns the specified date', () => {
+      const specificDate = new Date(2024, 8, 20, 12, 0).getTime();
+      const filterState = createFilterState('specific-date', specificDate);
+      const result = getSingleDateFromFilter(filterState);
+      expect(result).toBe(specificDate);
+    });
+
+    it('returns undefined when dateFilterDate is null', () => {
+      const filterState = createFilterState('specific-date', null);
+      const result = getSingleDateFromFilter(filterState);
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('all preset', () => {
+    it('returns undefined', () => {
+      const filterState = createFilterState('all');
+      const result = getSingleDateFromFilter(filterState);
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('this-week preset', () => {
+    it('returns undefined (range filter)', () => {
+      const filterState = createFilterState('this-week');
+      const result = getSingleDateFromFilter(filterState);
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('date-range preset', () => {
+    it('returns undefined (range filter)', () => {
+      const filterState = createFilterState('date-range', null, {
+        start: new Date(2024, 5, 10).getTime(),
+        end: new Date(2024, 5, 20).getTime(),
+      });
+      const result = getSingleDateFromFilter(filterState);
+      expect(result).toBeUndefined();
     });
   });
 });

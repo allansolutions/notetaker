@@ -1,4 +1,5 @@
 import { DateFilterPreset, DateRange } from '../types';
+import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
 
 /**
  * Get the start of a day (midnight 00:00:00.000)
@@ -122,5 +123,41 @@ export function matchesDatePreset(
 
     default:
       return true;
+  }
+}
+
+/**
+ * Get the single date timestamp from filter state if a single-date filter is active.
+ * Returns the timestamp to use for new tasks, or undefined if no single-date filter is active.
+ *
+ * Single-date filters include:
+ * - 'today': returns start of today
+ * - 'tomorrow': returns start of tomorrow
+ * - 'specific-date': returns the selected date
+ *
+ * Does NOT return a date for:
+ * - 'all': no filter active
+ * - 'this-week': range filter
+ * - 'date-range': explicit range filter
+ */
+export function getSingleDateFromFilter(
+  filterState: SpreadsheetFilterState,
+  now: Date = new Date()
+): number | undefined {
+  switch (filterState.dateFilterPreset) {
+    case 'today':
+      return startOfDay(now).getTime();
+
+    case 'tomorrow': {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return startOfDay(tomorrow).getTime();
+    }
+
+    case 'specific-date':
+      return filterState.dateFilterDate ?? undefined;
+
+    default:
+      return undefined;
   }
 }

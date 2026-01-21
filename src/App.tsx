@@ -31,6 +31,7 @@ import {
   parseDateQuery,
   getUserLocale,
 } from './utils/date-query';
+import { getSingleDateFromFilter } from './utils/date-filters';
 
 interface TaskNotesContext {
   originalFilters: SpreadsheetFilterState;
@@ -428,16 +429,19 @@ export function AppContent() {
 
   const handleAddTask = useCallback(
     async (data: AddTaskData) => {
+      // Use the date from filter if a single-date filter is active and no dueDate specified
+      const dueDate =
+        data.dueDate ?? getSingleDateFromFilter(spreadsheetFilterState);
       await addTask(
         data.title,
         data.type,
         data.status,
         data.importance,
         data.estimate,
-        data.dueDate
+        dueDate
       );
     },
-    [addTask]
+    [addTask, spreadsheetFilterState]
   );
 
   const handleInlineTaskCreate = useCallback(
@@ -454,13 +458,15 @@ export function AppContent() {
           insertAtIndex = afterIndex + 1;
         }
       }
+      // Use the date from filter if a single-date filter is active
+      const dueDate = getSingleDateFromFilter(spreadsheetFilterState);
       const newTask = await addTask(
         title,
         type,
         'todo',
         undefined,
         undefined,
-        undefined,
+        dueDate,
         insertAtIndex
       );
 
@@ -507,7 +513,7 @@ export function AppContent() {
 
       return newTask;
     },
-    [addTask, tasks, taskNotesContext]
+    [addTask, tasks, taskNotesContext, spreadsheetFilterState]
   );
 
   const selectedTask = selectedTaskId
