@@ -256,7 +256,7 @@ test.describe('Time Tracking', () => {
 });
 
 test.describe('Time Tracking in Notes View', () => {
-  test('should show tracking indicator when focusing on task block with estimate', async ({
+  test('should show time display when focusing on task block with estimate', async ({
     page,
   }) => {
     // Setup auth and API mocks with tasks that have estimates
@@ -285,27 +285,26 @@ test.describe('Time Tracking in Notes View', () => {
     // Navigate to full-day notes
     await navigateToFullDayNotes(page);
 
-    // Initially no tracking indicator should be visible
+    // Initially no time display should be visible
     await expect(
-      page.locator('[data-testid="tracking-indicator-task-1"]')
+      page.locator('[data-testid="time-display-task-1"]')
     ).not.toBeVisible();
 
     // Click on the block content of the task with estimate
     const taskBlock = page.getByText('Some notes');
     await taskBlock.click();
 
-    // The tracking indicator should appear for that task
+    // The time display should appear for that task
     await expect(
-      page.locator('[data-testid="tracking-indicator-task-1"]')
+      page.locator('[data-testid="time-display-task-1"]')
     ).toBeVisible();
 
-    // The indicator should be a green pulsing dot
-    const indicator = page.locator('[data-testid="tracking-indicator-task-1"]');
-    await expect(indicator).toHaveClass(/bg-green-500/);
-    await expect(indicator).toHaveClass(/animate-pulse/);
+    // The time display should show time spent / estimate format
+    const timeDisplay = page.locator('[data-testid="time-display-task-1"]');
+    await expect(timeDisplay).toContainText('0m / 30m');
   });
 
-  test('should not show tracking indicator when focusing on header', async ({
+  test('should not show time display when focusing on header', async ({
     page,
   }) => {
     await mockAuthenticated(page);
@@ -329,13 +328,13 @@ test.describe('Time Tracking in Notes View', () => {
     const taskHeader = page.locator('[data-testid="task-header-task-1"]');
     await taskHeader.click();
 
-    // No tracking indicator should appear when focused on header
+    // No time display should appear when focused on header
     await expect(
-      page.locator('[data-testid="tracking-indicator-task-1"]')
+      page.locator('[data-testid="time-display-task-1"]')
     ).not.toBeVisible();
   });
 
-  test('should not show tracking indicator for task without estimate', async ({
+  test('should not show time display for task without estimate', async ({
     page,
   }) => {
     await mockAuthenticated(page);
@@ -359,13 +358,13 @@ test.describe('Time Tracking in Notes View', () => {
     const taskBlock = page.getByText('Some notes');
     await taskBlock.click();
 
-    // No tracking indicator should appear for task without estimate
+    // No time display should appear for task without estimate
     await expect(
-      page.locator('[data-testid^="tracking-indicator-"]')
+      page.locator('[data-testid^="time-display-"]')
     ).not.toBeVisible();
   });
 
-  test('should move tracking indicator when switching between tasks', async ({
+  test('should move time display when switching between tasks', async ({
     page,
   }) => {
     await mockAuthenticated(page);
@@ -396,23 +395,23 @@ test.describe('Time Tracking in Notes View', () => {
     // Focus on first task's block
     await page.getByText('First task notes').click();
 
-    // Indicator should appear for task-1
+    // Time display should appear for task-1
     await expect(
-      page.locator('[data-testid="tracking-indicator-task-1"]')
+      page.locator('[data-testid="time-display-task-1"]')
     ).toBeVisible();
     await expect(
-      page.locator('[data-testid="tracking-indicator-task-2"]')
+      page.locator('[data-testid="time-display-task-2"]')
     ).not.toBeVisible();
 
     // Switch to second task's block
     await page.getByText('Second task notes').click();
 
-    // Indicator should move to task-2
+    // Time display should move to task-2
     await expect(
-      page.locator('[data-testid="tracking-indicator-task-1"]')
+      page.locator('[data-testid="time-display-task-1"]')
     ).not.toBeVisible();
     await expect(
-      page.locator('[data-testid="tracking-indicator-task-2"]')
+      page.locator('[data-testid="time-display-task-2"]')
     ).toBeVisible();
   });
 });
