@@ -21,3 +21,4 @@ server/.wrangler/
 # Frontend environment
 .env
 .env.local
+.playwright-mcp/
