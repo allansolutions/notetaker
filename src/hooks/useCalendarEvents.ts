@@ -7,7 +7,14 @@ const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const IS_TEST = import.meta.env.MODE === 'test';
 
 function formatDateForAPI(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 export function useCalendarEvents(date: Date = new Date()) {
@@ -30,7 +37,7 @@ export function useCalendarEvents(date: Date = new Date()) {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/calendar/events?date=${dateStr}`,
+        `${API_URL}/api/calendar/events?date=${dateStr}&timezone=${encodeURIComponent(getTimezone())}`,
         {
           credentials: 'include',
         }

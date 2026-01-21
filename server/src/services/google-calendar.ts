@@ -114,14 +114,18 @@ export async function getUserProfile(
 
 export async function fetchCalendarEvents(
   accessToken: string,
-  date: string
+  date: string,
+  timezone: string = 'UTC'
 ): Promise<GoogleCalendarEvent[]> {
-  const startOfDay = new Date(`${date}T00:00:00`);
-  const endOfDay = new Date(`${date}T23:59:59`);
+  // Use RFC3339 format with timezone for Google Calendar API
+  // The API will interpret these times in the specified timezone
+  const timeMin = `${date}T00:00:00`;
+  const timeMax = `${date}T23:59:59`;
 
   const params = new URLSearchParams({
-    timeMin: startOfDay.toISOString(),
-    timeMax: endOfDay.toISOString(),
+    timeMin,
+    timeMax,
+    timeZone: timezone,
     singleEvents: 'true',
     orderBy: 'startTime',
   });

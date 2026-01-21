@@ -18,6 +18,7 @@ calendarRoutes.use('*', requireAuth);
 
 calendarRoutes.get('/events', async (c) => {
   const date = c.req.query('date');
+  const timezone = c.req.query('timezone') || 'UTC';
 
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return c.json({ error: 'Invalid date format. Use YYYY-MM-DD.' }, 400);
@@ -38,7 +39,8 @@ calendarRoutes.get('/events', async (c) => {
   try {
     const googleEvents = await fetchCalendarEvents(
       session.googleAccessToken,
-      date
+      date,
+      timezone
     );
     // Filter out events the user has declined
     const events = googleEvents
