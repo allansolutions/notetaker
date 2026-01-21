@@ -31,7 +31,7 @@ import {
   parseDateQuery,
   getUserLocale,
 } from './utils/date-query';
-import { getSingleDateFromFilter } from './utils/date-filters';
+import { getSingleDateFromFilter, startOfDay } from './utils/date-filters';
 
 interface TaskNotesContext {
   originalFilters: SpreadsheetFilterState;
@@ -224,6 +224,30 @@ export function AppContent() {
 
   const handleCommandSetPreset = useCallback(
     (preset: SpreadsheetFilterState['dateFilterPreset']) => {
+      // Convert relative presets to specific dates (anchored date filters)
+      if (
+        preset === 'today' ||
+        preset === 'tomorrow' ||
+        preset === 'yesterday'
+      ) {
+        const now = new Date();
+        let targetDate = startOfDay(now);
+        if (preset === 'tomorrow') {
+          targetDate = new Date(targetDate);
+          targetDate.setDate(targetDate.getDate() + 1);
+        } else if (preset === 'yesterday') {
+          targetDate = new Date(targetDate);
+          targetDate.setDate(targetDate.getDate() - 1);
+        }
+        applyFilterState({
+          ...spreadsheetFilterState,
+          dateFilterPreset: 'specific-date',
+          dateFilterDate: targetDate.getTime(),
+          dateFilterRange: null,
+        });
+        return;
+      }
+      // For non-relative presets (all, this-week, etc.)
       if (spreadsheetFilterState.dateFilterPreset === preset) {
         return;
       }
@@ -381,6 +405,12 @@ export function AppContent() {
         label: 'Filter: Tomorrow',
         keywords: ['view', 'tasks', 'tomorrow', 'filter'],
         onExecute: () => handleCommandSetPreset('tomorrow'),
+      },
+      {
+        id: 'view-yesterday',
+        label: 'Filter: Yesterday',
+        keywords: ['view', 'tasks', 'yesterday', 'filter'],
+        onExecute: () => handleCommandSetPreset('yesterday'),
       },
       {
         id: 'view-this-week',

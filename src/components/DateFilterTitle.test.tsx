@@ -44,6 +44,36 @@ describe('DateFilterTitle', () => {
     expect(screen.getByText('Saturday 15 March 2025')).toBeInTheDocument();
   });
 
+  it('shows "Today" prefix when specific-date matches today', () => {
+    const specificDate = new Date(2025, 0, 21).getTime(); // Jan 21, 2025 (same as mocked today)
+    render(
+      <DateFilterTitle preset="specific-date" specificDate={specificDate} />
+    );
+    expect(
+      screen.getByText('Today – Tuesday 21 January 2025')
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Yesterday" prefix when specific-date matches yesterday', () => {
+    const specificDate = new Date(2025, 0, 20).getTime(); // Jan 20, 2025 (yesterday)
+    render(
+      <DateFilterTitle preset="specific-date" specificDate={specificDate} />
+    );
+    expect(
+      screen.getByText('Yesterday – Monday 20 January 2025')
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Tomorrow" prefix when specific-date matches tomorrow', () => {
+    const specificDate = new Date(2025, 0, 22).getTime(); // Jan 22, 2025 (tomorrow)
+    render(
+      <DateFilterTitle preset="specific-date" specificDate={specificDate} />
+    );
+    expect(
+      screen.getByText('Tomorrow – Wednesday 22 January 2025')
+    ).toBeInTheDocument();
+  });
+
   it('returns null when preset is "specific-date" but no date provided', () => {
     const { container } = render(
       <DateFilterTitle preset="specific-date" specificDate={null} />

@@ -8,6 +8,7 @@ import {
   formatDateRange,
   getUserLocale,
 } from '../utils/date-query';
+import { getRelativeDateLabel } from '../utils/date-filters';
 
 interface DateFilterMenuProps {
   activePreset: DateFilterPreset;
@@ -46,6 +47,10 @@ export function DateFilterMenu({
 
   const label = useMemo(() => {
     if (activePreset === 'specific-date' && selectedDate) {
+      const relativeLabel = getRelativeDateLabel(selectedDate);
+      if (relativeLabel) {
+        return `Date: ${relativeLabel.charAt(0).toUpperCase() + relativeLabel.slice(1)}`;
+      }
       return `Date: ${formatDateCompact(new Date(selectedDate), locale)}`;
     }
     if (activePreset === 'date-range' && selectedRange) {

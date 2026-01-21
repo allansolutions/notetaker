@@ -2,6 +2,27 @@ import { DateFilterPreset, DateRange } from '../types';
 import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
 
 /**
+ * Get relative label for a date compared to current date
+ * Returns 'today', 'yesterday', 'tomorrow', or null for other dates
+ */
+export function getRelativeDateLabel(
+  timestamp: number,
+  now: Date = new Date()
+): 'today' | 'yesterday' | 'tomorrow' | null {
+  if (isOnDate(timestamp, now)) return 'today';
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (isOnDate(timestamp, yesterday)) return 'yesterday';
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (isOnDate(timestamp, tomorrow)) return 'tomorrow';
+
+  return null;
+}
+
+/**
  * Get the start of a day (midnight 00:00:00.000)
  */
 export function startOfDay(date: Date): Date {
@@ -101,6 +122,12 @@ export function matchesDatePreset(
       return isOnDate(dueDate, tomorrow);
     }
 
+    case 'yesterday': {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return isOnDate(dueDate, yesterday);
+    }
+
     case 'this-week': {
       const weekStart = getWeekStart(now);
       const weekEnd = getWeekEnd(now);
@@ -133,6 +160,7 @@ export function matchesDatePreset(
  * Single-date filters include:
  * - 'today': returns start of today
  * - 'tomorrow': returns start of tomorrow
+ * - 'yesterday': returns start of yesterday
  * - 'specific-date': returns the selected date
  *
  * Does NOT return a date for:
@@ -152,6 +180,12 @@ export function getSingleDateFromFilter(
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
       return startOfDay(tomorrow).getTime();
+    }
+
+    case 'yesterday': {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return startOfDay(yesterday).getTime();
     }
 
     case 'specific-date':

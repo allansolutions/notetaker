@@ -1,8 +1,18 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { DateFilterMenu } from './DateFilterMenu';
 
 describe('DateFilterMenu', () => {
+  beforeEach(() => {
+    // Mock date to Wednesday, 21 January 2025
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 0, 21, 12, 0, 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   Object.defineProperty(window.navigator, 'language', {
     value: 'en-GB',
     configurable: true,
@@ -67,6 +77,48 @@ describe('DateFilterMenu', () => {
 
     expect(
       screen.getByRole('button', { name: /date: 10 jan 2025/i })
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Today" label when specific-date matches today', () => {
+    render(
+      <DateFilterMenu
+        {...defaultProps}
+        activePreset="specific-date"
+        selectedDate={new Date(2025, 0, 21, 12, 0, 0).getTime()} // Same as mocked today
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: /date: today/i })
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Yesterday" label when specific-date matches yesterday', () => {
+    render(
+      <DateFilterMenu
+        {...defaultProps}
+        activePreset="specific-date"
+        selectedDate={new Date(2025, 0, 20, 12, 0, 0).getTime()} // Yesterday
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: /date: yesterday/i })
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Tomorrow" label when specific-date matches tomorrow', () => {
+    render(
+      <DateFilterMenu
+        {...defaultProps}
+        activePreset="specific-date"
+        selectedDate={new Date(2025, 0, 22, 12, 0, 0).getTime()} // Tomorrow
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: /date: tomorrow/i })
     ).toBeInTheDocument();
   });
 

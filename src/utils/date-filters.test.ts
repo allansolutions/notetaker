@@ -8,6 +8,7 @@ import {
   isInDateRange,
   matchesDatePreset,
   getSingleDateFromFilter,
+  getRelativeDateLabel,
 } from './date-filters';
 import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
 
@@ -58,6 +59,56 @@ describe('endOfDay', () => {
     const date = new Date(2024, 5, 15, 14, 30);
     endOfDay(date);
     expect(date.getHours()).toBe(14);
+  });
+});
+
+describe('getRelativeDateLabel', () => {
+  it('returns today for same calendar day', () => {
+    const now = new Date(2024, 5, 15, 14, 0);
+    const timestamp = new Date(2024, 5, 15, 10, 30).getTime();
+    expect(getRelativeDateLabel(timestamp, now)).toBe('today');
+  });
+
+  it('returns yesterday for previous day', () => {
+    const now = new Date(2024, 5, 15, 14, 0);
+    const timestamp = new Date(2024, 5, 14, 10, 30).getTime();
+    expect(getRelativeDateLabel(timestamp, now)).toBe('yesterday');
+  });
+
+  it('returns tomorrow for next day', () => {
+    const now = new Date(2024, 5, 15, 14, 0);
+    const timestamp = new Date(2024, 5, 16, 10, 30).getTime();
+    expect(getRelativeDateLabel(timestamp, now)).toBe('tomorrow');
+  });
+
+  it('returns null for dates 2+ days ago', () => {
+    const now = new Date(2024, 5, 15, 14, 0);
+    const timestamp = new Date(2024, 5, 13, 10, 30).getTime();
+    expect(getRelativeDateLabel(timestamp, now)).toBeNull();
+  });
+
+  it('returns null for dates 2+ days ahead', () => {
+    const now = new Date(2024, 5, 15, 14, 0);
+    const timestamp = new Date(2024, 5, 17, 10, 30).getTime();
+    expect(getRelativeDateLabel(timestamp, now)).toBeNull();
+  });
+
+  it('handles month boundaries (yesterday crosses into previous month)', () => {
+    const now = new Date(2024, 6, 1, 14, 0); // July 1
+    const timestamp = new Date(2024, 5, 30, 10, 30).getTime(); // June 30
+    expect(getRelativeDateLabel(timestamp, now)).toBe('yesterday');
+  });
+
+  it('handles month boundaries (tomorrow crosses into next month)', () => {
+    const now = new Date(2024, 5, 30, 14, 0); // June 30
+    const timestamp = new Date(2024, 6, 1, 10, 30).getTime(); // July 1
+    expect(getRelativeDateLabel(timestamp, now)).toBe('tomorrow');
+  });
+
+  it('handles year boundaries', () => {
+    const now = new Date(2025, 0, 1, 14, 0); // Jan 1, 2025
+    const timestamp = new Date(2024, 11, 31, 10, 30).getTime(); // Dec 31, 2024
+    expect(getRelativeDateLabel(timestamp, now)).toBe('yesterday');
   });
 });
 
@@ -274,6 +325,31 @@ describe('matchesDatePreset', () => {
     });
   });
 
+  describe('yesterday preset', () => {
+    it('returns true for task due yesterday', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 14, 10, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'yesterday', now)).toBe(true);
+    });
+
+    it('returns false for task due today', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 15, 10, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'yesterday', now)).toBe(false);
+    });
+
+    it('returns false for task due 2 days ago', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 13, 10, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'yesterday', now)).toBe(false);
+    });
+
+    it('returns false for tasks without dueDate', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      expect(matchesDatePreset(undefined, 'yesterday', now)).toBe(false);
+    });
+  });
+
   describe('this-week preset', () => {
     // June 19, 2024 is a Wednesday
     // Week: Mon June 17 - Sun June 23
@@ -447,6 +523,22 @@ describe('getSingleDateFromFilter', () => {
       const filterState = createFilterState('tomorrow');
       const result = getSingleDateFromFilter(filterState, now);
       expect(result).toBe(new Date(2024, 6, 1, 0, 0, 0, 0).getTime()); // July 1
+    });
+  });
+
+  describe('yesterday preset', () => {
+    it('returns start of yesterday', () => {
+      const now = new Date(2024, 5, 15, 14, 30);
+      const filterState = createFilterState('yesterday');
+      const result = getSingleDateFromFilter(filterState, now);
+      expect(result).toBe(new Date(2024, 5, 14, 0, 0, 0, 0).getTime());
+    });
+
+    it('handles month boundary correctly', () => {
+      const now = new Date(2024, 6, 1, 14, 30); // July 1
+      const filterState = createFilterState('yesterday');
+      const result = getSingleDateFromFilter(filterState, now);
+      expect(result).toBe(new Date(2024, 5, 30, 0, 0, 0, 0).getTime()); // June 30
     });
   });
 

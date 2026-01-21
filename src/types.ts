@@ -166,6 +166,7 @@ export type DateFilterPreset =
   | 'all'
   | 'today'
   | 'tomorrow'
+  | 'yesterday'
   | 'this-week'
   | 'specific-date'
   | 'date-range';
