@@ -19,7 +19,7 @@ interface ArchiveViewProps {
   tasks: Task[];
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
-  onReorder: (fromIndex: number, toIndex: number) => void;
+  onReorder: (activeId: string, overId: string) => void;
   onSelectTask: (id: string) => void;
   onBack: () => void;
 }

@@ -46,6 +46,25 @@ taskRoutes.get('/', async (c) => {
   return c.json({ tasks: transformed });
 });
 
+// Reorder tasks - MUST be before /:id routes to avoid matching "reorder" as an ID
+taskRoutes.put('/reorder', async (c) => {
+  const userId = c.get('userId');
+  if (!userId) {
+    return c.json({ error: 'User not found' }, 401);
+  }
+
+  const body = await c.req.json();
+  const db = c.get('db');
+
+  if (!Array.isArray(body.taskOrders)) {
+    return c.json({ error: 'Invalid taskOrders format' }, 400);
+  }
+
+  await reorderTasks(db, userId, body.taskOrders);
+
+  return c.json({ success: true });
+});
+
 // Get single task
 taskRoutes.get('/:id', async (c) => {
   const userId = c.get('userId');
@@ -171,25 +190,6 @@ taskRoutes.delete('/:id', async (c) => {
   }
 
   await deleteTask(db, taskId, userId);
-
-  return c.json({ success: true });
-});
-
-// Reorder tasks
-taskRoutes.put('/reorder', async (c) => {
-  const userId = c.get('userId');
-  if (!userId) {
-    return c.json({ error: 'User not found' }, 401);
-  }
-
-  const body = await c.req.json();
-  const db = c.get('db');
-
-  if (!Array.isArray(body.taskOrders)) {
-    return c.json({ error: 'Invalid taskOrders format' }, 400);
-  }
-
-  await reorderTasks(db, userId, body.taskOrders);
 
   return c.json({ success: true });
 });

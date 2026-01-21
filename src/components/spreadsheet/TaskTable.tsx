@@ -123,7 +123,7 @@ interface TaskTableProps {
   tasks: Task[];
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
-  onReorder: (fromIndex: number, toIndex: number) => void;
+  onReorder: (activeId: string, overId: string) => void;
   onSelectTask: (id: string) => void;
   onAddTask: (data: AddTaskData) => void;
   isAddTaskModalOpen?: boolean;
@@ -492,11 +492,11 @@ export function TaskTable({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = tasks.findIndex((t) => t.id === active.id);
-    const newIndex = tasks.findIndex((t) => t.id === over.id);
-    if (oldIndex !== -1 && newIndex !== -1) {
-      onReorder(oldIndex, newIndex);
-    }
+    // Clear any active sorting so manual ordering takes effect
+    setSorting([]);
+
+    // Pass IDs directly - the context will find correct indices in the full tasks array
+    onReorder(String(active.id), String(over.id));
   };
 
   const handleAddTask = (data: AddTaskData) => {
@@ -564,7 +564,7 @@ export function TaskTable({
             ))}
           </thead>
           <SortableContext
-            items={filteredTasks.map((t) => t.id)}
+            items={visibleRows.map((row) => row.id)}
             strategy={verticalListSortingStrategy}
           >
             <tbody>

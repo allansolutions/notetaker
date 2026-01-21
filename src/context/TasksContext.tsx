@@ -71,7 +71,7 @@ interface TasksContextType {
   ) => Promise<Task | null>;
   updateTaskById: (id: string, updates: Partial<Task>) => Promise<void>;
   removeTask: (id: string) => Promise<void>;
-  reorder: (fromIndex: number, toIndex: number) => Promise<void>;
+  reorder: (activeId: string, overId: string) => Promise<void>;
   updateBlocks: (taskId: string, blocks: Block[]) => Promise<void>;
   toggleScheduled: (id: string) => Promise<void>;
   setEstimate: (id: string, estimate: number) => Promise<void>;
@@ -221,10 +221,14 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   );
 
   const reorder = useCallback(
-    async (fromIndex: number, toIndex: number) => {
+    async (activeId: string, overId: string) => {
       try {
-        // Optimistic update
+        // Optimistic update - find indices by ID to handle filtered views correctly
         setTasks((prev) => {
+          const fromIndex = prev.findIndex((t) => t.id === activeId);
+          const toIndex = prev.findIndex((t) => t.id === overId);
+          if (fromIndex === -1 || toIndex === -1) return prev;
+
           const newTasks = [...prev];
           const [removed] = newTasks.splice(fromIndex, 1);
           newTasks.splice(toIndex, 0, removed);

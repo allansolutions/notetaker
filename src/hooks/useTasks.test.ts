@@ -363,7 +363,8 @@ describe('useTasks', () => {
       });
 
       await act(async () => {
-        await result.current.reorder(0, 2);
+        // Move task-1 to position of task-3 (drag task-1 over task-3)
+        await result.current.reorder('task-1', 'task-3');
       });
 
       expect(result.current.tasks[0].title).toBe('Task 2');
