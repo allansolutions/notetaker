@@ -276,6 +276,7 @@ function AppContent() {
             onBack={handleBackToSpreadsheet}
             onUpdateTask={updateTaskById}
             onAddTask={handleInlineTaskCreate}
+            onAddSession={addSession}
           />
         );
       case 'archive':

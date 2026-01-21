@@ -6,12 +6,20 @@ import {
   KeyboardEvent,
   useMemo,
 } from 'react';
-import { Task, Block, BlockType, TaskType, TASK_TYPE_COLORS } from '../types';
+import {
+  Task,
+  Block,
+  BlockType,
+  TaskType,
+  TimeSession,
+  TASK_TYPE_COLORS,
+} from '../types';
 import { BlockInput } from './BlockInput';
 import { TypeSelectionModal } from './TypeSelectionModal';
 import { generateId } from '../utils/markdown';
 import { getNumberedIndex } from '../utils/block-operations';
 import { PencilIcon } from './icons';
+import { useMultiTaskTimeTracking } from '../hooks/useMultiTaskTimeTracking';
 
 interface TaskNotesEditorProps {
   tasks: Task[];
@@ -22,6 +30,28 @@ interface TaskNotesEditorProps {
     insertAfterTaskId?: string | null
   ) => Promise<Task | null>;
   onSelectTask: (id: string) => void;
+  onAddSession?: (taskId: string, session: TimeSession) => void;
+}
+
+/**
+ * Parse focusedItemId to extract kind and taskId.
+ * Format: "header-{taskId}" or "block-{taskId}-{blockId}"
+ */
+function parseItemId(
+  itemId: string | null
+): { kind: 'header' | 'block'; taskId: string } | null {
+  if (!itemId) return null;
+  if (itemId.startsWith('header-')) {
+    return { kind: 'header', taskId: itemId.slice(7) };
+  }
+  if (itemId.startsWith('block-')) {
+    // Format: block-{taskId}-{blockId} - extract taskId (may contain dashes)
+    const withoutPrefix = itemId.slice(6);
+    const lastDash = withoutPrefix.lastIndexOf('-');
+    if (lastDash === -1) return null;
+    return { kind: 'block', taskId: withoutPrefix.slice(0, lastDash) };
+  }
+  return null;
 }
 
 // A unified item that can be either a task header or a block
@@ -43,6 +73,7 @@ function createBlock(type: BlockType = 'paragraph', content = ''): Block {
 function TaskHeader({
   task,
   isFocused,
+  isTracking,
   onFocus,
   onArrowUp,
   onArrowDown,
@@ -52,6 +83,7 @@ function TaskHeader({
 }: {
   task: Task;
   isFocused: boolean;
+  isTracking: boolean;
   onFocus: () => void;
   onArrowUp: () => void;
   onArrowDown: () => void;
@@ -104,6 +136,13 @@ function TaskHeader({
 
   return (
     <div className="group flex items-center gap-2 mb-2">
+      {isTracking && (
+        <span
+          className="size-2 rounded-full bg-green-500 animate-pulse shrink-0"
+          title="Timer active"
+          data-testid={`tracking-indicator-${task.id}`}
+        />
+      )}
       <div
         ref={inputRef}
         role="textbox"
@@ -135,6 +174,7 @@ export function TaskNotesEditor({
   onUpdateTask,
   onAddTask,
   onSelectTask,
+  onAddSession,
 }: TaskNotesEditorProps) {
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
   const [pendingTaskTitle, setPendingTaskTitle] = useState<string | null>(null);
@@ -143,6 +183,22 @@ export function TaskNotesEditor({
     string | null
   >(null);
   const pendingFocusRef = useRef<string | null>(null);
+
+  // Derive activeTaskId from focusedItemId - only track when focus is on a block (not header)
+  const activeTrackingTaskId = useMemo(() => {
+    const parsed = parseItemId(focusedItemId);
+    if (parsed?.kind === 'block') {
+      return parsed.taskId;
+    }
+    return null;
+  }, [focusedItemId]);
+
+  // Time tracking hook
+  const { trackingTaskId } = useMultiTaskTimeTracking({
+    activeTaskId: activeTrackingTaskId,
+    tasks,
+    onAddSession: onAddSession || (() => {}),
+  });
 
   // Build a flat list of all items (headers + blocks)
   const items = useMemo(() => {
@@ -366,6 +422,7 @@ export function TaskNotesEditor({
               <TaskHeader
                 task={item.task}
                 isFocused={focusedItemId === item.itemId}
+                isTracking={trackingTaskId === item.task.id}
                 onFocus={() => setFocusedItemId(item.itemId)}
                 onArrowUp={() => focusPrevious(item.itemId)}
                 onArrowDown={() => focusNext(item.itemId)}

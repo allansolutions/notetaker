@@ -1,5 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from '@testing-library/react';
 import { TaskNotesEditor } from './TaskNotesEditor';
 import { Task, Block } from '../types';
 
@@ -394,6 +400,223 @@ describe('TaskNotesEditor', () => {
 
       // First block should exist
       expect(screen.getByText('First block')).toBeInTheDocument();
+    });
+  });
+
+  describe('time tracking', () => {
+    beforeEach(() => {
+      localStorage.clear();
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-01-15T10:00:00'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('shows tracking indicator when focus is on a block of task with estimate', () => {
+      const blocks: Block[] = [
+        { id: 'b1', type: 'paragraph', content: 'Block content' },
+      ];
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Task One',
+          blocks,
+          estimate: 30,
+        }),
+      ];
+      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+
+      // Focus on the block
+      const blockInput = screen.getByText('Block content');
+      fireEvent.focus(blockInput);
+
+      // Should show tracking indicator
+      expect(
+        screen.getByTestId('tracking-indicator-task-1')
+      ).toBeInTheDocument();
+    });
+
+    it('does not show tracking indicator when focus is on header', () => {
+      const blocks: Block[] = [
+        { id: 'b1', type: 'paragraph', content: 'Block content' },
+      ];
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Task One',
+          blocks,
+          estimate: 30,
+        }),
+      ];
+      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+
+      // Focus on the header
+      const header = screen.getByTestId('task-header-task-1');
+      fireEvent.focus(header);
+
+      // Should NOT show tracking indicator
+      expect(
+        screen.queryByTestId('tracking-indicator-task-1')
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not show tracking indicator for task without estimate', () => {
+      const blocks: Block[] = [
+        { id: 'b1', type: 'paragraph', content: 'Block content' },
+      ];
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Task One', blocks }), // No estimate
+      ];
+      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+
+      // Focus on the block
+      const blockInput = screen.getByText('Block content');
+      fireEvent.focus(blockInput);
+
+      // Should NOT show tracking indicator
+      expect(
+        screen.queryByTestId('tracking-indicator-task-1')
+      ).not.toBeInTheDocument();
+    });
+
+    it('moves tracking indicator when switching between tasks', () => {
+      const blocks1: Block[] = [
+        { id: 'b1', type: 'paragraph', content: 'Task 1 block' },
+      ];
+      const blocks2: Block[] = [
+        { id: 'b2', type: 'paragraph', content: 'Task 2 block' },
+      ];
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Task One',
+          blocks: blocks1,
+          estimate: 30,
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Task Two',
+          blocks: blocks2,
+          estimate: 30,
+        }),
+      ];
+      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+
+      // Focus on task 1's block
+      fireEvent.focus(screen.getByText('Task 1 block'));
+      expect(
+        screen.getByTestId('tracking-indicator-task-1')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('tracking-indicator-task-2')
+      ).not.toBeInTheDocument();
+
+      // Switch to task 2's block
+      fireEvent.focus(screen.getByText('Task 2 block'));
+      expect(
+        screen.queryByTestId('tracking-indicator-task-1')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId('tracking-indicator-task-2')
+      ).toBeInTheDocument();
+    });
+
+    it('calls onAddSession when switching tasks after minimum duration', async () => {
+      const onAddSession = vi.fn();
+      const blocks1: Block[] = [
+        { id: 'b1', type: 'paragraph', content: 'Task 1 block' },
+      ];
+      const blocks2: Block[] = [
+        { id: 'b2', type: 'paragraph', content: 'Task 2 block' },
+      ];
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Task One',
+          blocks: blocks1,
+          estimate: 30,
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Task Two',
+          blocks: blocks2,
+          estimate: 30,
+        }),
+      ];
+      render(
+        <TaskNotesEditor
+          {...defaultProps}
+          tasks={tasks}
+          onAddSession={onAddSession}
+        />
+      );
+
+      // Focus on task 1's block
+      fireEvent.focus(screen.getByText('Task 1 block'));
+
+      // Advance time by more than 1 minute
+      await act(async () => {
+        vi.advanceTimersByTime(70000); // 70 seconds
+      });
+
+      // Switch to task 2's block
+      fireEvent.focus(screen.getByText('Task 2 block'));
+
+      // Should have called onAddSession for task 1
+      expect(onAddSession).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({
+          startTime: expect.any(Number),
+          endTime: expect.any(Number),
+        })
+      );
+    });
+
+    it('does not call onAddSession for short sessions', async () => {
+      const onAddSession = vi.fn();
+      const blocks1: Block[] = [
+        { id: 'b1', type: 'paragraph', content: 'Task 1 block' },
+      ];
+      const blocks2: Block[] = [
+        { id: 'b2', type: 'paragraph', content: 'Task 2 block' },
+      ];
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Task One',
+          blocks: blocks1,
+          estimate: 30,
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Task Two',
+          blocks: blocks2,
+          estimate: 30,
+        }),
+      ];
+      render(
+        <TaskNotesEditor
+          {...defaultProps}
+          tasks={tasks}
+          onAddSession={onAddSession}
+        />
+      );
+
+      // Focus on task 1's block
+      fireEvent.focus(screen.getByText('Task 1 block'));
+
+      // Advance time by less than 1 minute
+      await act(async () => {
+        vi.advanceTimersByTime(30000); // 30 seconds
+      });
+
+      // Switch to task 2's block
+      fireEvent.focus(screen.getByText('Task 2 block'));
+
+      // Should NOT have called onAddSession (session too short)
+      expect(onAddSession).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Task, TaskType } from '../../types';
+import { Task, TaskType, TimeSession } from '../../types';
 import { BackButton } from '../BackButton';
 import { TaskNotesEditor } from '../TaskNotesEditor';
 
@@ -12,6 +12,7 @@ interface FullDayNotesViewProps {
     type: TaskType,
     insertAfterTaskId?: string | null
   ) => Promise<Task | null>;
+  onAddSession?: (taskId: string, session: TimeSession) => void;
 }
 
 export function FullDayNotesView({
@@ -20,6 +21,7 @@ export function FullDayNotesView({
   onBack,
   onUpdateTask,
   onAddTask,
+  onAddSession,
 }: FullDayNotesViewProps) {
   // Default no-op handlers if not provided
   const handleUpdateTask = onUpdateTask || (() => {});
@@ -43,6 +45,7 @@ export function FullDayNotesView({
             onUpdateTask={handleUpdateTask}
             onAddTask={handleAddTask}
             onSelectTask={onSelectTask}
+            onAddSession={onAddSession}
           />
         )}
       </div>

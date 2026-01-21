@@ -6,6 +6,16 @@ import {
   navigateToTaskDetail,
 } from './helpers/auth';
 
+/**
+ * Navigate to the full-day notes view from the spreadsheet
+ */
+async function navigateToFullDayNotes(page: import('@playwright/test').Page) {
+  const notesButton = page.getByRole('button', { name: 'Task Notes' });
+  await notesButton.click();
+  // Wait for the notes view to load - verify the title is visible
+  await expect(page.getByRole('heading', { name: 'Task Notes' })).toBeVisible();
+}
+
 // Parse minutes from time display text like "5m / 15m" or "1h 30m / 2h"
 function parseMinutes(text: string): number {
   // Try simple minute format: "5m / 15m"
@@ -242,5 +252,167 @@ test.describe('Time Tracking', () => {
     // This test documents the bug - it should FAIL until fixed
     // Time should never decrease
     expect(foundDecrease).toBe(false);
+  });
+});
+
+test.describe('Time Tracking in Notes View', () => {
+  test('should show tracking indicator when focusing on task block with estimate', async ({
+    page,
+  }) => {
+    // Setup auth and API mocks with tasks that have estimates
+    await mockAuthenticated(page);
+    await mockTasksApi(page, [
+      {
+        id: 'task-1',
+        title: 'Task With Estimate',
+        type: 'admin',
+        status: 'todo',
+        blocks: [{ id: 'b1', type: 'paragraph', content: 'Some notes' }],
+        estimate: 30,
+      },
+      {
+        id: 'task-2',
+        title: 'Task Without Estimate',
+        type: 'personal',
+        status: 'todo',
+        blocks: [{ id: 'b2', type: 'paragraph', content: 'Other notes' }],
+      },
+    ]);
+
+    await page.goto('http://localhost:5173');
+    await page.waitForSelector('[data-testid="sidebar"]');
+
+    // Navigate to full-day notes
+    await navigateToFullDayNotes(page);
+
+    // Initially no tracking indicator should be visible
+    await expect(
+      page.locator('[data-testid="tracking-indicator-task-1"]')
+    ).not.toBeVisible();
+
+    // Click on the block content of the task with estimate
+    const taskBlock = page.getByText('Some notes');
+    await taskBlock.click();
+
+    // The tracking indicator should appear for that task
+    await expect(
+      page.locator('[data-testid="tracking-indicator-task-1"]')
+    ).toBeVisible();
+
+    // The indicator should be a green pulsing dot
+    const indicator = page.locator('[data-testid="tracking-indicator-task-1"]');
+    await expect(indicator).toHaveClass(/bg-green-500/);
+    await expect(indicator).toHaveClass(/animate-pulse/);
+  });
+
+  test('should not show tracking indicator when focusing on header', async ({
+    page,
+  }) => {
+    await mockAuthenticated(page);
+    await mockTasksApi(page, [
+      {
+        id: 'task-1',
+        title: 'Task With Estimate',
+        type: 'admin',
+        status: 'todo',
+        blocks: [{ id: 'b1', type: 'paragraph', content: 'Some notes' }],
+        estimate: 30,
+      },
+    ]);
+
+    await page.goto('http://localhost:5173');
+    await page.waitForSelector('[data-testid="sidebar"]');
+
+    await navigateToFullDayNotes(page);
+
+    // Click on the task header (title area)
+    const taskHeader = page.locator('[data-testid="task-header-task-1"]');
+    await taskHeader.click();
+
+    // No tracking indicator should appear when focused on header
+    await expect(
+      page.locator('[data-testid="tracking-indicator-task-1"]')
+    ).not.toBeVisible();
+  });
+
+  test('should not show tracking indicator for task without estimate', async ({
+    page,
+  }) => {
+    await mockAuthenticated(page);
+    await mockTasksApi(page, [
+      {
+        id: 'task-no-estimate',
+        title: 'No Estimate Task',
+        type: 'admin',
+        status: 'todo',
+        blocks: [{ id: 'b1', type: 'paragraph', content: 'Some notes' }],
+        // No estimate field
+      },
+    ]);
+
+    await page.goto('http://localhost:5173');
+    await page.waitForSelector('[data-testid="sidebar"]');
+
+    await navigateToFullDayNotes(page);
+
+    // Click on the block content
+    const taskBlock = page.getByText('Some notes');
+    await taskBlock.click();
+
+    // No tracking indicator should appear for task without estimate
+    await expect(
+      page.locator('[data-testid^="tracking-indicator-"]')
+    ).not.toBeVisible();
+  });
+
+  test('should move tracking indicator when switching between tasks', async ({
+    page,
+  }) => {
+    await mockAuthenticated(page);
+    await mockTasksApi(page, [
+      {
+        id: 'task-1',
+        title: 'First Task',
+        type: 'admin',
+        status: 'todo',
+        blocks: [{ id: 'b1', type: 'paragraph', content: 'First task notes' }],
+        estimate: 30,
+      },
+      {
+        id: 'task-2',
+        title: 'Second Task',
+        type: 'personal',
+        status: 'todo',
+        blocks: [{ id: 'b2', type: 'paragraph', content: 'Second task notes' }],
+        estimate: 45,
+      },
+    ]);
+
+    await page.goto('http://localhost:5173');
+    await page.waitForSelector('[data-testid="sidebar"]');
+
+    await navigateToFullDayNotes(page);
+
+    // Focus on first task's block
+    await page.getByText('First task notes').click();
+
+    // Indicator should appear for task-1
+    await expect(
+      page.locator('[data-testid="tracking-indicator-task-1"]')
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="tracking-indicator-task-2"]')
+    ).not.toBeVisible();
+
+    // Switch to second task's block
+    await page.getByText('Second task notes').click();
+
+    // Indicator should move to task-2
+    await expect(
+      page.locator('[data-testid="tracking-indicator-task-1"]')
+    ).not.toBeVisible();
+    await expect(
+      page.locator('[data-testid="tracking-indicator-task-2"]')
+    ).toBeVisible();
   });
 });
