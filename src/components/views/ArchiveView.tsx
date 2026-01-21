@@ -5,7 +5,7 @@ import { BackButton } from '../BackButton';
 import { DateFilterMenu } from '../DateFilterMenu';
 import { useDateFilter } from '../../hooks/useDateFilter';
 
-const defaultFilters: ColumnFilters = {
+const DEFAULT_FILTERS: ColumnFilters = {
   type: null,
   title: null,
   status: null,
@@ -13,8 +13,7 @@ const defaultFilters: ColumnFilters = {
   dueDate: null,
 };
 
-// No-op handler for archive view (tasks cannot be added to archive)
-function noop(): void {}
+const noop = (): void => {};
 
 interface ArchiveViewProps {
   tasks: Task[];
@@ -42,7 +41,7 @@ export function ArchiveView({
     onDateChange,
     onRangeChange,
   } = useDateFilter({ tasks });
-  const [filters, setFilters] = useState<ColumnFilters>(defaultFilters);
+  const [filters, setFilters] = useState<ColumnFilters>(DEFAULT_FILTERS);
 
   return (
     <div className="flex flex-col h-full">

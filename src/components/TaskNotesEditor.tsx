@@ -119,19 +119,15 @@ function TaskHeader({
   }, [isFocused]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    switch (e.key) {
-      case 'ArrowUp':
-        e.preventDefault();
-        onArrowUp();
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        onArrowDown();
-        break;
-      case 'Enter':
-        e.preventDefault();
-        onEnter();
-        break;
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      onArrowUp();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      onArrowDown();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      onEnter();
     }
   };
 

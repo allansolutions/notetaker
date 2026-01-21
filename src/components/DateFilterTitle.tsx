@@ -1,5 +1,5 @@
 import { DateFilterPreset, DateRange } from '../types';
-import { getRelativeDateLabel } from '../utils/date-filters';
+import { getRelativeDateLabel, getWeekStart } from '../utils/date-filters';
 
 interface DateFilterTitleProps {
   preset: DateFilterPreset;
@@ -7,56 +7,33 @@ interface DateFilterTitleProps {
   dateRange?: DateRange | null;
 }
 
-/**
- * Formats a date as "Wednesday 21 January 2025"
- */
+const RELATIVE_LABELS: Record<string, string> = {
+  today: 'Today',
+  yesterday: 'Yesterday',
+  tomorrow: 'Tomorrow',
+};
+
 function formatDateLong(timestamp: number): string {
   const date = new Date(timestamp);
-  const weekday = date.toLocaleDateString('en-GB', { weekday: 'long' });
-  const day = date.getDate();
-  const month = date.toLocaleDateString('en-GB', { month: 'long' });
-  const year = date.getFullYear();
-  return `${weekday} ${day} ${month} ${year}`;
+  return date.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
-/**
- * Format a specific date with optional relative prefix (Today, Yesterday, Tomorrow)
- */
-function formatSpecificDateText(specificDate: number): string {
-  const relativeLabel = getRelativeDateLabel(specificDate);
-  const formattedDate = formatDateLong(specificDate);
-
-  if (!relativeLabel) {
-    return formattedDate;
-  }
-
-  const labelMap: Record<string, string> = {
-    today: 'Today',
-    yesterday: 'Yesterday',
-    tomorrow: 'Tomorrow',
-  };
-
-  return `${labelMap[relativeLabel]} – ${formattedDate}`;
+function formatDateRange(start: number, end: number): string {
+  return `${formatDateLong(start)} – ${formatDateLong(end)}`;
 }
 
-/**
- * Get the week range text for this-week preset
- */
-function getWeekRangeText(now: Date): string {
-  const monday = new Date(now);
-  const dayOfWeek = monday.getDay();
-  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  monday.setDate(monday.getDate() - daysFromMonday);
-
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-
-  return `${formatDateLong(monday.getTime())} – ${formatDateLong(sunday.getTime())}`;
+function formatWithRelativePrefix(timestamp: number): string {
+  const relativeLabel = getRelativeDateLabel(timestamp);
+  const formattedDate = formatDateLong(timestamp);
+  if (!relativeLabel) return formattedDate;
+  return `${RELATIVE_LABELS[relativeLabel]} – ${formattedDate}`;
 }
 
-/**
- * Gets the display text for a date filter
- */
 function getDateFilterText(
   preset: DateFilterPreset,
   specificDate?: number | null,
@@ -77,15 +54,18 @@ function getDateFilterText(
       return formatDateLong(tomorrow.getTime());
     }
 
-    case 'this-week':
-      return getWeekRangeText(now);
+    case 'this-week': {
+      const monday = getWeekStart(now);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return formatDateRange(monday.getTime(), sunday.getTime());
+    }
 
     case 'specific-date':
-      return specificDate ? formatSpecificDateText(specificDate) : null;
+      return specificDate ? formatWithRelativePrefix(specificDate) : null;
 
     case 'date-range':
-      if (!dateRange) return null;
-      return `${formatDateLong(dateRange.start)} – ${formatDateLong(dateRange.end)}`;
+      return dateRange ? formatDateRange(dateRange.start, dateRange.end) : null;
 
     default:
       return null;

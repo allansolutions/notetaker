@@ -25,21 +25,20 @@ interface FullDayNotesViewProps {
   dateFilterRange?: DateRange | null;
 }
 
+const noopUpdateTask = (): void => {};
+const noopAddTask = async (): Promise<null> => null;
+
 export function FullDayNotesView({
   tasks,
   onSelectTask,
   onBack,
-  onUpdateTask,
-  onAddTask,
+  onUpdateTask = noopUpdateTask,
+  onAddTask = noopAddTask,
   onAddSession,
   dateFilterPreset = 'all',
   dateFilterDate,
   dateFilterRange,
 }: FullDayNotesViewProps) {
-  // Default no-op handlers if not provided
-  const handleUpdateTask = onUpdateTask || (() => {});
-  const handleAddTask = onAddTask || (async () => null);
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-4 mb-6">
@@ -53,15 +52,15 @@ export function FullDayNotesView({
           specificDate={dateFilterDate}
           dateRange={dateFilterRange}
         />
-        {tasks.length === 0 && !onAddTask ? (
+        {tasks.length === 0 && onAddTask === noopAddTask ? (
           <p className="text-muted italic">
             No tasks match the current filters.
           </p>
         ) : (
           <TaskNotesEditor
             tasks={tasks}
-            onUpdateTask={handleUpdateTask}
-            onAddTask={handleAddTask}
+            onUpdateTask={onUpdateTask}
+            onAddTask={onAddTask}
             onSelectTask={onSelectTask}
             onAddSession={onAddSession}
           />

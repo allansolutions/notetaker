@@ -1,5 +1,10 @@
-import { DateFilterPreset, DateRange } from '../types';
+import { DateFilterPreset, DateRange, Task } from '../types';
 import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
+
+export type PresetCounts = Record<
+  'all' | 'today' | 'tomorrow' | 'this-week',
+  number
+>;
 
 /**
  * Get relative label for a date compared to current date
@@ -151,6 +156,23 @@ export function matchesDatePreset(
     default:
       return true;
   }
+}
+
+/**
+ * Compute task counts for each date filter preset.
+ */
+export function computePresetCounts(tasks: Task[]): PresetCounts {
+  const now = new Date();
+  return {
+    all: tasks.length,
+    today: tasks.filter((t) => matchesDatePreset(t.dueDate, 'today', now))
+      .length,
+    tomorrow: tasks.filter((t) => matchesDatePreset(t.dueDate, 'tomorrow', now))
+      .length,
+    'this-week': tasks.filter((t) =>
+      matchesDatePreset(t.dueDate, 'this-week', now)
+    ).length,
+  };
 }
 
 /**

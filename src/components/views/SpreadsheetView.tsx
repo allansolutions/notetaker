@@ -5,7 +5,7 @@ import { DocumentIcon, ArchiveIcon } from '../icons';
 import { AddTaskData } from '../AddTaskModal';
 import { DateFilterMenu } from '../DateFilterMenu';
 import { DateFilterTitle } from '../DateFilterTitle';
-import { matchesDatePreset } from '../../utils/date-filters';
+import { computePresetCounts } from '../../utils/date-filters';
 
 export interface SpreadsheetFilterState {
   filters: ColumnFilters;
@@ -99,21 +99,7 @@ export function SpreadsheetView({
     onFilterStateChange,
   ]);
 
-  // Calculate counts for each preset
-  const presetCounts = useMemo(() => {
-    const now = new Date();
-    return {
-      all: tasks.length,
-      today: tasks.filter((t) => matchesDatePreset(t.dueDate, 'today', now))
-        .length,
-      tomorrow: tasks.filter((t) =>
-        matchesDatePreset(t.dueDate, 'tomorrow', now)
-      ).length,
-      'this-week': tasks.filter((t) =>
-        matchesDatePreset(t.dueDate, 'this-week', now)
-      ).length,
-    };
-  }, [tasks]);
+  const presetCounts = useMemo(() => computePresetCounts(tasks), [tasks]);
 
   const handleVisibleTasksChange = useCallback(
     (visibleTasks: Task[]) => {

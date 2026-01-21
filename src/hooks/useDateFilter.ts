@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { DateFilterPreset, DateRange, Task } from '../types';
-import { matchesDatePreset } from '../utils/date-filters';
+import { computePresetCounts, PresetCounts } from '../utils/date-filters';
 
 interface DateFilterState {
   preset: DateFilterPreset;
@@ -15,7 +15,7 @@ interface DateFilterHandlers {
 }
 
 interface UseDateFilterReturn extends DateFilterState, DateFilterHandlers {
-  presetCounts: Record<'all' | 'today' | 'tomorrow' | 'this-week', number>;
+  presetCounts: PresetCounts;
 }
 
 interface UseDateFilterOptions {
@@ -35,20 +35,7 @@ export function useDateFilter({
   const [date, setDate] = useState<number | null>(initialDate);
   const [range, setRange] = useState<DateRange | null>(initialRange);
 
-  const presetCounts = useMemo(() => {
-    const now = new Date();
-    return {
-      all: tasks.length,
-      today: tasks.filter((t) => matchesDatePreset(t.dueDate, 'today', now))
-        .length,
-      tomorrow: tasks.filter((t) =>
-        matchesDatePreset(t.dueDate, 'tomorrow', now)
-      ).length,
-      'this-week': tasks.filter((t) =>
-        matchesDatePreset(t.dueDate, 'this-week', now)
-      ).length,
-    };
-  }, [tasks]);
+  const presetCounts = useMemo(() => computePresetCounts(tasks), [tasks]);
 
   const onPresetChange = useCallback((newPreset: DateFilterPreset) => {
     setPreset(newPreset);

@@ -571,7 +571,7 @@ export function AppContent() {
     setVisibleTaskIds(tasks.map((task) => task.id));
   }, []);
 
-  const isTypingTarget = (target: EventTarget | null) => {
+  const isTypingTarget = (target: EventTarget | null): boolean => {
     if (!(target instanceof HTMLElement)) return false;
     const tag = target.tagName.toLowerCase();
     return tag === 'input' || tag === 'textarea' || target.isContentEditable;

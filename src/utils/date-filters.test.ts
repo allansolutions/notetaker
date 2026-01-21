@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   startOfDay,
   endOfDay,
@@ -9,8 +9,10 @@ import {
   matchesDatePreset,
   getSingleDateFromFilter,
   getRelativeDateLabel,
+  computePresetCounts,
 } from './date-filters';
 import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
+import { Task } from '../types';
 
 describe('startOfDay', () => {
   it('sets time to midnight', () => {
@@ -479,6 +481,73 @@ describe('matchesDatePreset', () => {
       const dueDate = new Date(2024, 5, 15, 14, 30).getTime();
       // TypeScript won't let us pass an unknown preset, so we cast
       expect(matchesDatePreset(dueDate, 'unknown-preset' as 'all')).toBe(true);
+    });
+  });
+});
+
+describe('computePresetCounts', () => {
+  const createTask = (dueDate?: number): Task => ({
+    id: `task-${Math.random()}`,
+    type: 'admin',
+    title: 'Test Task',
+    status: 'todo',
+    blocks: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    dueDate,
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2024, 5, 19, 12, 0)); // Wednesday June 19, 2024
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('counts all tasks', () => {
+    const tasks = [createTask(), createTask(), createTask()];
+    const counts = computePresetCounts(tasks);
+    expect(counts.all).toBe(3);
+  });
+
+  it('counts tasks due today', () => {
+    const today = new Date(2024, 5, 19, 10, 0).getTime();
+    const tomorrow = new Date(2024, 5, 20, 10, 0).getTime();
+    const tasks = [createTask(today), createTask(tomorrow), createTask()];
+    const counts = computePresetCounts(tasks);
+    expect(counts.today).toBe(1);
+  });
+
+  it('counts tasks due tomorrow', () => {
+    const today = new Date(2024, 5, 19, 10, 0).getTime();
+    const tomorrow = new Date(2024, 5, 20, 10, 0).getTime();
+    const tasks = [createTask(today), createTask(tomorrow), createTask()];
+    const counts = computePresetCounts(tasks);
+    expect(counts.tomorrow).toBe(1);
+  });
+
+  it('counts tasks due this week', () => {
+    const monday = new Date(2024, 5, 17, 10, 0).getTime();
+    const friday = new Date(2024, 5, 21, 10, 0).getTime();
+    const nextWeek = new Date(2024, 5, 24, 10, 0).getTime();
+    const tasks = [
+      createTask(monday),
+      createTask(friday),
+      createTask(nextWeek),
+    ];
+    const counts = computePresetCounts(tasks);
+    expect(counts['this-week']).toBe(2);
+  });
+
+  it('returns zeros for empty task list', () => {
+    const counts = computePresetCounts([]);
+    expect(counts).toEqual({
+      all: 0,
+      today: 0,
+      tomorrow: 0,
+      'this-week': 0,
     });
   });
 });

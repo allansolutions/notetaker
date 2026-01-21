@@ -20,19 +20,19 @@ describe('DateFilterTitle', () => {
 
   it('shows today\'s date when preset is "today"', () => {
     render(<DateFilterTitle preset="today" />);
-    expect(screen.getByText('Tuesday 21 January 2025')).toBeInTheDocument();
+    expect(screen.getByText('Tuesday, 21 January 2025')).toBeInTheDocument();
   });
 
   it('shows tomorrow\'s date when preset is "tomorrow"', () => {
     render(<DateFilterTitle preset="tomorrow" />);
-    expect(screen.getByText('Wednesday 22 January 2025')).toBeInTheDocument();
+    expect(screen.getByText('Wednesday, 22 January 2025')).toBeInTheDocument();
   });
 
   it('shows week range when preset is "this-week"', () => {
     render(<DateFilterTitle preset="this-week" />);
     // Week of Jan 21, 2025 is Monday Jan 20 to Sunday Jan 26
     expect(
-      screen.getByText('Monday 20 January 2025 – Sunday 26 January 2025')
+      screen.getByText('Monday, 20 January 2025 – Sunday, 26 January 2025')
     ).toBeInTheDocument();
   });
 
@@ -41,7 +41,7 @@ describe('DateFilterTitle', () => {
     render(
       <DateFilterTitle preset="specific-date" specificDate={specificDate} />
     );
-    expect(screen.getByText('Saturday 15 March 2025')).toBeInTheDocument();
+    expect(screen.getByText('Saturday, 15 March 2025')).toBeInTheDocument();
   });
 
   it('shows "Today" prefix when specific-date matches today', () => {
@@ -50,7 +50,7 @@ describe('DateFilterTitle', () => {
       <DateFilterTitle preset="specific-date" specificDate={specificDate} />
     );
     expect(
-      screen.getByText('Today – Tuesday 21 January 2025')
+      screen.getByText('Today – Tuesday, 21 January 2025')
     ).toBeInTheDocument();
   });
 
@@ -60,7 +60,7 @@ describe('DateFilterTitle', () => {
       <DateFilterTitle preset="specific-date" specificDate={specificDate} />
     );
     expect(
-      screen.getByText('Yesterday – Monday 20 January 2025')
+      screen.getByText('Yesterday – Monday, 20 January 2025')
     ).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe('DateFilterTitle', () => {
       <DateFilterTitle preset="specific-date" specificDate={specificDate} />
     );
     expect(
-      screen.getByText('Tomorrow – Wednesday 22 January 2025')
+      screen.getByText('Tomorrow – Wednesday, 22 January 2025')
     ).toBeInTheDocument();
   });
 
@@ -88,7 +88,7 @@ describe('DateFilterTitle', () => {
     };
     render(<DateFilterTitle preset="date-range" dateRange={dateRange} />);
     expect(
-      screen.getByText('Saturday 1 February 2025 – Friday 14 February 2025')
+      screen.getByText('Saturday, 1 February 2025 – Friday, 14 February 2025')
     ).toBeInTheDocument();
   });
 
