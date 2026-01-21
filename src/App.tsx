@@ -47,9 +47,11 @@ interface TaskNotesContext {
 }
 
 const SIDEBAR_WIDTH_KEY = 'notetaker-sidebar-width';
+const SIDEBAR_COLLAPSED_KEY = 'notetaker-sidebar-collapsed';
 const DEFAULT_SIDEBAR_WIDTH = 240;
 const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 500;
+const COLLAPSED_SIDEBAR_WIDTH = 48;
 
 function createEmptyFilterState(): SpreadsheetFilterState {
   return {
@@ -135,6 +137,10 @@ export function AppContent() {
   const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
     SIDEBAR_WIDTH_KEY,
     DEFAULT_SIDEBAR_WIDTH
+  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage<boolean>(
+    SIDEBAR_COLLAPSED_KEY,
+    false
   );
   const locale = useMemo(() => getUserLocale(), []);
   const [isResizing, setIsResizing] = useState(false);
@@ -817,33 +823,41 @@ export function AppContent() {
       <div
         data-testid="sidebar"
         className="shrink-0 bg-surface-alt sticky top-0 h-screen overflow-y-auto flex"
-        style={{ width: sidebarWidth }}
+        style={{
+          width: sidebarCollapsed ? COLLAPSED_SIDEBAR_WIDTH : sidebarWidth,
+        }}
       >
-        {/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Interactive separator (splitter) pattern */}
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize sidebar"
-          tabIndex={0}
-          data-testid="sidebar-resize-handle"
-          onMouseDown={handleResizeStart}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowLeft') {
-              e.preventDefault();
-              setSidebarWidth((w) => Math.min(MAX_SIDEBAR_WIDTH, w + 10));
-            } else if (e.key === 'ArrowRight') {
-              e.preventDefault();
-              setSidebarWidth((w) => Math.max(MIN_SIDEBAR_WIDTH, w - 10));
-            }
-          }}
-          className="w-1 shrink-0 cursor-col-resize border-l border-border hover:bg-accent-subtle active:bg-accent-subtle transition-colors focus:bg-accent-subtle focus:outline-none"
-        />
-        {/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
+        {!sidebarCollapsed && (
+          <>
+            {/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Interactive separator (splitter) pattern */}
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize sidebar"
+              tabIndex={0}
+              data-testid="sidebar-resize-handle"
+              onMouseDown={handleResizeStart}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setSidebarWidth((w) => Math.min(MAX_SIDEBAR_WIDTH, w + 10));
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setSidebarWidth((w) => Math.max(MIN_SIDEBAR_WIDTH, w - 10));
+                }
+              }}
+              className="w-1 shrink-0 cursor-col-resize border-l border-border hover:bg-accent-subtle active:bg-accent-subtle transition-colors focus:bg-accent-subtle focus:outline-none"
+            />
+            {/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
+          </>
+        )}
         <div className="flex-1 overflow-y-auto">
           <Sidebar
             tasks={activeTasks}
             calendarEvents={calendarEvents}
             onUpdateTask={updateTaskById}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
         </div>
       </div>
