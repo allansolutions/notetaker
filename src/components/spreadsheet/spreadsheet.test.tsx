@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { SelectCell } from './SelectCell';
 import { TitleCell } from './TitleCell';
 import { TypeCell } from './TypeCell';
@@ -238,28 +239,34 @@ describe('TaskTable', () => {
     expect(screen.getByLabelText('Importance')).toBeInTheDocument();
   });
 
-  it('calls onAddTask when submitting via modal', () => {
+  it('calls onAddTask when submitting via modal', async () => {
+    const user = userEvent.setup();
     const onAddTask = vi.fn();
     render(<TaskTable {...defaultProps} onAddTask={onAddTask} />);
 
     // Open modal
-    fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+    await user.click(screen.getByRole('button', { name: 'Add task' }));
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText('Type'), {
-      target: { value: 'admin' },
+    // Type dropdown auto-opens, select Admin
+    const adminOption = await screen.findByRole('option', { name: 'Admin' });
+    await user.click(adminOption);
+
+    // Fill in Task title
+    await user.type(screen.getByLabelText('Task'), 'New Task');
+
+    // Select Importance from dropdown
+    const importanceTrigger = screen.getByRole('combobox', {
+      name: /Importance/i,
     });
-    fireEvent.change(screen.getByLabelText('Task'), {
-      target: { value: 'New Task' },
-    });
-    fireEvent.change(screen.getByLabelText('Importance'), {
-      target: { value: 'mid' },
-    });
-    // Select estimate
-    fireEvent.click(screen.getByRole('button', { name: '15m' }));
+    await user.click(importanceTrigger);
+    const midOption = await screen.findByRole('option', { name: 'Mid' });
+    await user.click(midOption);
+
+    // Enter estimate
+    await user.type(screen.getByLabelText('Estimate'), '15m');
 
     // Submit
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await user.click(screen.getByRole('button', { name: 'Create' }));
 
     expect(onAddTask).toHaveBeenCalledWith({
       title: 'New Task',
@@ -267,35 +274,43 @@ describe('TaskTable', () => {
       status: 'todo',
       importance: 'mid',
       estimate: 15,
-      dueDate: undefined,
+      dueDate: expect.any(Number), // Defaults to today
     });
   });
 
-  it('closes modal after submitting', () => {
+  it('closes modal after submitting', async () => {
+    const user = userEvent.setup();
     render(<TaskTable {...defaultProps} />);
 
     // Open modal
-    fireEvent.click(screen.getByRole('button', { name: 'Add task' }));
+    await user.click(screen.getByRole('button', { name: 'Add task' }));
     expect(screen.getByText('Add Task')).toBeInTheDocument();
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText('Type'), {
-      target: { value: 'admin' },
+    // Type dropdown auto-opens, select Admin
+    const adminOption = await screen.findByRole('option', { name: 'Admin' });
+    await user.click(adminOption);
+
+    // Fill in Task title
+    await user.type(screen.getByLabelText('Task'), 'New Task');
+
+    // Select Importance from dropdown
+    const importanceTrigger = screen.getByRole('combobox', {
+      name: /Importance/i,
     });
-    fireEvent.change(screen.getByLabelText('Task'), {
-      target: { value: 'New Task' },
-    });
-    fireEvent.change(screen.getByLabelText('Importance'), {
-      target: { value: 'mid' },
-    });
-    // Select estimate
-    fireEvent.click(screen.getByRole('button', { name: '15m' }));
+    await user.click(importanceTrigger);
+    const midOption = await screen.findByRole('option', { name: 'Mid' });
+    await user.click(midOption);
+
+    // Enter estimate
+    await user.type(screen.getByLabelText('Estimate'), '15m');
 
     // Submit
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await user.click(screen.getByRole('button', { name: 'Create' }));
 
     // Modal should be closed
-    expect(screen.queryByText('Add Task')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Add Task')).not.toBeInTheDocument();
+    });
   });
 
   it('closes modal when clicking Cancel', () => {

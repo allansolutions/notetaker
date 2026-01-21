@@ -186,6 +186,28 @@ export async function mockTasksApi(
   });
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  personal: 'Personal',
+  operations: 'Operations',
+  business: 'Business Dev',
+  'jardin-casa': 'Jardin: Casa',
+  'jardin-finca': 'Jardin: Finca',
+  fitness: 'Fitness',
+};
+
+const IMPORTANCE_LABELS: Record<string, string> = {
+  high: 'High',
+  mid: 'Mid',
+  low: 'Low',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  todo: 'To-do',
+  'in-progress': 'In progress',
+  done: 'Done',
+};
+
 /**
  * Adds a task using the Add Task modal.
  * Opens the modal, fills in required fields, and submits.
@@ -211,21 +233,31 @@ export async function addTaskViaModal(
   // Click the add task button
   await page.getByRole('button', { name: 'Add task' }).click();
 
-  // Wait for modal to open
-  const modal = page.getByRole('dialog', { name: 'Add Task' });
-  await expect(modal).toBeVisible();
+  // Wait for modal to open by checking for heading text
+  const addTaskHeading = page.locator('h2', { hasText: 'Add Task' });
+  await expect(addTaskHeading).toBeVisible();
+  const modal = page.locator('[role="dialog"]').filter({ has: addTaskHeading });
 
-  // Fill in required fields - use specific selectors within the modal
-  await modal.getByLabel('Type').selectOption(type);
+  // Type dropdown auto-opens - select the type option
+  const typeLabel = TYPE_LABELS[type] ?? 'Admin';
+  await page.getByRole('option', { name: typeLabel }).click();
+
+  // Fill in Task title (should have focus after type selection)
   await modal.getByLabel('Task').fill(title);
-  await modal.getByLabel('Importance').selectOption(importance);
 
-  // Select estimate preset
-  await modal.getByRole('button', { name: estimate }).click();
+  // Select Importance from dropdown
+  await modal.getByRole('combobox', { name: /Importance/i }).click();
+  const importanceLabel = IMPORTANCE_LABELS[importance] ?? 'Mid';
+  await page.getByRole('option', { name: importanceLabel }).click();
+
+  // Fill in estimate using text input (format: "15m", "1h 30m", etc.)
+  await modal.getByLabel('Estimate').fill(estimate);
 
   // Optionally change status (defaults to 'todo')
   if (status) {
-    await modal.getByLabel('Status').selectOption(status);
+    await modal.getByRole('combobox', { name: /Status/i }).click();
+    const statusLabel = STATUS_LABELS[status] ?? 'To-do';
+    await page.getByRole('option', { name: statusLabel }).click();
   }
 
   // Click Create

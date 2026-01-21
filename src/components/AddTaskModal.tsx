@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   TaskType,
   TaskStatus,
@@ -8,6 +8,10 @@ import {
   TASK_IMPORTANCE_OPTIONS,
 } from '../types';
 import { DatePickerModal } from './DatePickerModal';
+import { KeyboardSelect } from './KeyboardSelect';
+import { parseTimeInput } from '../utils/time-parsing';
+import { formatMinutes } from '../utils/task-operations';
+import { CalendarIcon } from './icons';
 
 export interface AddTaskData {
   title: string;
@@ -18,17 +22,15 @@ export interface AddTaskData {
   dueDate?: number;
 }
 
-const ESTIMATE_PRESETS = [
-  { label: '15m', minutes: 15 },
-  { label: '30m', minutes: 30 },
-  { label: '1h', minutes: 60 },
-  { label: '2h', minutes: 120 },
-  { label: '4h', minutes: 240 },
-];
-
 interface AddTaskModalProps {
   onSubmit: (data: AddTaskData) => void;
   onClose: () => void;
+}
+
+function getTodayNoon(): number {
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  return today.getTime();
 }
 
 export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
@@ -36,10 +38,18 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [importance, setImportance] = useState<TaskImportance | ''>('');
+  const [estimateInput, setEstimateInput] = useState('');
   const [estimate, setEstimate] = useState<number | null>(null);
-  const [customEstimate, setCustomEstimate] = useState('');
-  const [dueDate, setDueDate] = useState<number | undefined>(undefined);
+  const [dueDate, setDueDate] = useState<number | undefined>(getTodayNoon());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Refs for focus management
+  const typeRef = useRef<HTMLButtonElement>(null!);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const statusRef = useRef<HTMLButtonElement>(null!);
+  const importanceRef = useRef<HTMLButtonElement>(null!);
+  const estimateRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLButtonElement>(null);
 
   const isValid =
     type !== '' &&
@@ -59,14 +69,28 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
     });
   };
 
-  const handleCustomEstimateSubmit = () => {
-    const minutes = parseInt(customEstimate, 10);
-    if (!isNaN(minutes) && minutes > 0) {
-      setEstimate(minutes);
+  const handleEstimateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^0-9hHmM\s]/g, '').toLowerCase();
+    setEstimateInput(val);
+    const parsed = parseTimeInput(val);
+    setEstimate(parsed ?? null);
+  };
+
+  const handleEstimateKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      dateRef.current?.focus();
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      statusRef.current?.focus();
+    }
+  };
+
+  const handleDateKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && isValid) {
       e.preventDefault();
       handleSubmit();
@@ -134,27 +158,23 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
         <div className="p-4 space-y-4">
           {/* Type */}
           <div className="flex items-center gap-4">
-            <label
-              htmlFor="add-task-type"
+            <span
+              id="add-task-type-label"
               className="text-sm text-muted w-24 shrink-0"
             >
               Type
-            </label>
-            <select
-              id="add-task-type"
+            </span>
+            <KeyboardSelect
               value={type}
-              onChange={(e) => setType(e.target.value as TaskType | '')}
-              className="flex-1 px-3 py-2 text-sm rounded bg-surface border border-border text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="" disabled>
-                Select type...
-              </option>
-              {TASK_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onChange={setType}
+              onAdvance={() => titleRef.current?.focus()}
+              options={TASK_TYPE_OPTIONS}
+              placeholder="Select type..."
+              autoOpen
+              triggerRef={typeRef}
+              id="add-task-type"
+              aria-labelledby="add-task-type-label"
+            />
           </div>
 
           {/* Task (Title) */}
@@ -167,11 +187,11 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
             </label>
             <input
               id="add-task-title"
-              ref={(el) => el?.focus()}
+              ref={titleRef}
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onKeyDown={handleTitleKeyDown}
               placeholder="Enter task title..."
               className="flex-1 px-3 py-2 text-sm rounded bg-surface border border-border text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -179,104 +199,68 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
 
           {/* Status */}
           <div className="flex items-center gap-4">
-            <label
-              htmlFor="add-task-status"
+            <span
+              id="add-task-status-label"
               className="text-sm text-muted w-24 shrink-0"
             >
               Status
-            </label>
-            <select
-              id="add-task-status"
+            </span>
+            <KeyboardSelect
               value={status}
-              onChange={(e) => setStatus(e.target.value as TaskStatus)}
-              className="flex-1 px-3 py-2 text-sm rounded bg-surface border border-border text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {TASK_STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onChange={setStatus}
+              onAdvance={() => importanceRef.current?.focus()}
+              options={TASK_STATUS_OPTIONS}
+              placeholder="Select status..."
+              triggerRef={statusRef}
+              id="add-task-status"
+              aria-labelledby="add-task-status-label"
+            />
           </div>
 
           {/* Importance */}
           <div className="flex items-center gap-4">
-            <label
-              htmlFor="add-task-importance"
+            <span
+              id="add-task-importance-label"
               className="text-sm text-muted w-24 shrink-0"
             >
               Importance
-            </label>
-            <select
-              id="add-task-importance"
+            </span>
+            <KeyboardSelect
               value={importance}
-              onChange={(e) =>
-                setImportance(e.target.value as TaskImportance | '')
-              }
-              className="flex-1 px-3 py-2 text-sm rounded bg-surface border border-border text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="" disabled>
-                Select importance...
-              </option>
-              {TASK_IMPORTANCE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onChange={setImportance}
+              onAdvance={() => estimateRef.current?.focus()}
+              options={TASK_IMPORTANCE_OPTIONS}
+              placeholder="Select importance..."
+              triggerRef={importanceRef}
+              id="add-task-importance"
+              aria-labelledby="add-task-importance-label"
+            />
           </div>
 
           {/* Estimate */}
-          <div className="flex items-start gap-4">
-            <span className="text-sm text-muted w-24 shrink-0 pt-2">
+          <div className="flex items-center gap-4">
+            <label
+              htmlFor="add-task-estimate"
+              className="text-sm text-muted w-24 shrink-0"
+            >
               Estimate
-            </span>
-            <div className="flex-1">
-              <div className="flex gap-2 flex-wrap mb-2">
-                {ESTIMATE_PRESETS.map(({ label, minutes }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => {
-                      setEstimate(minutes);
-                      setCustomEstimate('');
-                    }}
-                    className={`px-3 py-1.5 text-sm rounded transition-colors ${
-                      estimate === minutes
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-hover text-primary hover:bg-blue-500 hover:text-white'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="Custom (min)"
-                  value={customEstimate}
-                  onChange={(e) => {
-                    setCustomEstimate(e.target.value);
-                    // Clear preset selection when typing custom
-                    const parsed = parseInt(e.target.value, 10);
-                    if (!isNaN(parsed) && parsed > 0) {
-                      setEstimate(parsed);
-                    } else {
-                      setEstimate(null);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleCustomEstimateSubmit();
-                    }
-                  }}
-                  className="w-28 px-3 py-1.5 text-sm rounded bg-surface border border-border text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-sm text-muted">minutes</span>
-              </div>
+            </label>
+            <div className="flex-1 flex items-center gap-2">
+              <input
+                id="add-task-estimate"
+                ref={estimateRef}
+                type="text"
+                value={estimateInput}
+                onChange={handleEstimateChange}
+                onKeyDown={handleEstimateKeyDown}
+                placeholder="e.g., 30m, 1h 30m"
+                className="flex-1 px-3 py-2 text-sm rounded bg-surface border border-border text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {estimate !== null && (
+                <span className="text-sm text-muted whitespace-nowrap">
+                  = {formatMinutes(estimate)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -289,13 +273,18 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
               Date
             </span>
             <button
+              ref={dateRef}
               type="button"
               onClick={() => setShowDatePicker(true)}
+              onKeyDown={handleDateKeyDown}
               aria-labelledby="add-task-date-label"
-              className="flex-1 px-3 py-2 text-sm rounded bg-surface border border-border text-left hover:border-muted focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 flex items-center justify-between px-3 py-2 text-sm rounded bg-surface border border-border text-left hover:border-muted focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <span className={dueDate ? 'text-primary' : 'text-muted'}>
                 {formatDate(dueDate)}
+              </span>
+              <span className="text-muted">
+                <CalendarIcon />
               </span>
             </button>
           </div>
