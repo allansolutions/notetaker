@@ -23,7 +23,7 @@ function wildcardMatch(text: string, pattern: string): boolean {
   }
 }
 
-function matchesMultiselect(
+export function matchesMultiselect(
   filterValue: FilterValue | null,
   taskValue: string
 ): boolean {
@@ -33,7 +33,7 @@ function matchesMultiselect(
   return filterValue.selected.has(taskValue);
 }
 
-function matchesTextFilter(
+export function matchesTextFilter(
   filterValue: FilterValue | null,
   taskValue: string
 ): boolean {
@@ -47,7 +47,7 @@ function matchesTextFilter(
   return taskValue.toLowerCase().includes(pattern.toLowerCase());
 }
 
-function matchesDateFilter(
+export function matchesDateFilter(
   filterValue: FilterValue | null,
   taskDate: number | undefined
 ): boolean {
@@ -64,7 +64,7 @@ function matchesDateFilter(
   );
 }
 
-function matchesTitleEnhancedFilter(
+export function matchesTitleEnhancedFilter(
   filterValue: FilterValue | null,
   task: { id: string; title: string }
 ): boolean {

@@ -1,20 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { ClockIcon } from '../icons';
 import { TimeSession } from '../../types';
+import { formatMinutes } from '../../utils/task-operations';
 
 interface EstimateCellProps {
   value: number | undefined;
   sessions?: TimeSession[];
   onChange: (estimate: number | undefined) => void;
-}
-
-function formatMinutes(minutes: number): string {
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  }
-  return `${minutes}m`;
 }
 
 /**

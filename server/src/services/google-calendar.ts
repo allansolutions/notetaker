@@ -90,11 +90,6 @@ export interface GoogleUserProfile {
   picture?: string;
 }
 
-export async function getUserEmail(accessToken: string): Promise<string> {
-  const profile = await getUserProfile(accessToken);
-  return profile.email;
-}
-
 export async function getUserProfile(
   accessToken: string
 ): Promise<GoogleUserProfile> {

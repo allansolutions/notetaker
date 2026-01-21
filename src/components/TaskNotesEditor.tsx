@@ -18,17 +18,9 @@ import { BlockInput } from './BlockInput';
 import { TypeSelectionModal } from './TypeSelectionModal';
 import { generateId } from '../utils/markdown';
 import { getNumberedIndex } from '../utils/block-operations';
+import { formatMinutes } from '../utils/task-operations';
 import { PencilIcon } from './icons';
 import { useMultiTaskTimeTracking } from '../hooks/useMultiTaskTimeTracking';
-
-function formatMinutes(minutes: number): string {
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  }
-  return `${minutes}m`;
-}
 
 function calculateTimeSpent(sessions: TimeSession[] | undefined): number {
   if (!sessions || sessions.length === 0) return 0;

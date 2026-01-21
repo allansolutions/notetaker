@@ -1,16 +1,11 @@
+import { formatMinutes } from '../utils/task-operations';
+
 interface TimeDisplayProps {
   elapsedMs: number;
   totalCompletedMs: number;
   estimateMinutes: number;
   isActive: boolean;
   onClick?: () => void;
-}
-
-function formatMinutes(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours === 0) return `${mins}m`;
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
 function formatDuration(ms: number): string {

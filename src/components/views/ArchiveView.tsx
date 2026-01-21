@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { Task, DateFilterPreset } from '../../types';
 import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
 import { BackButton } from '../BackButton';
@@ -8,10 +8,13 @@ import { matchesDatePreset } from '../../utils/date-filters';
 const defaultFilters: ColumnFilters = {
   type: null,
   title: null,
-  status: null, // Not used in archive (all tasks are "done")
+  status: null,
   importance: null,
   dueDate: null,
 };
+
+// No-op handler for archive view (tasks cannot be added to archive)
+function noop(): void {}
 
 interface ArchiveViewProps {
   tasks: Task[];
@@ -29,12 +32,11 @@ export function ArchiveView({
   onReorder,
   onSelectTask,
   onBack,
-}: ArchiveViewProps) {
+}: ArchiveViewProps): JSX.Element {
   const [dateFilterPreset, setDateFilterPreset] =
     useState<DateFilterPreset>('all');
   const [filters, setFilters] = useState<ColumnFilters>(defaultFilters);
 
-  // Calculate counts for each preset
   const presetCounts = useMemo(() => {
     const now = new Date();
     return {
@@ -49,11 +51,6 @@ export function ArchiveView({
       ).length,
     };
   }, [tasks]);
-
-  // No-op for adding tasks in archive view
-  const handleAddTask = useCallback(() => {
-    // Tasks cannot be added directly to archive
-  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -79,7 +76,7 @@ export function ArchiveView({
           onDeleteTask={onDeleteTask}
           onReorder={onReorder}
           onSelectTask={onSelectTask}
-          onAddTask={handleAddTask}
+          onAddTask={noop}
           dateFilterPreset={dateFilterPreset}
           filters={filters}
           onFiltersChange={setFilters}

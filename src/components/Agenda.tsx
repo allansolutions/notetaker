@@ -7,6 +7,7 @@ import {
   AGENDA_START_HOUR,
   SNAP_INTERVAL,
 } from '../types';
+import { isOnDate } from '../utils/date-filters';
 import { CurrentTimeLine } from './CurrentTimeLine';
 import { AgendaBlock } from './AgendaBlock';
 import { CalendarEventBlock } from './CalendarEventBlock';
@@ -31,16 +32,6 @@ function formatHour(hour: number): string {
   return `${displayHour}:00 ${period}`;
 }
 
-function isToday(timestamp: number): boolean {
-  const date = new Date(timestamp);
-  const today = new Date();
-  return (
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate()
-  );
-}
-
 export function Agenda({
   tasks,
   calendarEvents = [],
@@ -51,12 +42,13 @@ export function Agenda({
     (_, i) => AGENDA_START_HOUR + i
   );
 
+  const today = new Date();
   // Show tasks that have a startTime, are scheduled for today, and are not done
   const scheduledTasks = tasks.filter(
     (task) =>
       task.startTime !== undefined &&
-      task.dueDate &&
-      isToday(task.dueDate) &&
+      task.dueDate !== undefined &&
+      isOnDate(task.dueDate, today) &&
       task.status !== 'done'
   );
 

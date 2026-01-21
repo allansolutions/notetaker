@@ -85,3 +85,13 @@ export function computeTimeSpent(sessions: TimeSession[]): number {
     return total;
   }, 0);
 }
+
+/**
+ * Format a number of minutes as a human-readable string (e.g., "1h 30m", "45m").
+ */
+export function formatMinutes(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins}m`;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}

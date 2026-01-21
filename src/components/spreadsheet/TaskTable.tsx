@@ -36,6 +36,12 @@ import {
   TASK_IMPORTANCE_OPTIONS,
 } from '../../types';
 import { matchesDatePreset } from '../../utils/date-filters';
+import {
+  matchesMultiselect,
+  matchesTextFilter,
+  matchesDateFilter,
+  matchesTitleEnhancedFilter,
+} from '../../utils/filter-matching';
 import { TypeCell } from './TypeCell';
 import { StatusCell } from './StatusCell';
 import { ImportanceCell } from './ImportanceCell';
@@ -66,94 +72,6 @@ export interface ColumnFilters {
   status: FilterValue | null;
   importance: FilterValue | null;
   dueDate: FilterValue | null;
-}
-
-// Wildcard matching for text filter
-function wildcardMatch(text: string, pattern: string): boolean {
-  if (!pattern) return true;
-  const lowerText = text.toLowerCase();
-  const lowerPattern = pattern.toLowerCase();
-
-  // Convert wildcard pattern to regex
-  const regexPattern = lowerPattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special regex chars except *
-    .replace(/\*/g, '.*'); // Convert * to .*
-
-  try {
-    const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(lowerText);
-  } catch {
-    // Fallback to simple includes if regex fails
-    return lowerText.includes(lowerPattern.replace(/\*/g, ''));
-  }
-}
-
-// Helper functions for filtering to reduce cognitive complexity
-function matchesMultiselect(
-  filterValue: FilterValue | null,
-  taskValue: string
-): boolean {
-  if (filterValue?.type !== 'multiselect' || filterValue.selected.size === 0) {
-    return true;
-  }
-  return filterValue.selected.has(taskValue);
-}
-
-function matchesTextFilter(
-  filterValue: FilterValue | null,
-  taskValue: string
-): boolean {
-  if (filterValue?.type !== 'text' || !filterValue.value.trim()) {
-    return true;
-  }
-  const pattern = filterValue.value.trim();
-  if (pattern.includes('*')) {
-    return wildcardMatch(taskValue, pattern);
-  }
-  return taskValue.toLowerCase().includes(pattern.toLowerCase());
-}
-
-function matchesDateFilter(
-  filterValue: FilterValue | null,
-  taskDate: number | undefined
-): boolean {
-  if (filterValue?.type !== 'date' || filterValue.value === null) {
-    return true;
-  }
-  if (!taskDate) return false;
-  const filterDate = new Date(filterValue.value);
-  const taskDateObj = new Date(taskDate);
-  return (
-    filterDate.getFullYear() === taskDateObj.getFullYear() &&
-    filterDate.getMonth() === taskDateObj.getMonth() &&
-    filterDate.getDate() === taskDateObj.getDate()
-  );
-}
-
-function matchesTitleEnhancedFilter(
-  filterValue: FilterValue | null,
-  task: { id: string; title: string }
-): boolean {
-  if (filterValue?.type !== 'title-enhanced') {
-    return true;
-  }
-  const { searchText, selectedTaskIds } = filterValue;
-
-  // If specific tasks are selected, check if this task is in the set
-  if (selectedTaskIds !== null) {
-    return selectedTaskIds.has(task.id);
-  }
-
-  // Otherwise, match by search text (null selectedTaskIds means all matching tasks)
-  if (!searchText.trim()) {
-    return true;
-  }
-
-  const pattern = searchText.trim();
-  if (pattern.includes('*')) {
-    return wildcardMatch(task.title, pattern);
-  }
-  return task.title.toLowerCase().includes(pattern.toLowerCase());
 }
 
 function SortIcon({ direction }: { direction: SortDirection | false }) {
