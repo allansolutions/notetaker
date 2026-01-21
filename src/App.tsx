@@ -20,6 +20,7 @@ import { LoginPage } from './components/LoginPage';
 import { AuthGuard } from './components/AuthGuard';
 import { MigrationPrompt } from './components/MigrationPrompt';
 import { CommandPalette } from './components/CommandPalette';
+import { TaskFinder } from './components/TaskFinder';
 import {
   doesTaskMatchFilters,
   hasActiveFilters,
@@ -63,6 +64,7 @@ export function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('spreadsheet');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isTaskFinderOpen, setIsTaskFinderOpen] = useState(false);
   const [spreadsheetViewKey, setSpreadsheetViewKey] = useState(0);
   const [visibleTaskIds, setVisibleTaskIds] = useState<string[]>([]);
 
@@ -433,12 +435,43 @@ export function AppContent() {
     setReturnFilters(null);
   }, []);
 
+  const isTypingTarget = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName.toLowerCase();
+    return tag === 'input' || tag === 'textarea' || target.isContentEditable;
+  };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const isMetaK = event.metaKey && event.key.toLowerCase() === 'k';
       if (!isMetaK) return;
       event.preventDefault();
-      setIsCommandPaletteOpen((open) => !open);
+      setIsCommandPaletteOpen((open) => {
+        const next = !open;
+        if (next) {
+          setIsTaskFinderOpen(false);
+        }
+        return next;
+      });
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isMetaP = event.metaKey && event.key.toLowerCase() === 'p';
+      if (!isMetaP) return;
+      if (isTypingTarget(event.target)) return;
+      event.preventDefault();
+      setIsTaskFinderOpen((open) => {
+        const next = !open;
+        if (next) {
+          setIsCommandPaletteOpen(false);
+        }
+        return next;
+      });
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -525,6 +558,12 @@ export function AppContent() {
         isOpen={isCommandPaletteOpen}
         commands={commandPaletteCommands}
         onClose={() => setIsCommandPaletteOpen(false)}
+      />
+      <TaskFinder
+        isOpen={isTaskFinderOpen}
+        tasks={tasks}
+        onClose={() => setIsTaskFinderOpen(false)}
+        onSelectTask={handleSelectTask}
       />
       <div
         data-testid="sidebar"

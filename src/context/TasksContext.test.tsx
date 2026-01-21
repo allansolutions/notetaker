@@ -930,9 +930,7 @@ describe('TasksContext', () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
-      vi.mocked(apiClient.taskApi.getAll)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([task]);
+      vi.mocked(apiClient.taskApi.getAll).mockResolvedValue([]);
 
       const { result } = renderHook(() => useTasks(), {
         wrapper: createWrapper(),
@@ -943,6 +941,8 @@ describe('TasksContext', () => {
       });
 
       expect(result.current.tasks).toHaveLength(0);
+
+      vi.mocked(apiClient.taskApi.getAll).mockResolvedValueOnce([task]);
 
       await act(async () => {
         await result.current.refreshTasks();
