@@ -754,8 +754,9 @@ describe('TaskTable', () => {
       const filterButton = getFilterButton(container, 1)!;
       fireEvent.click(filterButton);
 
-      // Type search text
-      const searchInput = screen.getByPlaceholderText('Search...');
+      // Type search text using the enhanced title filter
+      // With selectedTaskIds as null (default), search text filters tasks directly
+      const searchInput = screen.getByPlaceholderText('Search titles...');
       fireEvent.change(searchInput, { target: { value: 'Buy' } });
 
       const titles = getRowTitles();
@@ -777,8 +778,9 @@ describe('TaskTable', () => {
       const filterButton = getFilterButton(container, 1)!;
       fireEvent.click(filterButton);
 
-      // Type wildcard pattern
-      const searchInput = screen.getByPlaceholderText('Search...');
+      // Type wildcard pattern in enhanced title filter
+      // With selectedTaskIds as null (default), search text filters tasks directly
+      const searchInput = screen.getByPlaceholderText('Search titles...');
       fireEvent.change(searchInput, { target: { value: 'Buy*' } });
 
       const titles = getRowTitles();
@@ -1289,6 +1291,100 @@ describe('TaskTable', () => {
       expect(row).not.toHaveClass('bg-today');
     });
   });
+
+  describe('controlled filter state', () => {
+    it('uses controlled filters when provided', () => {
+      const onFiltersChange = vi.fn();
+      const filters = {
+        type: { type: 'multiselect' as const, selected: new Set(['admin']) },
+        title: null,
+        status: null,
+        importance: null,
+        dueDate: null,
+      };
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Personal Task',
+          type: 'personal',
+        }),
+      ];
+
+      render(
+        <TaskTable
+          {...defaultProps}
+          tasks={tasks}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
+      );
+
+      // Only admin task should be visible
+      const titles = getRowTitles();
+      expect(titles).toEqual(['Admin Task']);
+    });
+
+    it('calls onFiltersChange when filter is updated in controlled mode', () => {
+      const onFiltersChange = vi.fn();
+      const filters = {
+        type: null,
+        title: null,
+        status: null,
+        importance: null,
+        dueDate: null,
+      };
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
+      ];
+
+      const { container } = render(
+        <TaskTable
+          {...defaultProps}
+          tasks={tasks}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
+      );
+
+      // Open type filter
+      const filterButtons = container.querySelectorAll(
+        '[data-testid="filter-button"]'
+      );
+      fireEvent.click(filterButtons[0]);
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Admin' }));
+
+      expect(onFiltersChange).toHaveBeenCalled();
+    });
+
+    it('calls onFiltersChange when clearing filters in controlled mode', () => {
+      const onFiltersChange = vi.fn();
+      const filters = {
+        type: { type: 'multiselect' as const, selected: new Set(['admin']) },
+        title: null,
+        status: null,
+        importance: null,
+        dueDate: null,
+      };
+      const tasks = [
+        createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
+      ];
+
+      render(
+        <TaskTable
+          {...defaultProps}
+          tasks={tasks}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
+      );
+
+      // Click clear all filters
+      fireEvent.click(screen.getByText('Clear all filters'));
+
+      expect(onFiltersChange).toHaveBeenCalled();
+    });
+  });
 });
 
 describe('ColumnFilter', () => {
@@ -1412,6 +1508,43 @@ describe('ColumnFilter', () => {
 
     // Radix popover closes on Escape key
     fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByText('Filter')).not.toBeInTheDocument();
+  });
+
+  it('calls onFilterChange with null when clear button is clicked', () => {
+    const onChange = vi.fn();
+    render(
+      <ColumnFilter
+        filterType="multiselect"
+        options={[{ value: 'a', label: 'A' }]}
+        filterValue={{ type: 'multiselect', selected: new Set(['a']) }}
+        onFilterChange={onChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('filter-button'));
+    fireEvent.click(screen.getByTitle('Clear filter'));
+
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it('handles keydown events in filter container', () => {
+    const onChange = vi.fn();
+    render(
+      <ColumnFilter
+        filterType="multiselect"
+        options={[{ value: 'a', label: 'A' }]}
+        filterValue={null}
+        onFilterChange={onChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('filter-button'));
+    // Press Escape inside the filter container
+    const container = screen.getByRole('presentation');
+    fireEvent.keyDown(container, { key: 'Escape' });
+
+    // The popup should close
     expect(screen.queryByText('Filter')).not.toBeInTheDocument();
   });
 });

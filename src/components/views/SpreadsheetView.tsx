@@ -1,10 +1,23 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Task, DateFilterPreset } from '../../types';
-import { TaskTable } from '../spreadsheet/TaskTable';
+import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
 import { DocumentIcon } from '../icons';
 import { AddTaskData } from '../AddTaskModal';
 import { DateFilterTabs } from '../DateFilterTabs';
 import { matchesDatePreset } from '../../utils/date-filters';
+
+export interface SpreadsheetFilterState {
+  filters: ColumnFilters;
+  dateFilterPreset: DateFilterPreset;
+}
+
+const defaultFilters: ColumnFilters = {
+  type: null,
+  title: null,
+  status: null,
+  importance: null,
+  dueDate: null,
+};
 
 interface SpreadsheetViewProps {
   tasks: Task[];
@@ -13,8 +26,12 @@ interface SpreadsheetViewProps {
   onReorder: (fromIndex: number, toIndex: number) => void;
   onSelectTask: (id: string) => void;
   onAddTask: (data: AddTaskData) => void;
-  onNavigateToFullDayNotes: () => void;
+  onNavigateToFullDayNotes: (
+    filterState: SpreadsheetFilterState,
+    visibleTaskIds: string[]
+  ) => void;
   onVisibleTasksChange?: (tasks: Task[]) => void;
+  initialFilters?: SpreadsheetFilterState;
 }
 
 export function SpreadsheetView({
@@ -26,9 +43,27 @@ export function SpreadsheetView({
   onAddTask,
   onNavigateToFullDayNotes,
   onVisibleTasksChange,
+  initialFilters,
 }: SpreadsheetViewProps) {
-  const [dateFilterPreset, setDateFilterPreset] =
-    useState<DateFilterPreset>('all');
+  const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>(
+    initialFilters?.dateFilterPreset ?? 'all'
+  );
+  const [filters, setFilters] = useState<ColumnFilters>(
+    initialFilters?.filters ?? defaultFilters
+  );
+
+  // Track visible task IDs for navigation
+  const visibleTaskIdsRef = useRef<string[]>([]);
+
+  // Apply initial filters when they change (e.g., returning from task notes)
+  const initialFiltersApplied = useRef(false);
+  useEffect(() => {
+    if (initialFilters && !initialFiltersApplied.current) {
+      setDateFilterPreset(initialFilters.dateFilterPreset);
+      setFilters(initialFilters.filters);
+      initialFiltersApplied.current = true;
+    }
+  }, [initialFilters]);
 
   // Calculate counts for each preset
   const presetCounts = useMemo(() => {
@@ -46,12 +81,28 @@ export function SpreadsheetView({
     };
   }, [tasks]);
 
+  const handleVisibleTasksChange = useCallback(
+    (visibleTasks: Task[]) => {
+      visibleTaskIdsRef.current = visibleTasks.map((t) => t.id);
+      onVisibleTasksChange?.(visibleTasks);
+    },
+    [onVisibleTasksChange]
+  );
+
+  const handleNavigateToFullDayNotes = useCallback(() => {
+    const filterState: SpreadsheetFilterState = {
+      filters,
+      dateFilterPreset,
+    };
+    onNavigateToFullDayNotes(filterState, visibleTaskIdsRef.current);
+  }, [filters, dateFilterPreset, onNavigateToFullDayNotes]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-6">
         <button
           type="button"
-          onClick={onNavigateToFullDayNotes}
+          onClick={handleNavigateToFullDayNotes}
           className="text-small text-muted hover:text-primary flex items-center gap-1"
         >
           <DocumentIcon />
@@ -73,7 +124,9 @@ export function SpreadsheetView({
         onSelectTask={onSelectTask}
         onAddTask={onAddTask}
         dateFilterPreset={dateFilterPreset}
-        onVisibleTasksChange={onVisibleTasksChange}
+        onVisibleTasksChange={handleVisibleTasksChange}
+        filters={filters}
+        onFiltersChange={setFilters}
       />
     </div>
   );

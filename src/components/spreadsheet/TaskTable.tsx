@@ -130,6 +130,32 @@ function matchesDateFilter(
   );
 }
 
+function matchesTitleEnhancedFilter(
+  filterValue: FilterValue | null,
+  task: { id: string; title: string }
+): boolean {
+  if (filterValue?.type !== 'title-enhanced') {
+    return true;
+  }
+  const { searchText, selectedTaskIds } = filterValue;
+
+  // If specific tasks are selected, check if this task is in the set
+  if (selectedTaskIds !== null) {
+    return selectedTaskIds.has(task.id);
+  }
+
+  // Otherwise, match by search text (null selectedTaskIds means all matching tasks)
+  if (!searchText.trim()) {
+    return true;
+  }
+
+  const pattern = searchText.trim();
+  if (pattern.includes('*')) {
+    return wildcardMatch(task.title, pattern);
+  }
+  return task.title.toLowerCase().includes(pattern.toLowerCase());
+}
+
 function SortIcon({ direction }: { direction: SortDirection | false }) {
   if (!direction) {
     return (
@@ -183,6 +209,9 @@ interface TaskTableProps {
   onAddTask: (data: AddTaskData) => void;
   dateFilterPreset?: DateFilterPreset;
   onVisibleTasksChange?: (tasks: Task[]) => void;
+  // Optional controlled filter state
+  filters?: ColumnFilters;
+  onFiltersChange?: (filters: ColumnFilters) => void;
 }
 
 const columnHelper = createColumnHelper<Task>();
@@ -298,38 +327,66 @@ export function TaskTable({
   onAddTask,
   dateFilterPreset = 'all',
   onVisibleTasksChange,
+  filters: controlledFilters,
+  onFiltersChange,
 }: TaskTableProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [filters, setFilters] = useState<ColumnFilters>(defaultFilters);
+  const [internalFilters, setInternalFilters] =
+    useState<ColumnFilters>(defaultFilters);
+
+  // Use controlled or internal filters
+  const isControlled = controlledFilters !== undefined;
+  const filters = isControlled ? controlledFilters : internalFilters;
 
   const updateFilter = useCallback(
     (column: keyof ColumnFilters, value: FilterValue | null) => {
-      setFilters((prev) => ({ ...prev, [column]: value }));
+      const newFilters = { ...filters, [column]: value };
+      if (isControlled && onFiltersChange) {
+        onFiltersChange(newFilters);
+      } else {
+        setInternalFilters(newFilters);
+      }
     },
-    []
+    [filters, isControlled, onFiltersChange]
   );
 
-  // Filter tasks based on date preset and column filters
-  const filteredTasks = useMemo(() => {
+  // Compute tasks filtered by all columns except title (for TitleFilter's checkbox list)
+  const tasksFilteredByOtherColumns = useMemo(() => {
     return tasks.filter((task) => {
       // Apply date preset filter first
       if (!matchesDatePreset(task.dueDate, dateFilterPreset)) {
         return false;
       }
 
-      // Apply column filters
-      // Skip dueDate column filter when a preset (other than 'all') is active
+      // Apply all column filters except title
       const skipDueDateFilter = dateFilterPreset !== 'all';
       return (
         matchesMultiselect(filters.type, task.type) &&
-        matchesTextFilter(filters.title, task.title) &&
         matchesMultiselect(filters.status, task.status) &&
         matchesMultiselect(filters.importance, task.importance ?? '') &&
         (skipDueDateFilter || matchesDateFilter(filters.dueDate, task.dueDate))
       );
     });
-  }, [tasks, filters, dateFilterPreset]);
+  }, [
+    tasks,
+    filters.type,
+    filters.status,
+    filters.importance,
+    filters.dueDate,
+    dateFilterPreset,
+  ]);
+
+  // Filter tasks based on date preset and column filters (including title)
+  const filteredTasks = useMemo(() => {
+    return tasksFilteredByOtherColumns.filter((task) => {
+      // Apply title filter (handles both text and title-enhanced types)
+      if (filters.title?.type === 'title-enhanced') {
+        return matchesTitleEnhancedFilter(filters.title, task);
+      }
+      return matchesTextFilter(filters.title, task.title);
+    });
+  }, [tasksFilteredByOtherColumns, filters.title]);
 
   const hasActiveFilters = useMemo(() => {
     return Object.values(filters).some((f) => {
@@ -337,13 +394,20 @@ export function TaskTable({
       if (f.type === 'multiselect') return f.selected.size > 0;
       if (f.type === 'text') return f.value.trim() !== '';
       if (f.type === 'date') return f.value !== null;
+      if (f.type === 'title-enhanced') {
+        return f.searchText.trim() !== '' || f.selectedTaskIds !== null;
+      }
       return false;
     });
   }, [filters]);
 
   const clearAllFilters = useCallback(() => {
-    setFilters(defaultFilters);
-  }, []);
+    if (isControlled && onFiltersChange) {
+      onFiltersChange(defaultFilters);
+    } else {
+      setInternalFilters(defaultFilters);
+    }
+  }, [isControlled, onFiltersChange]);
 
   const columns = useMemo(
     () => [
@@ -467,7 +531,7 @@ export function TaskTable({
   const filterConfig: Record<
     string,
     {
-      type: 'multiselect' | 'text' | 'date';
+      type: 'multiselect' | 'text' | 'date' | 'title-enhanced';
       options?: { value: string; label: string }[];
       filterKey: keyof ColumnFilters;
     }
@@ -477,7 +541,7 @@ export function TaskTable({
       options: TASK_TYPE_OPTIONS,
       filterKey: 'type',
     },
-    title: { type: 'text', filterKey: 'title' },
+    title: { type: 'title-enhanced', filterKey: 'title' },
     status: {
       type: 'multiselect',
       options: TASK_STATUS_OPTIONS,
@@ -490,6 +554,16 @@ export function TaskTable({
     },
     dueDate: { type: 'date', filterKey: 'dueDate' },
   };
+
+  // Prepare available tasks for title filter (filtered by other columns)
+  const availableTasksForTitleFilter = useMemo(
+    () =>
+      tasksFilteredByOtherColumns.map((t) => ({
+        id: t.id,
+        title: t.title,
+      })),
+    [tasksFilteredByOtherColumns]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -571,6 +645,11 @@ export function TaskTable({
                             filterValue={filters[config.filterKey]}
                             onFilterChange={(value) =>
                               updateFilter(config.filterKey, value)
+                            }
+                            availableTasks={
+                              config.type === 'title-enhanced'
+                                ? availableTasksForTitleFilter
+                                : undefined
                             }
                           />
                         )}

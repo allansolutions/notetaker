@@ -49,7 +49,7 @@ describe('SpreadsheetView', () => {
     expect(screen.getByText('Task Notes')).toBeInTheDocument();
   });
 
-  it('calls onNavigateToFullDayNotes when button is clicked', () => {
+  it('calls onNavigateToFullDayNotes with filter state when button is clicked', () => {
     const onNavigateToFullDayNotes = vi.fn();
     render(
       <SpreadsheetView
@@ -59,7 +59,46 @@ describe('SpreadsheetView', () => {
     );
 
     fireEvent.click(screen.getByText('Task Notes'));
-    expect(onNavigateToFullDayNotes).toHaveBeenCalled();
+    expect(onNavigateToFullDayNotes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: expect.any(Object),
+        dateFilterPreset: 'all',
+      }),
+      expect.any(Array)
+    );
+  });
+
+  it('applies initial filters when provided', () => {
+    const tasks = [
+      createMockTask({ id: 'task-1', title: 'Admin Task', type: 'admin' }),
+      createMockTask({
+        id: 'task-2',
+        title: 'Personal Task',
+        type: 'personal',
+      }),
+    ];
+    const initialFilters = {
+      filters: {
+        type: { type: 'multiselect' as const, selected: new Set(['admin']) },
+        title: null,
+        status: null,
+        importance: null,
+        dueDate: null,
+      },
+      dateFilterPreset: 'all' as const,
+    };
+
+    render(
+      <SpreadsheetView
+        {...defaultProps}
+        tasks={tasks}
+        initialFilters={initialFilters}
+      />
+    );
+
+    // Only admin task should be visible
+    expect(screen.getByText('Admin Task')).toBeInTheDocument();
+    expect(screen.queryByText('Personal Task')).not.toBeInTheDocument();
   });
 
   it('renders TaskTable with tasks', () => {

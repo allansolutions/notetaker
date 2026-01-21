@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTasks } from './hooks/useTasks';
 import { useCalendarEvents } from './hooks/useCalendarEvents';
@@ -7,7 +7,10 @@ import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { TasksProvider } from './context/TasksContext';
 import { ViewType, TaskType } from './types';
-import { SpreadsheetView } from './components/views/SpreadsheetView';
+import {
+  SpreadsheetView,
+  SpreadsheetFilterState,
+} from './components/views/SpreadsheetView';
 import { AddTaskData } from './components/AddTaskModal';
 import { TaskDetailView } from './components/views/TaskDetailView';
 import { FullDayNotesView } from './components/views/FullDayNotesView';
@@ -15,7 +18,16 @@ import { Sidebar } from './components/Sidebar';
 import { LoginPage } from './components/LoginPage';
 import { AuthGuard } from './components/AuthGuard';
 import { MigrationPrompt } from './components/MigrationPrompt';
+import {
+  doesTaskMatchFilters,
+  hasActiveFilters,
+} from './utils/filter-matching';
 import './styles/main.css';
+
+interface TaskNotesContext {
+  originalFilters: SpreadsheetFilterState;
+  pinnedTaskIds: string[];
+}
 
 const SIDEBAR_WIDTH_KEY = 'notetaker-sidebar-width';
 const DEFAULT_SIDEBAR_WIDTH = 240;
@@ -38,6 +50,13 @@ function AppContent() {
 
   const [currentView, setCurrentView] = useState<ViewType>('spreadsheet');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // Task notes context - tracks filter state when navigating to task notes
+  const [taskNotesContext, setTaskNotesContext] =
+    useState<TaskNotesContext | null>(null);
+  // Return filters - filters to apply when returning to spreadsheet from task notes
+  const [returnFilters, setReturnFilters] =
+    useState<SpreadsheetFilterState | null>(null);
 
   const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
     SIDEBAR_WIDTH_KEY,
@@ -90,11 +109,27 @@ function AppContent() {
   const handleBackToSpreadsheet = useCallback(() => {
     setCurrentView('spreadsheet');
     setSelectedTaskId(null);
-  }, []);
+    // Restore filters when going back to spreadsheet
+    // If returnFilters is already set (from creating out-of-filter task), use those
+    // Otherwise restore the original filters from task notes context
+    if (!returnFilters && taskNotesContext) {
+      setReturnFilters(taskNotesContext.originalFilters);
+    }
+    // Clear task notes context when going back
+    setTaskNotesContext(null);
+  }, [returnFilters, taskNotesContext]);
 
-  const handleNavigateToFullDayNotes = useCallback(() => {
-    setCurrentView('full-day-notes');
-  }, []);
+  const handleNavigateToFullDayNotes = useCallback(
+    (filterState: SpreadsheetFilterState, visibleTaskIds: string[]) => {
+      // Store context for filtering tasks in notes view
+      setTaskNotesContext({
+        originalFilters: filterState,
+        pinnedTaskIds: visibleTaskIds,
+      });
+      setCurrentView('full-day-notes');
+    },
+    []
+  );
 
   const handleAddTask = useCallback(
     async (data: AddTaskData) => {
@@ -124,7 +159,7 @@ function AppContent() {
           insertAtIndex = afterIndex + 1;
         }
       }
-      return addTask(
+      const newTask = await addTask(
         title,
         type,
         'todo',
@@ -133,13 +168,73 @@ function AppContent() {
         undefined,
         insertAtIndex
       );
+
+      // If we're in task notes with active filters, check if the new task matches
+      if (
+        newTask &&
+        taskNotesContext &&
+        hasActiveFilters(taskNotesContext.originalFilters)
+      ) {
+        const matchesFilters = doesTaskMatchFilters(
+          newTask,
+          taskNotesContext.originalFilters
+        );
+
+        // Add new task to pinned tasks so it shows in notes view
+        setTaskNotesContext((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            pinnedTaskIds: [...prev.pinnedTaskIds, newTask.id],
+          };
+        });
+
+        if (!matchesFilters) {
+          // Task doesn't match original filters - set up return filters
+          // Clear all filters except title, set title to show pinned tasks + new task
+          setReturnFilters({
+            filters: {
+              type: null,
+              title: {
+                type: 'title-enhanced',
+                searchText: '',
+                selectedTaskIds: new Set([
+                  ...(taskNotesContext?.pinnedTaskIds ?? []),
+                  newTask.id,
+                ]),
+              },
+              status: null,
+              importance: null,
+              dueDate: null,
+            },
+            dateFilterPreset: 'all',
+          });
+        }
+      }
+
+      return newTask;
     },
-    [addTask, tasks]
+    [addTask, tasks, taskNotesContext]
   );
 
   const selectedTask = selectedTaskId
     ? tasks.find((t) => t.id === selectedTaskId)
     : null;
+
+  // Filter tasks for task notes view based on pinned task IDs
+  const filteredTasksForNotes = useMemo(() => {
+    if (!taskNotesContext || taskNotesContext.pinnedTaskIds.length === 0) {
+      // No filters active - show all tasks
+      return tasks;
+    }
+    const pinnedSet = new Set(taskNotesContext.pinnedTaskIds);
+    return tasks.filter((t) => pinnedSet.has(t.id));
+  }, [tasks, taskNotesContext]);
+
+  // Handle clearing return filters after they've been applied
+  const handleClearReturnFilters = useCallback(() => {
+    setReturnFilters(null);
+  }, []);
 
   const renderView = () => {
     switch (currentView) {
@@ -161,7 +256,7 @@ function AppContent() {
       case 'full-day-notes':
         return (
           <FullDayNotesView
-            tasks={tasks}
+            tasks={filteredTasksForNotes}
             onSelectTask={handleSelectTask}
             onBack={handleBackToSpreadsheet}
             onUpdateTask={updateTaskById}
@@ -169,7 +264,13 @@ function AppContent() {
           />
         );
       case 'spreadsheet':
-      default:
+      default: {
+        // Clear return filters after rendering with them
+        const initialFilters = returnFilters ?? undefined;
+        if (returnFilters) {
+          // Use setTimeout to clear after render
+          setTimeout(handleClearReturnFilters, 0);
+        }
         return (
           <SpreadsheetView
             tasks={tasks}
@@ -179,8 +280,10 @@ function AppContent() {
             onSelectTask={handleSelectTask}
             onAddTask={handleAddTask}
             onNavigateToFullDayNotes={handleNavigateToFullDayNotes}
+            initialFilters={initialFilters}
           />
         );
+      }
     }
   };
 

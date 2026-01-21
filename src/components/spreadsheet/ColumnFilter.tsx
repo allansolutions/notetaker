@@ -3,6 +3,7 @@ import { Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { TitleFilter } from './TitleFilter';
 
 interface MultiSelectFilterProps {
   options: { value: string; label: string }[];
@@ -142,13 +143,19 @@ function DateFilter({ value, onChange }: DateFilterProps) {
 export type FilterValue =
   | { type: 'multiselect'; selected: Set<string> }
   | { type: 'text'; value: string }
-  | { type: 'date'; value: number | null };
+  | { type: 'date'; value: number | null }
+  | {
+      type: 'title-enhanced';
+      searchText: string;
+      selectedTaskIds: Set<string> | null;
+    };
 
 interface ColumnFilterProps {
-  filterType: 'multiselect' | 'text' | 'date';
+  filterType: 'multiselect' | 'text' | 'date' | 'title-enhanced';
   options?: { value: string; label: string }[];
   filterValue: FilterValue | null;
   onFilterChange: (value: FilterValue | null) => void;
+  availableTasks?: { id: string; title: string }[];
 }
 
 export function ColumnFilter({
@@ -156,6 +163,7 @@ export function ColumnFilter({
   options = [],
   filterValue,
   onFilterChange,
+  availableTasks = [],
 }: ColumnFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -169,6 +177,12 @@ export function ColumnFilter({
         return filterValue.value.trim() !== '';
       case 'date':
         return filterValue.value !== null;
+      case 'title-enhanced':
+        // Active if there's search text OR specific tasks are selected (not null)
+        return (
+          filterValue.searchText.trim() !== '' ||
+          filterValue.selectedTaskIds !== null
+        );
     }
   })();
 
@@ -277,6 +291,42 @@ export function ColumnFilter({
             <DateFilter
               value={filterValue?.type === 'date' ? filterValue.value : null}
               onChange={(value) => onFilterChange({ type: 'date', value })}
+            />
+          )}
+
+          {filterType === 'title-enhanced' && (
+            <TitleFilter
+              searchText={
+                filterValue?.type === 'title-enhanced'
+                  ? filterValue.searchText
+                  : ''
+              }
+              selectedTaskIds={
+                filterValue?.type === 'title-enhanced'
+                  ? filterValue.selectedTaskIds
+                  : null
+              }
+              availableTasks={availableTasks}
+              onSearchChange={(searchText) =>
+                onFilterChange({
+                  type: 'title-enhanced',
+                  searchText,
+                  selectedTaskIds:
+                    filterValue?.type === 'title-enhanced'
+                      ? filterValue.selectedTaskIds
+                      : null,
+                })
+              }
+              onSelectionChange={(selectedTaskIds) =>
+                onFilterChange({
+                  type: 'title-enhanced',
+                  searchText:
+                    filterValue?.type === 'title-enhanced'
+                      ? filterValue.searchText
+                      : '',
+                  selectedTaskIds,
+                })
+              }
             />
           )}
         </div>
