@@ -51,10 +51,13 @@ export function Agenda({
     (_, i) => AGENDA_START_HOUR + i
   );
 
-  // Show tasks that have a startTime and are scheduled for today
+  // Show tasks that have a startTime, are scheduled for today, and are not done
   const scheduledTasks = tasks.filter(
     (task) =>
-      task.startTime !== undefined && task.dueDate && isToday(task.dueDate)
+      task.startTime !== undefined &&
+      task.dueDate &&
+      isToday(task.dueDate) &&
+      task.status !== 'done'
   );
 
   const handleDragEnd = (event: DragEndEvent) => {

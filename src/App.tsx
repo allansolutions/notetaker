@@ -14,6 +14,7 @@ import {
 import { AddTaskData } from './components/AddTaskModal';
 import { TaskDetailView } from './components/views/TaskDetailView';
 import { FullDayNotesView } from './components/views/FullDayNotesView';
+import { ArchiveView } from './components/views/ArchiveView';
 import { Sidebar } from './components/Sidebar';
 import { LoginPage } from './components/LoginPage';
 import { AuthGuard } from './components/AuthGuard';
@@ -131,6 +132,10 @@ function AppContent() {
     []
   );
 
+  const handleNavigateToArchive = useCallback(() => {
+    setCurrentView('archive');
+  }, []);
+
   const handleAddTask = useCallback(
     async (data: AddTaskData) => {
       await addTask(
@@ -221,6 +226,16 @@ function AppContent() {
     ? tasks.find((t) => t.id === selectedTaskId)
     : null;
 
+  // Split tasks into active and archived
+  const activeTasks = useMemo(
+    () => tasks.filter((t) => t.status !== 'done'),
+    [tasks]
+  );
+  const doneTasks = useMemo(
+    () => tasks.filter((t) => t.status === 'done'),
+    [tasks]
+  );
+
   // Filter tasks for task notes view based on pinned task IDs
   const filteredTasksForNotes = useMemo(() => {
     if (!taskNotesContext || taskNotesContext.pinnedTaskIds.length === 0) {
@@ -263,6 +278,17 @@ function AppContent() {
             onAddTask={handleInlineTaskCreate}
           />
         );
+      case 'archive':
+        return (
+          <ArchiveView
+            tasks={doneTasks}
+            onUpdateTask={updateTaskById}
+            onDeleteTask={removeTask}
+            onReorder={reorder}
+            onSelectTask={handleSelectTask}
+            onBack={handleBackToSpreadsheet}
+          />
+        );
       case 'spreadsheet':
       default: {
         // Clear return filters after rendering with them
@@ -273,13 +299,14 @@ function AppContent() {
         }
         return (
           <SpreadsheetView
-            tasks={tasks}
+            tasks={activeTasks}
             onUpdateTask={updateTaskById}
             onDeleteTask={removeTask}
             onReorder={reorder}
             onSelectTask={handleSelectTask}
             onAddTask={handleAddTask}
             onNavigateToFullDayNotes={handleNavigateToFullDayNotes}
+            onNavigateToArchive={handleNavigateToArchive}
             initialFilters={initialFilters}
           />
         );
@@ -321,7 +348,7 @@ function AppContent() {
         {/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
         <div className="flex-1 overflow-y-auto">
           <Sidebar
-            tasks={tasks}
+            tasks={activeTasks}
             calendarEvents={calendarEvents}
             onUpdateTask={updateTaskById}
           />

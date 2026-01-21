@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Task, DateFilterPreset } from '../../types';
 import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
-import { DocumentIcon } from '../icons';
+import { DocumentIcon, ArchiveIcon } from '../icons';
 import { AddTaskData } from '../AddTaskModal';
 import { DateFilterTabs } from '../DateFilterTabs';
 import { matchesDatePreset } from '../../utils/date-filters';
@@ -30,6 +30,7 @@ interface SpreadsheetViewProps {
     filterState: SpreadsheetFilterState,
     visibleTaskIds: string[]
   ) => void;
+  onNavigateToArchive: () => void;
   onVisibleTasksChange?: (tasks: Task[]) => void;
   initialFilters?: SpreadsheetFilterState;
 }
@@ -42,6 +43,7 @@ export function SpreadsheetView({
   onSelectTask,
   onAddTask,
   onNavigateToFullDayNotes,
+  onNavigateToArchive,
   onVisibleTasksChange,
   initialFilters,
 }: SpreadsheetViewProps) {
@@ -113,7 +115,14 @@ export function SpreadsheetView({
           onPresetChange={setDateFilterPreset}
           counts={presetCounts}
         />
-        <div className="w-24"></div>
+        <button
+          type="button"
+          onClick={onNavigateToArchive}
+          className="text-small text-muted hover:text-primary flex items-center gap-1"
+        >
+          <ArchiveIcon />
+          Archive
+        </button>
       </div>
 
       <TaskTable

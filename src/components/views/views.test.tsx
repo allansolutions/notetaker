@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { SpreadsheetView } from './SpreadsheetView';
 import { TaskDetailView } from './TaskDetailView';
 import { FullDayNotesView } from './FullDayNotesView';
+import { ArchiveView } from './ArchiveView';
 import { Task, Block, TASK_TYPE_COLORS, TaskType } from '../../types';
 
 const createMockTask = (overrides: Partial<Task> = {}): Task => ({
@@ -28,6 +29,7 @@ describe('SpreadsheetView', () => {
     onSelectTask: vi.fn(),
     onAddTask: vi.fn(),
     onNavigateToFullDayNotes: vi.fn(),
+    onNavigateToArchive: vi.fn(),
   };
 
   it('renders DateFilterTabs with All selected by default', () => {
@@ -47,6 +49,24 @@ describe('SpreadsheetView', () => {
   it('renders Task Notes button', () => {
     render(<SpreadsheetView {...defaultProps} />);
     expect(screen.getByText('Task Notes')).toBeInTheDocument();
+  });
+
+  it('renders Archive button', () => {
+    render(<SpreadsheetView {...defaultProps} />);
+    expect(screen.getByText('Archive')).toBeInTheDocument();
+  });
+
+  it('calls onNavigateToArchive when Archive button is clicked', () => {
+    const onNavigateToArchive = vi.fn();
+    render(
+      <SpreadsheetView
+        {...defaultProps}
+        onNavigateToArchive={onNavigateToArchive}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Archive'));
+    expect(onNavigateToArchive).toHaveBeenCalled();
   });
 
   it('calls onNavigateToFullDayNotes with filter state when button is clicked', () => {
@@ -592,5 +612,171 @@ describe('FullDayNotesView', () => {
     // Should have blocks from both tasks
     expect(screen.getByText('Block One')).toBeInTheDocument();
     expect(screen.getByText('Block Two')).toBeInTheDocument();
+  });
+});
+
+describe('ArchiveView', () => {
+  const defaultProps = {
+    tasks: [] as Task[],
+    onUpdateTask: vi.fn(),
+    onDeleteTask: vi.fn(),
+    onReorder: vi.fn(),
+    onSelectTask: vi.fn(),
+    onBack: vi.fn(),
+  };
+
+  it('renders header with "Archive" title', () => {
+    render(<ArchiveView {...defaultProps} />);
+    expect(screen.getByText('Archive')).toBeInTheDocument();
+  });
+
+  it('renders back button', () => {
+    render(<ArchiveView {...defaultProps} />);
+    expect(screen.getByText('Back')).toBeInTheDocument();
+  });
+
+  it('calls onBack when back button is clicked', () => {
+    const onBack = vi.fn();
+    render(<ArchiveView {...defaultProps} onBack={onBack} />);
+
+    fireEvent.click(screen.getByText('Back'));
+    expect(onBack).toHaveBeenCalled();
+  });
+
+  it('shows empty state when no archived tasks', () => {
+    render(<ArchiveView {...defaultProps} />);
+    expect(screen.getByText('No archived tasks.')).toBeInTheDocument();
+  });
+
+  it('renders tasks when provided', () => {
+    const tasks = [
+      createMockTask({ id: 'task-1', title: 'Done Task', status: 'done' }),
+    ];
+    render(<ArchiveView {...defaultProps} tasks={tasks} />);
+
+    expect(screen.getByText('Done Task')).toBeInTheDocument();
+  });
+
+  it('renders DateFilterTabs with All selected by default', () => {
+    const tasks = [
+      createMockTask({ id: 'task-1', title: 'Done Task', status: 'done' }),
+    ];
+    render(<ArchiveView {...defaultProps} tasks={tasks} />);
+
+    const allTab = screen.getByRole('tab', { name: /all/i });
+    expect(allTab).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('renders all date filter tabs', () => {
+    const tasks = [
+      createMockTask({ id: 'task-1', title: 'Done Task', status: 'done' }),
+    ];
+    render(<ArchiveView {...defaultProps} tasks={tasks} />);
+
+    expect(screen.getByRole('tab', { name: /all/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /today/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /tomorrow/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /this week/i })).toBeInTheDocument();
+  });
+
+  describe('date filter interactions', () => {
+    const fixedNow = new Date(2024, 5, 19, 14, 0);
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(fixedNow);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('filters tasks when clicking Today tab', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Done',
+          status: 'done',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'Tomorrow Done',
+          status: 'done',
+          dueDate: fixedNow.getTime() + 86400000,
+        }),
+      ];
+
+      render(<ArchiveView {...defaultProps} tasks={tasks} />);
+
+      fireEvent.click(screen.getByRole('tab', { name: /today/i }));
+
+      expect(screen.getByText('Today Done')).toBeInTheDocument();
+      expect(screen.queryByText('Tomorrow Done')).not.toBeInTheDocument();
+    });
+
+    it('shows task counts for each filter tab', () => {
+      const tasks = [
+        createMockTask({
+          id: 'task-1',
+          title: 'Today Done',
+          status: 'done',
+          dueDate: fixedNow.getTime(),
+        }),
+        createMockTask({
+          id: 'task-2',
+          title: 'No Date Done',
+          status: 'done',
+          dueDate: undefined,
+        }),
+      ];
+
+      render(<ArchiveView {...defaultProps} tasks={tasks} />);
+
+      const allTab = screen.getByRole('tab', { name: /all/i });
+      expect(allTab).toHaveTextContent('(2)');
+      const todayTab = screen.getByRole('tab', { name: /today/i });
+      expect(todayTab).toHaveTextContent('(1)');
+    });
+  });
+
+  it('calls onUpdateTask when task status is changed', () => {
+    const onUpdateTask = vi.fn();
+    const tasks = [
+      createMockTask({ id: 'task-1', title: 'Done Task', status: 'done' }),
+    ];
+
+    render(
+      <ArchiveView
+        {...defaultProps}
+        tasks={tasks}
+        onUpdateTask={onUpdateTask}
+      />
+    );
+
+    // Change status - the StatusCell uses a native <select>
+    const statusSelect = screen.getByDisplayValue('Done');
+    fireEvent.change(statusSelect, { target: { value: 'todo' } });
+
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', { status: 'todo' });
+  });
+
+  it('calls onSelectTask when task is clicked', () => {
+    const onSelectTask = vi.fn();
+    const tasks = [
+      createMockTask({ id: 'task-1', title: 'Click Me', status: 'done' }),
+    ];
+
+    render(
+      <ArchiveView
+        {...defaultProps}
+        tasks={tasks}
+        onSelectTask={onSelectTask}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Click Me'));
+
+    expect(onSelectTask).toHaveBeenCalledWith('task-1');
   });
 });

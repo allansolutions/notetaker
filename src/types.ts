@@ -51,7 +51,11 @@ export type TaskType =
 
 export type TaskStatus = 'todo' | 'in-progress' | 'done';
 export type TaskImportance = 'high' | 'mid' | 'low';
-export type ViewType = 'spreadsheet' | 'task-detail' | 'full-day-notes';
+export type ViewType =
+  | 'spreadsheet'
+  | 'task-detail'
+  | 'full-day-notes'
+  | 'archive';
 
 export interface Task {
   id: string;
