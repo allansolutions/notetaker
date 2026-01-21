@@ -1,5 +1,13 @@
 import { DateRange } from '../types';
 
+/**
+ * Get the user's locale, defaulting to 'en-GB' if unavailable.
+ */
+export function getUserLocale(): string {
+  if (typeof navigator === 'undefined') return 'en-GB';
+  return navigator.language || 'en-GB';
+}
+
 const MONTHS: Record<string, number> = {
   jan: 0,
   january: 0,
@@ -72,9 +80,6 @@ export function formatDateRange(range: DateRange, locale: string): string {
   const endYear = endDate.getFullYear();
 
   if (startYear === endYear) {
-    if (startMonth === endMonth) {
-      return `${startDay} ${startMonth} -> ${endDay} ${endMonth} ${endYear}`;
-    }
     return `${startDay} ${startMonth} -> ${endDay} ${endMonth} ${endYear}`;
   }
 

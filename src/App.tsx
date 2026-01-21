@@ -29,6 +29,7 @@ import {
   formatDateCompact,
   formatDateRange,
   parseDateQuery,
+  getUserLocale,
 } from './utils/date-query';
 
 interface TaskNotesContext {
@@ -41,18 +42,20 @@ const DEFAULT_SIDEBAR_WIDTH = 240;
 const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 500;
 
-const createEmptyFilterState = (): SpreadsheetFilterState => ({
-  filters: {
-    type: null,
-    title: null,
-    status: null,
-    importance: null,
-    dueDate: null,
-  },
-  dateFilterPreset: 'all',
-  dateFilterDate: null,
-  dateFilterRange: null,
-});
+function createEmptyFilterState(): SpreadsheetFilterState {
+  return {
+    filters: {
+      type: null,
+      title: null,
+      status: null,
+      importance: null,
+      dueDate: null,
+    },
+    dateFilterPreset: 'all',
+    dateFilterDate: null,
+    dateFilterRange: null,
+  };
+}
 
 export function AppContent() {
   const {
@@ -89,10 +92,7 @@ export function AppContent() {
     SIDEBAR_WIDTH_KEY,
     DEFAULT_SIDEBAR_WIDTH
   );
-  const locale = useMemo(() => {
-    if (typeof navigator === 'undefined') return 'en-GB';
-    return navigator.language || 'en-GB';
-  }, []);
+  const locale = useMemo(() => getUserLocale(), []);
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
@@ -205,77 +205,59 @@ export function AppContent() {
     setIsAddTaskModalOpen(true);
   }, [currentView, handleBackToSpreadsheet]);
 
+  // Apply a new filter state - updates all related state in one place
+  const applyFilterState = useCallback(
+    (nextFilterState: SpreadsheetFilterState) => {
+      setSpreadsheetFilterState(nextFilterState);
+      setTaskNotesContext((prev) => {
+        if (!prev) return prev;
+        return { ...prev, originalFilters: nextFilterState };
+      });
+      if (currentView === 'spreadsheet') {
+        setReturnFilters(nextFilterState);
+        setSpreadsheetViewKey((prev) => prev + 1);
+      }
+    },
+    [currentView]
+  );
+
   const handleCommandSetPreset = useCallback(
     (preset: SpreadsheetFilterState['dateFilterPreset']) => {
       if (spreadsheetFilterState.dateFilterPreset === preset) {
         return;
       }
-
-      const nextFilterState: SpreadsheetFilterState = {
+      applyFilterState({
         ...spreadsheetFilterState,
         dateFilterPreset: preset,
         dateFilterDate: null,
         dateFilterRange: null,
-      };
-
-      setSpreadsheetFilterState(nextFilterState);
-      setTaskNotesContext((prev) => {
-        if (!prev) return prev;
-        return { ...prev, originalFilters: nextFilterState };
       });
-
-      if (currentView === 'spreadsheet') {
-        setReturnFilters(nextFilterState);
-        setSpreadsheetViewKey((prev) => prev + 1);
-      }
     },
-    [currentView, spreadsheetFilterState]
+    [applyFilterState, spreadsheetFilterState]
   );
 
   const handleCommandSetSpecificDate = useCallback(
     (date: number) => {
-      const nextFilterState: SpreadsheetFilterState = {
+      applyFilterState({
         ...spreadsheetFilterState,
         dateFilterPreset: 'specific-date',
         dateFilterDate: date,
         dateFilterRange: null,
-      };
-
-      setSpreadsheetFilterState(nextFilterState);
-      setTaskNotesContext((prev) => {
-        if (!prev) return prev;
-        return { ...prev, originalFilters: nextFilterState };
       });
-
-      if (currentView === 'spreadsheet') {
-        setReturnFilters(nextFilterState);
-        setSpreadsheetViewKey((prev) => prev + 1);
-      }
     },
-    [currentView, spreadsheetFilterState]
+    [applyFilterState, spreadsheetFilterState]
   );
 
   const handleCommandSetDateRange = useCallback(
     (range: DateRange) => {
-      const nextFilterState: SpreadsheetFilterState = {
+      applyFilterState({
         ...spreadsheetFilterState,
         dateFilterPreset: 'date-range',
         dateFilterDate: null,
         dateFilterRange: range,
-      };
-
-      setSpreadsheetFilterState(nextFilterState);
-      setTaskNotesContext((prev) => {
-        if (!prev) return prev;
-        return { ...prev, originalFilters: nextFilterState };
       });
-
-      if (currentView === 'spreadsheet') {
-        setReturnFilters(nextFilterState);
-        setSpreadsheetViewKey((prev) => prev + 1);
-      }
     },
-    [currentView, spreadsheetFilterState]
+    [applyFilterState, spreadsheetFilterState]
   );
 
   const getDateFilterCommand = useCallback(
@@ -338,27 +320,15 @@ export function AppContent() {
       ) {
         return;
       }
-
-      const nextFilterState: SpreadsheetFilterState = {
+      applyFilterState({
         ...spreadsheetFilterState,
         filters: {
           ...spreadsheetFilterState.filters,
           type: { type: 'multiselect', selected: new Set([type]) },
         },
-      };
-
-      setSpreadsheetFilterState(nextFilterState);
-      setTaskNotesContext((prev) => {
-        if (!prev) return prev;
-        return { ...prev, originalFilters: nextFilterState };
       });
-
-      if (currentView === 'spreadsheet') {
-        setReturnFilters(nextFilterState);
-        setSpreadsheetViewKey((prev) => prev + 1);
-      }
     },
-    [currentView, spreadsheetFilterState]
+    [applyFilterState, spreadsheetFilterState]
   );
 
   const handleCommandClearFilters = useCallback(() => {
@@ -382,17 +352,8 @@ export function AppContent() {
 
     if (isAlreadyEmpty) return;
 
-    setSpreadsheetFilterState(emptyFilters);
-    setTaskNotesContext((prev) => {
-      if (!prev) return prev;
-      return { ...prev, originalFilters: emptyFilters };
-    });
-
-    if (currentView === 'spreadsheet') {
-      setReturnFilters(emptyFilters);
-      setSpreadsheetViewKey((prev) => prev + 1);
-    }
-  }, [currentView, spreadsheetFilterState]);
+    applyFilterState(emptyFilters);
+  }, [applyFilterState, spreadsheetFilterState]);
 
   const commandPaletteCommands = useMemo(
     () => [

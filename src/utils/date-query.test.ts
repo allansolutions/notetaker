@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import {
   formatDateCompact,
   formatDateRange,
   getLocaleDateOrder,
   parseDateQuery,
+  getUserLocale,
 } from './date-query';
 
 describe('date query parsing', () => {
@@ -181,5 +182,26 @@ describe('getLocaleDateOrder', () => {
 
   it('returns ymd for zh-CN', () => {
     expect(getLocaleDateOrder('zh-CN')).toBe('ymd');
+  });
+});
+
+describe('getUserLocale', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns navigator.language when available', () => {
+    vi.stubGlobal('navigator', { language: 'fr-FR' });
+    expect(getUserLocale()).toBe('fr-FR');
+  });
+
+  it('returns en-GB when navigator.language is empty', () => {
+    vi.stubGlobal('navigator', { language: '' });
+    expect(getUserLocale()).toBe('en-GB');
+  });
+
+  it('returns en-GB when navigator is undefined', () => {
+    vi.stubGlobal('navigator', undefined);
+    expect(getUserLocale()).toBe('en-GB');
   });
 });

@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
-import { Task, DateFilterPreset, DateRange } from '../../types';
+import { useState } from 'react';
+import { Task } from '../../types';
 import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
 import { BackButton } from '../BackButton';
 import { DateFilterMenu } from '../DateFilterMenu';
-import { matchesDatePreset } from '../../utils/date-filters';
+import { useDateFilter } from '../../hooks/useDateFilter';
 
 const defaultFilters: ColumnFilters = {
   type: null,
@@ -33,28 +33,16 @@ export function ArchiveView({
   onSelectTask,
   onBack,
 }: ArchiveViewProps): JSX.Element {
-  const [dateFilterPreset, setDateFilterPreset] =
-    useState<DateFilterPreset>('all');
-  const [dateFilterDate, setDateFilterDate] = useState<number | null>(null);
-  const [dateFilterRange, setDateFilterRange] = useState<DateRange | null>(
-    null
-  );
+  const {
+    preset: dateFilterPreset,
+    date: dateFilterDate,
+    range: dateFilterRange,
+    presetCounts,
+    onPresetChange,
+    onDateChange,
+    onRangeChange,
+  } = useDateFilter({ tasks });
   const [filters, setFilters] = useState<ColumnFilters>(defaultFilters);
-
-  const presetCounts = useMemo(() => {
-    const now = new Date();
-    return {
-      all: tasks.length,
-      today: tasks.filter((t) => matchesDatePreset(t.dueDate, 'today', now))
-        .length,
-      tomorrow: tasks.filter((t) =>
-        matchesDatePreset(t.dueDate, 'tomorrow', now)
-      ).length,
-      'this-week': tasks.filter((t) =>
-        matchesDatePreset(t.dueDate, 'this-week', now)
-      ).length,
-    };
-  }, [tasks]);
 
   return (
     <div className="flex flex-col h-full">
@@ -68,35 +56,9 @@ export function ArchiveView({
           selectedDate={dateFilterDate}
           selectedRange={dateFilterRange}
           counts={presetCounts}
-          onPresetChange={(preset) => {
-            setDateFilterPreset(preset);
-            if (preset !== 'specific-date') {
-              setDateFilterDate(null);
-            }
-            if (preset !== 'date-range') {
-              setDateFilterRange(null);
-            }
-          }}
-          onDateChange={(date) => {
-            if (!date) {
-              setDateFilterPreset('all');
-              setDateFilterDate(null);
-              return;
-            }
-            setDateFilterPreset('specific-date');
-            setDateFilterDate(date);
-            setDateFilterRange(null);
-          }}
-          onRangeChange={(range) => {
-            if (!range) {
-              setDateFilterPreset('all');
-              setDateFilterRange(null);
-              return;
-            }
-            setDateFilterPreset('date-range');
-            setDateFilterRange(range);
-            setDateFilterDate(null);
-          }}
+          onPresetChange={onPresetChange}
+          onDateChange={onDateChange}
+          onRangeChange={onRangeChange}
         />
         <div className="w-24"></div>
       </div>

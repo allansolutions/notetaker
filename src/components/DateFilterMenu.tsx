@@ -3,7 +3,11 @@ import { DateFilterPreset, DateRange } from '../types';
 import { DatePickerModal } from './DatePickerModal';
 import { DateRangeModal } from './DateRangeModal';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { formatDateCompact, formatDateRange } from '../utils/date-query';
+import {
+  formatDateCompact,
+  formatDateRange,
+  getUserLocale,
+} from '../utils/date-query';
 
 interface DateFilterMenuProps {
   activePreset: DateFilterPreset;
@@ -38,10 +42,7 @@ export function DateFilterMenu({
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isRangePickerOpen, setIsRangePickerOpen] = useState(false);
 
-  const locale = useMemo(() => {
-    if (typeof navigator === 'undefined') return 'en-GB';
-    return navigator.language || 'en-GB';
-  }, []);
+  const locale = useMemo(() => getUserLocale(), []);
 
   const label = useMemo(() => {
     if (activePreset === 'specific-date' && selectedDate) {

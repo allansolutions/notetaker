@@ -8,6 +8,7 @@ import {
   updateTaskBlocks,
   generateSessionId,
   computeTimeSpent,
+  computeTimeSpentWithActive,
 } from './task-operations';
 import { Task, Block, TimeSession } from '../types';
 
@@ -235,5 +236,43 @@ describe('computeTimeSpent', () => {
 
     const result = computeTimeSpent(sessions);
     expect(result).toBe(60000);
+  });
+});
+
+describe('computeTimeSpentWithActive', () => {
+  it('returns 0 for undefined sessions', () => {
+    const result = computeTimeSpentWithActive(undefined);
+    expect(result).toBe(0);
+  });
+
+  it('returns 0 for empty sessions array', () => {
+    const result = computeTimeSpentWithActive([]);
+    expect(result).toBe(0);
+  });
+
+  it('computes total time from completed sessions', () => {
+    const sessions: TimeSession[] = [
+      { id: 's1', startTime: 1000, endTime: 3000 }, // 2 seconds
+      { id: 's2', startTime: 5000, endTime: 8000 }, // 3 seconds
+    ];
+
+    const result = computeTimeSpentWithActive(sessions);
+    expect(result).toBe(5000);
+  });
+
+  it('includes active sessions using current time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-01-15T10:00:00'));
+    const now = Date.now();
+
+    const sessions: TimeSession[] = [
+      { id: 's1', startTime: 1000, endTime: 3000 }, // 2 seconds
+      { id: 's2', startTime: now - 5000 }, // Active session, 5 seconds ago
+    ];
+
+    const result = computeTimeSpentWithActive(sessions);
+    expect(result).toBe(7000); // 2 seconds + 5 seconds
+
+    vi.useRealTimers();
   });
 });

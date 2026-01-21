@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { ClockIcon } from '../icons';
 import { TimeSession } from '../../types';
-import { formatMinutes } from '../../utils/task-operations';
+import {
+  formatMinutes,
+  computeTimeSpentWithActive,
+} from '../../utils/task-operations';
 
 interface EstimateCellProps {
   value: number | undefined;
@@ -41,20 +44,12 @@ function parseTimeInput(input: string): number | undefined {
   return total > 0 ? total : undefined;
 }
 
-function calculateTimeSpent(sessions: TimeSession[] | undefined): number {
-  if (!sessions || sessions.length === 0) return 0;
-  return sessions.reduce((total, session) => {
-    const end = session.endTime ?? Date.now();
-    return total + (end - session.startTime);
-  }, 0);
-}
-
 export function EstimateCell({ value, sessions, onChange }: EstimateCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const timeSpentMs = calculateTimeSpent(sessions);
+  const timeSpentMs = computeTimeSpentWithActive(sessions);
   const timeSpentMinutes = Math.floor(timeSpentMs / 60000);
   const isOverEstimate = value !== undefined && timeSpentMs > value * 60000;
 

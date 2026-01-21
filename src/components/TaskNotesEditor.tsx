@@ -18,17 +18,12 @@ import { BlockInput } from './BlockInput';
 import { TypeSelectionModal } from './TypeSelectionModal';
 import { generateId } from '../utils/markdown';
 import { getNumberedIndex } from '../utils/block-operations';
-import { formatMinutes } from '../utils/task-operations';
+import {
+  formatMinutes,
+  computeTimeSpentWithActive,
+} from '../utils/task-operations';
 import { PencilIcon } from './icons';
 import { useMultiTaskTimeTracking } from '../hooks/useMultiTaskTimeTracking';
-
-function calculateTimeSpent(sessions: TimeSession[] | undefined): number {
-  if (!sessions || sessions.length === 0) return 0;
-  return sessions.reduce((total, session) => {
-    const end = session.endTime ?? Date.now();
-    return total + (end - session.startTime);
-  }, 0);
-}
 
 interface TaskNotesEditorProps {
   tasks: Task[];
@@ -146,7 +141,7 @@ function TaskHeader({
   };
 
   // Calculate time spent including current elapsed time if tracking
-  const baseTimeSpentMs = calculateTimeSpent(task.sessions);
+  const baseTimeSpentMs = computeTimeSpentWithActive(task.sessions);
   const totalTimeSpentMs = isTracking
     ? baseTimeSpentMs + elapsedMs
     : baseTimeSpentMs;

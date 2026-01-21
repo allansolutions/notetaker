@@ -77,12 +77,30 @@ export function generateSessionId(): string {
   return `session-${sessionIdCounter++}`;
 }
 
+/**
+ * Calculate total time spent across completed sessions only.
+ * Sessions without endTime (active sessions) are ignored.
+ */
 export function computeTimeSpent(sessions: TimeSession[]): number {
   return sessions.reduce((total, session) => {
     if (session.endTime) {
       return total + (session.endTime - session.startTime);
     }
     return total;
+  }, 0);
+}
+
+/**
+ * Calculate total time spent across all sessions.
+ * For active sessions (no endTime), uses the current time.
+ */
+export function computeTimeSpentWithActive(
+  sessions: TimeSession[] | undefined
+): number {
+  if (!sessions || sessions.length === 0) return 0;
+  return sessions.reduce((total, session) => {
+    const end = session.endTime ?? Date.now();
+    return total + (end - session.startTime);
   }, 0);
 }
 
