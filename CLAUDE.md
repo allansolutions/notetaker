@@ -135,6 +135,41 @@ For more complete mocking (including task CRUD operations), see `mockTasksApi()`
 
 When adding new UI components (dropdowns, modals, popovers, form elements, etc.), check shadcn/ui first before building custom components. Only build custom if shadcn/ui doesn't have what's needed or if a pre-existing project dependency already provides the functionality.
 
+## Task Management
+
+This project uses `tasklist.md` to track feature ideas and fixes. Respond to these commands:
+
+### `task add: <description>`
+
+1. Generate a short summary title (max 60 chars) from the description
+2. Append to `tasklist.md` using this format:
+
+```markdown
+## <next_number>. <summary title>
+
+**Status:** pending | **Added:** <YYYY-MM-DD>
+
+<full description exactly as provided>
+
+---
+```
+
+### `task list`
+
+1. Read `tasklist.md`
+2. Display pending tasks as a numbered list showing only the summary titles
+3. Tell the user they can say "task <number>" to work on one
+
+### `task <number>` or `work on task <number>`
+
+1. Read the full description for that task from `tasklist.md`
+2. Begin implementing it following normal development workflow
+
+### `task done <number>`
+
+1. Change the task's status from `pending` to `completed`
+2. Add a **Completed:** date line
+
 ## Git
 
 Never make commits on your own. Only commit when explicitly asked via /commit or similar.
