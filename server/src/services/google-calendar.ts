@@ -115,12 +115,13 @@ export async function getUserProfile(
 export async function fetchCalendarEvents(
   accessToken: string,
   date: string,
-  timezone: string = 'UTC'
+  timezone: string = 'UTC',
+  offset: string = '+00:00'
 ): Promise<GoogleCalendarEvent[]> {
-  // Use RFC3339 format with timezone for Google Calendar API
-  // The API will interpret these times in the specified timezone
-  const timeMin = `${date}T00:00:00`;
-  const timeMax = `${date}T23:59:59`;
+  // Construct RFC3339 timestamps with the user's timezone offset
+  // This ensures we query for events on the correct day in their timezone
+  const timeMin = `${date}T00:00:00${offset}`;
+  const timeMax = `${date}T23:59:59${offset}`;
 
   const params = new URLSearchParams({
     timeMin,

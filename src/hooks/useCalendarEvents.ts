@@ -17,6 +17,14 @@ function getTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+function getTimezoneOffset(): string {
+  const offset = new Date().getTimezoneOffset();
+  const sign = offset <= 0 ? '+' : '-';
+  const hours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+  const minutes = String(Math.abs(offset) % 60).padStart(2, '0');
+  return `${sign}${hours}:${minutes}`;
+}
+
 export function useCalendarEvents(date: Date = new Date()) {
   const { isConnected } = useGoogleAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -37,7 +45,7 @@ export function useCalendarEvents(date: Date = new Date()) {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/calendar/events?date=${dateStr}&timezone=${encodeURIComponent(getTimezone())}`,
+        `${API_URL}/api/calendar/events?date=${dateStr}&timezone=${encodeURIComponent(getTimezone())}&offset=${encodeURIComponent(getTimezoneOffset())}`,
         {
           credentials: 'include',
         }
