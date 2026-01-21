@@ -530,6 +530,11 @@ export function AppContent() {
     setReturnFilters(null);
   }, []);
 
+  // Handle visible tasks change - memoized to prevent infinite re-renders
+  const handleVisibleTasksChange = useCallback((tasks: { id: string }[]) => {
+    setVisibleTaskIds(tasks.map((task) => task.id));
+  }, []);
+
   const isTypingTarget = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) return false;
     const tag = target.tagName.toLowerCase();
@@ -635,9 +640,7 @@ export function AppContent() {
             onNavigateToArchive={handleNavigateToArchive}
             initialFilters={initialFilters}
             onFilterStateChange={setSpreadsheetFilterState}
-            onVisibleTasksChange={(tasks) =>
-              setVisibleTaskIds(tasks.map((task) => task.id))
-            }
+            onVisibleTasksChange={handleVisibleTasksChange}
           />
         );
       }

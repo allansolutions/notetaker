@@ -91,12 +91,45 @@ Only use Playwright MCP tools when:
 - Explicitly asked to automate browser interactions
 - Debugging a visual or E2E test failure that can't be diagnosed from logs/code alone
 - Need to verify actual rendered UI behavior
+- Checking browser console for errors (useful for debugging render loops, etc.)
 
 Do NOT use Playwright MCP for:
 
 - Reading test files or test output (use Read/Grep)
 - Understanding what tests do (read the code)
 - General development tasks
+
+**Authentication:** The app requires Google OAuth. To use Playwright MCP with authenticated sessions, mock the auth endpoints before navigating. Use the same pattern as `tests/helpers/auth.ts`:
+
+```javascript
+// Mock auth endpoint to simulate authenticated user
+await page.route('**/auth/me', async (route) => {
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      user: { id: 'test-user-1', email: 'test@example.com', name: 'Test User' },
+      settings: null,
+    }),
+  });
+});
+
+// Mock tasks API (empty initial state)
+await page.route('**/api/tasks', async (route) => {
+  if (route.request().method() === 'GET') {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ tasks: [] }),
+    });
+  }
+});
+
+// Then navigate
+await page.goto('http://localhost:5173');
+```
+
+For more complete mocking (including task CRUD operations), see `mockTasksApi()` in `tests/helpers/auth.ts`.
 
 ## UI Components
 
