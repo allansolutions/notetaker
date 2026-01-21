@@ -35,6 +35,8 @@ interface TaskNotesEditorProps {
   ) => Promise<Task | null>;
   onSelectTask: (id: string) => void;
   onAddSession?: (taskId: string, session: TimeSession) => void;
+  /** Called when the focused task changes (for context-aware commands) */
+  onFocusedTaskChange?: (taskId: string | null) => void;
 }
 
 /**
@@ -189,6 +191,7 @@ export function TaskNotesEditor({
   onAddTask,
   onSelectTask,
   onAddSession,
+  onFocusedTaskChange,
 }: TaskNotesEditorProps) {
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
   const [pendingTaskTitle, setPendingTaskTitle] = useState<string | null>(null);
@@ -206,6 +209,17 @@ export function TaskNotesEditor({
     }
     return null;
   }, [focusedItemId]);
+
+  // Derive focused task ID for context-aware commands (includes both headers and blocks)
+  const focusedTaskId = useMemo(() => {
+    const parsed = parseItemId(focusedItemId);
+    return parsed?.taskId ?? null;
+  }, [focusedItemId]);
+
+  // Notify parent when focused task changes
+  useEffect(() => {
+    onFocusedTaskChange?.(focusedTaskId);
+  }, [focusedTaskId, onFocusedTaskChange]);
 
   // Time tracking hook
   const { trackingTaskId, elapsedMs } = useMultiTaskTimeTracking({

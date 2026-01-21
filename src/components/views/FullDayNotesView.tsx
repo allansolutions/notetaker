@@ -20,6 +20,8 @@ interface FullDayNotesViewProps {
     insertAfterTaskId?: string | null
   ) => Promise<Task | null>;
   onAddSession?: (taskId: string, session: TimeSession) => void;
+  /** Called when the focused task changes in the editor */
+  onFocusedTaskChange?: (taskId: string | null) => void;
   dateFilterPreset?: DateFilterPreset;
   dateFilterDate?: number | null;
   dateFilterRange?: DateRange | null;
@@ -35,6 +37,7 @@ export function FullDayNotesView({
   onUpdateTask = noopUpdateTask,
   onAddTask = noopAddTask,
   onAddSession,
+  onFocusedTaskChange,
   dateFilterPreset = 'all',
   dateFilterDate,
   dateFilterRange,
@@ -63,6 +66,7 @@ export function FullDayNotesView({
             onAddTask={onAddTask}
             onSelectTask={onSelectTask}
             onAddSession={onAddSession}
+            onFocusedTaskChange={onFocusedTaskChange}
           />
         )}
       </div>

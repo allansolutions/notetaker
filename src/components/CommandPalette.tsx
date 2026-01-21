@@ -6,6 +6,8 @@ export interface CommandPaletteCommand {
   label: string;
   keywords?: string[];
   disabled?: boolean;
+  /** Return false to hide this command from the palette. Checked before filtering. */
+  shouldShow?: () => boolean;
   onExecute: () => void;
 }
 
@@ -57,12 +59,19 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filteredCommands = useMemo(() => {
+    // First filter out commands that shouldn't show based on context
+    const availableCommands = commands.filter(
+      (command) => command.shouldShow?.() ?? true
+    );
+
     const normalizedQuery = getNormalizedQuery(query);
 
-    if (!normalizedQuery) return commands;
+    if (!normalizedQuery) return availableCommands;
     const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
 
-    return commands.filter((command) => matchesQuery(command, queryTokens));
+    return availableCommands.filter((command) =>
+      matchesQuery(command, queryTokens)
+    );
   }, [commands, query]);
 
   const dynamicCommands = useMemo(() => {

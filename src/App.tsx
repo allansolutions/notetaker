@@ -95,6 +95,10 @@ export function AppContent() {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [spreadsheetViewKey, setSpreadsheetViewKey] = useState(0);
   const [visibleTaskIds, setVisibleTaskIds] = useState<string[]>([]);
+  // Tracks which task is focused in the task-notes view (for context-aware commands)
+  const [focusedNotesTaskId, setFocusedNotesTaskId] = useState<string | null>(
+    null
+  );
 
   // Task notes context - tracks filter state when navigating to task notes
   const [taskNotesContext, setTaskNotesContext] =
@@ -194,6 +198,7 @@ export function AppContent() {
   const handleBackToSpreadsheet = useCallback(() => {
     setCurrentView('spreadsheet');
     setSelectedTaskId(null);
+    setFocusedNotesTaskId(null);
     // Restore filters when going back to spreadsheet
     // If returnFilters is already set (from creating out-of-filter task), use those
     // Otherwise restore the original filters from task notes context
@@ -261,6 +266,33 @@ export function AppContent() {
     }
     setIsAddTaskModalOpen(true);
   }, [currentView, handleBackToSpreadsheet]);
+
+  // Context-aware mark as done command
+  const handleCommandMarkDone = useCallback(() => {
+    // Determine target task based on current view
+    let targetTaskId: string | null = null;
+    if (currentView === 'task-detail') {
+      targetTaskId = selectedTaskId;
+    } else if (currentView === 'full-day-notes') {
+      targetTaskId = focusedNotesTaskId;
+    }
+
+    if (!targetTaskId) return;
+
+    // Mark the task as done
+    updateTaskById(targetTaskId, { status: 'done' });
+
+    // Navigate based on context: task-detail → spreadsheet, task-notes → stay
+    if (currentView === 'task-detail') {
+      handleBackToSpreadsheet();
+    }
+  }, [
+    currentView,
+    selectedTaskId,
+    focusedNotesTaskId,
+    updateTaskById,
+    handleBackToSpreadsheet,
+  ]);
 
   // Apply a new filter state - updates all related state in one place
   const applyFilterState = useCallback(
@@ -487,6 +519,15 @@ export function AppContent() {
         onExecute: handleCommandNewTask,
       },
       {
+        id: 'task-mark-done',
+        label: 'Task: Mark as Done',
+        keywords: ['complete', 'finish', 'done', 'mark'],
+        shouldShow: () =>
+          (currentView === 'task-detail' && selectedTaskId !== null) ||
+          (currentView === 'full-day-notes' && focusedNotesTaskId !== null),
+        onExecute: handleCommandMarkDone,
+      },
+      {
         id: 'view-task-list',
         label: 'Task: List',
         keywords: ['list', 'tasks', 'view', 'spreadsheet'],
@@ -511,7 +552,10 @@ export function AppContent() {
       handleCommandClearFilters,
       handleCommandNavigateToTaskNotes,
       handleCommandNewTask,
+      handleCommandMarkDone,
       handleCommandSetTypeFilter,
+      selectedTaskId,
+      focusedNotesTaskId,
     ]
   );
 
@@ -624,14 +668,15 @@ export function AppContent() {
   }, [isLoadingTasks, currentView, selectedTaskId, selectedTask, router]);
 
   // Filter tasks for task notes view based on pinned task IDs
+  // Excludes done tasks so they disappear when marked complete
   const filteredTasksForNotes = useMemo(() => {
     const baseTasks =
       taskNotesContext && taskNotesContext.pinnedTaskIds.length > 0
         ? tasks.filter((t) => taskNotesContext.pinnedTaskIds.includes(t.id))
         : tasks;
-    return baseTasks.filter((task) =>
-      doesTaskMatchFilters(task, spreadsheetFilterState)
-    );
+    return baseTasks
+      .filter((task) => task.status !== 'done')
+      .filter((task) => doesTaskMatchFilters(task, spreadsheetFilterState));
   }, [tasks, taskNotesContext, spreadsheetFilterState]);
 
   // Handle clearing return filters after they've been applied
@@ -752,6 +797,7 @@ export function AppContent() {
             onUpdateTask={updateTaskById}
             onAddTask={handleInlineTaskCreate}
             onAddSession={addSession}
+            onFocusedTaskChange={setFocusedNotesTaskId}
             dateFilterPreset={
               taskNotesContext?.originalFilters.dateFilterPreset
             }

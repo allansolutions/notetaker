@@ -171,4 +171,77 @@ describe('CommandPalette', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  describe('shouldShow filtering', () => {
+    it('hides commands where shouldShow returns false', () => {
+      const commands: CommandPaletteCommand[] = [
+        { id: 'visible', label: 'Visible', onExecute: vi.fn() },
+        {
+          id: 'hidden',
+          label: 'Hidden',
+          shouldShow: () => false,
+          onExecute: vi.fn(),
+        },
+      ];
+      render(<CommandPalette isOpen commands={commands} onClose={vi.fn()} />);
+
+      expect(screen.getByText('Visible')).toBeInTheDocument();
+      expect(screen.queryByText('Hidden')).not.toBeInTheDocument();
+    });
+
+    it('shows commands where shouldShow returns true', () => {
+      const commands: CommandPaletteCommand[] = [
+        {
+          id: 'conditional',
+          label: 'Conditional',
+          shouldShow: () => true,
+          onExecute: vi.fn(),
+        },
+      ];
+      render(<CommandPalette isOpen commands={commands} onClose={vi.fn()} />);
+
+      expect(screen.getByText('Conditional')).toBeInTheDocument();
+    });
+
+    it('shows commands without shouldShow (defaults to visible)', () => {
+      const commands: CommandPaletteCommand[] = [
+        { id: 'default', label: 'Default Visible', onExecute: vi.fn() },
+      ];
+      render(<CommandPalette isOpen commands={commands} onClose={vi.fn()} />);
+
+      expect(screen.getByText('Default Visible')).toBeInTheDocument();
+    });
+
+    it('re-evaluates shouldShow when command array changes', () => {
+      const hiddenCommands: CommandPaletteCommand[] = [
+        {
+          id: 'conditional',
+          label: 'Context Command',
+          shouldShow: () => false,
+          onExecute: vi.fn(),
+        },
+      ];
+      const visibleCommands: CommandPaletteCommand[] = [
+        {
+          id: 'conditional',
+          label: 'Context Command',
+          shouldShow: () => true,
+          onExecute: vi.fn(),
+        },
+      ];
+
+      const { rerender } = render(
+        <CommandPalette isOpen commands={hiddenCommands} onClose={vi.fn()} />
+      );
+
+      expect(screen.queryByText('Context Command')).not.toBeInTheDocument();
+
+      // Rerender with commands that should now be visible
+      rerender(
+        <CommandPalette isOpen commands={visibleCommands} onClose={vi.fn()} />
+      );
+
+      expect(screen.getByText('Context Command')).toBeInTheDocument();
+    });
+  });
 });

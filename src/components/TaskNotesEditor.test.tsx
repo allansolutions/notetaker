@@ -403,6 +403,86 @@ describe('TaskNotesEditor', () => {
     });
   });
 
+  describe('onFocusedTaskChange callback', () => {
+    it('calls onFocusedTaskChange with task id when focusing a block', () => {
+      const onFocusedTaskChange = vi.fn();
+      const blocks: Block[] = [
+        { id: 'b1', type: 'paragraph', content: 'Block content' },
+      ];
+      const tasks = [createMockTask({ id: 'task-1', blocks })];
+      render(
+        <TaskNotesEditor
+          {...defaultProps}
+          tasks={tasks}
+          onFocusedTaskChange={onFocusedTaskChange}
+        />
+      );
+
+      fireEvent.focus(screen.getByText('Block content'));
+
+      expect(onFocusedTaskChange).toHaveBeenCalledWith('task-1');
+    });
+
+    it('calls onFocusedTaskChange with task id when focusing a header', () => {
+      const onFocusedTaskChange = vi.fn();
+      const tasks = [createMockTask({ id: 'task-1', title: 'My Task' })];
+      render(
+        <TaskNotesEditor
+          {...defaultProps}
+          tasks={tasks}
+          onFocusedTaskChange={onFocusedTaskChange}
+        />
+      );
+
+      const header = screen.getByTestId('task-header-task-1');
+      fireEvent.focus(header);
+
+      expect(onFocusedTaskChange).toHaveBeenCalledWith('task-1');
+    });
+
+    it('calls onFocusedTaskChange with new task id when switching tasks', () => {
+      const onFocusedTaskChange = vi.fn();
+      const blocks1: Block[] = [
+        { id: 'b1', type: 'paragraph', content: 'Task 1 content' },
+      ];
+      const blocks2: Block[] = [
+        { id: 'b2', type: 'paragraph', content: 'Task 2 content' },
+      ];
+      const tasks = [
+        createMockTask({ id: 'task-1', blocks: blocks1 }),
+        createMockTask({ id: 'task-2', blocks: blocks2 }),
+      ];
+      render(
+        <TaskNotesEditor
+          {...defaultProps}
+          tasks={tasks}
+          onFocusedTaskChange={onFocusedTaskChange}
+        />
+      );
+
+      fireEvent.focus(screen.getByText('Task 1 content'));
+      expect(onFocusedTaskChange).toHaveBeenLastCalledWith('task-1');
+
+      fireEvent.focus(screen.getByText('Task 2 content'));
+      expect(onFocusedTaskChange).toHaveBeenLastCalledWith('task-2');
+    });
+
+    it('calls onFocusedTaskChange with null initially', () => {
+      const onFocusedTaskChange = vi.fn();
+      const tasks = [createMockTask({ id: 'task-1' })];
+      render(
+        <TaskNotesEditor
+          {...defaultProps}
+          tasks={tasks}
+          onFocusedTaskChange={onFocusedTaskChange}
+        />
+      );
+
+      // Should be called with null on mount (no focus)
+      expect(onFocusedTaskChange).toHaveBeenCalledWith(null);
+    });
+  });
+
   describe('time tracking', () => {
     beforeEach(() => {
       localStorage.clear();
