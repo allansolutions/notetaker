@@ -357,7 +357,7 @@ describe('useTasks', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
+        expect(result.current.tasks).toHaveLength(3);
       });
 
       await act(async () => {
