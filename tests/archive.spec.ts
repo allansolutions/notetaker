@@ -196,7 +196,7 @@ test.describe('Archive View', () => {
     await expect(page.getByRole('button', { name: /back/i })).toBeVisible();
   });
 
-  test('archive view has date filter tabs', async ({ page }) => {
+  test('archive view has date filter menu', async ({ page }) => {
     await mockTasksApi(page, [
       { id: 'task-1', title: 'Done Task', status: 'done' },
     ]);
@@ -205,10 +205,16 @@ test.describe('Archive View', () => {
     // Navigate to archive
     await page.getByRole('button', { name: /archive/i }).click();
 
-    // Date filter tabs should be visible
-    await expect(page.getByRole('tab', { name: /all/i })).toBeVisible();
-    await expect(page.getByRole('tab', { name: /today/i })).toBeVisible();
-    await expect(page.getByRole('tab', { name: /tomorrow/i })).toBeVisible();
-    await expect(page.getByRole('tab', { name: /this week/i })).toBeVisible();
+    // Date filter menu button should be visible
+    const dateFilterButton = page.getByRole('button', { name: /date: all/i });
+    await expect(dateFilterButton).toBeVisible();
+
+    // Click to open the menu and verify preset options
+    await dateFilterButton.click();
+
+    // Verify preset label text appears in the popover
+    await expect(page.getByText('Today')).toBeVisible();
+    await expect(page.getByText('Tomorrow')).toBeVisible();
+    await expect(page.getByText('This Week')).toBeVisible();
   });
 });

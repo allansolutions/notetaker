@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Task, DateFilterPreset } from '../../types';
+import { Task, DateFilterPreset, DateRange } from '../../types';
 import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
 import { BackButton } from '../BackButton';
-import { DateFilterTabs } from '../DateFilterTabs';
+import { DateFilterMenu } from '../DateFilterMenu';
 import { matchesDatePreset } from '../../utils/date-filters';
 
 const defaultFilters: ColumnFilters = {
@@ -35,6 +35,10 @@ export function ArchiveView({
 }: ArchiveViewProps): JSX.Element {
   const [dateFilterPreset, setDateFilterPreset] =
     useState<DateFilterPreset>('all');
+  const [dateFilterDate, setDateFilterDate] = useState<number | null>(null);
+  const [dateFilterRange, setDateFilterRange] = useState<DateRange | null>(
+    null
+  );
   const [filters, setFilters] = useState<ColumnFilters>(defaultFilters);
 
   const presetCounts = useMemo(() => {
@@ -59,10 +63,40 @@ export function ArchiveView({
           <BackButton onClick={onBack} />
           <h1 className="text-lg font-semibold text-primary">Archive</h1>
         </div>
-        <DateFilterTabs
+        <DateFilterMenu
           activePreset={dateFilterPreset}
-          onPresetChange={setDateFilterPreset}
+          selectedDate={dateFilterDate}
+          selectedRange={dateFilterRange}
           counts={presetCounts}
+          onPresetChange={(preset) => {
+            setDateFilterPreset(preset);
+            if (preset !== 'specific-date') {
+              setDateFilterDate(null);
+            }
+            if (preset !== 'date-range') {
+              setDateFilterRange(null);
+            }
+          }}
+          onDateChange={(date) => {
+            if (!date) {
+              setDateFilterPreset('all');
+              setDateFilterDate(null);
+              return;
+            }
+            setDateFilterPreset('specific-date');
+            setDateFilterDate(date);
+            setDateFilterRange(null);
+          }}
+          onRangeChange={(range) => {
+            if (!range) {
+              setDateFilterPreset('all');
+              setDateFilterRange(null);
+              return;
+            }
+            setDateFilterPreset('date-range');
+            setDateFilterRange(range);
+            setDateFilterDate(null);
+          }}
         />
         <div className="w-24"></div>
       </div>
@@ -78,6 +112,8 @@ export function ArchiveView({
           onSelectTask={onSelectTask}
           onAddTask={noop}
           dateFilterPreset={dateFilterPreset}
+          dateFilterDate={dateFilterDate}
+          dateFilterRange={dateFilterRange}
           filters={filters}
           onFiltersChange={setFilters}
         />

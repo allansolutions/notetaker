@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { SpreadsheetView } from './SpreadsheetView';
 import { TaskDetailView } from './TaskDetailView';
 import { FullDayNotesView } from './FullDayNotesView';
@@ -32,18 +32,23 @@ describe('SpreadsheetView', () => {
     onNavigateToArchive: vi.fn(),
   };
 
-  it('renders DateFilterTabs with All selected by default', () => {
+  it('renders date filter menu with All selected by default', () => {
     render(<SpreadsheetView {...defaultProps} />);
-    const allTab = screen.getByRole('tab', { name: /all/i });
-    expect(allTab).toHaveAttribute('aria-selected', 'true');
+    expect(
+      screen.getByRole('button', { name: /date: all/i })
+    ).toBeInTheDocument();
   });
 
-  it('renders all filter tabs', () => {
+  it('renders all date filter presets in menu', () => {
     render(<SpreadsheetView {...defaultProps} />);
-    expect(screen.getByRole('tab', { name: /all/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /today/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /tomorrow/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /this week/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /date: all/i }));
+    const menu = within(screen.getByRole('dialog'));
+    expect(menu.getByRole('button', { name: /all/i })).toBeInTheDocument();
+    expect(menu.getByRole('button', { name: /today/i })).toBeInTheDocument();
+    expect(menu.getByRole('button', { name: /tomorrow/i })).toBeInTheDocument();
+    expect(
+      menu.getByRole('button', { name: /this week/i })
+    ).toBeInTheDocument();
   });
 
   it('renders Task Notes button', () => {
@@ -140,7 +145,7 @@ describe('SpreadsheetView', () => {
       vi.useRealTimers();
     });
 
-    it('shows task counts for each filter tab', () => {
+    it('shows task counts for each filter preset', () => {
       const tasks = [
         createMockTask({
           id: 'task-1',
@@ -161,15 +166,15 @@ describe('SpreadsheetView', () => {
 
       render(<SpreadsheetView {...defaultProps} tasks={tasks} />);
 
-      // All tab should show (3)
-      const allTab = screen.getByRole('tab', { name: /all/i });
-      expect(allTab).toHaveTextContent('(3)');
-      // Today tab should show (1)
-      const todayTab = screen.getByRole('tab', { name: /today/i });
-      expect(todayTab).toHaveTextContent('(1)');
-      // Tomorrow tab should show (1)
-      const tomorrowTab = screen.getByRole('tab', { name: /tomorrow/i });
-      expect(tomorrowTab).toHaveTextContent('(1)');
+      fireEvent.click(screen.getByRole('button', { name: /date: all/i }));
+      const menu = within(screen.getByRole('dialog'));
+
+      const allButton = menu.getByRole('button', { name: /all/i });
+      expect(allButton).toHaveTextContent('3');
+      const todayButton = menu.getByRole('button', { name: /today/i });
+      expect(todayButton).toHaveTextContent('1');
+      const tomorrowButton = menu.getByRole('button', { name: /tomorrow/i });
+      expect(tomorrowButton).toHaveTextContent('1');
     });
 
     it('filters tasks when clicking Today tab', () => {
@@ -188,8 +193,12 @@ describe('SpreadsheetView', () => {
 
       render(<SpreadsheetView {...defaultProps} tasks={tasks} />);
 
-      // Click Today tab
-      fireEvent.click(screen.getByRole('tab', { name: /today/i }));
+      fireEvent.click(screen.getByRole('button', { name: /date: all/i }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: /today/i,
+        })
+      );
 
       // Should only show today's task
       expect(screen.getByText('Today Task')).toBeInTheDocument();
@@ -212,8 +221,12 @@ describe('SpreadsheetView', () => {
 
       render(<SpreadsheetView {...defaultProps} tasks={tasks} />);
 
-      // Click Tomorrow tab
-      fireEvent.click(screen.getByRole('tab', { name: /tomorrow/i }));
+      fireEvent.click(screen.getByRole('button', { name: /date: all/i }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: /tomorrow/i,
+        })
+      );
 
       // Should only show tomorrow's task
       expect(screen.queryByText('Today Task')).not.toBeInTheDocument();
@@ -236,12 +249,20 @@ describe('SpreadsheetView', () => {
 
       render(<SpreadsheetView {...defaultProps} tasks={tasks} />);
 
-      // Filter by Today
-      fireEvent.click(screen.getByRole('tab', { name: /today/i }));
+      fireEvent.click(screen.getByRole('button', { name: /date: all/i }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: /today/i,
+        })
+      );
       expect(screen.queryByText('Tomorrow Task')).not.toBeInTheDocument();
 
-      // Click All tab
-      fireEvent.click(screen.getByRole('tab', { name: /all/i }));
+      fireEvent.click(screen.getByRole('button', { name: /date: today/i }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: /all/i,
+        })
+      );
 
       // Should show all tasks
       expect(screen.getByText('Today Task')).toBeInTheDocument();
@@ -657,26 +678,31 @@ describe('ArchiveView', () => {
     expect(screen.getByText('Done Task')).toBeInTheDocument();
   });
 
-  it('renders DateFilterTabs with All selected by default', () => {
+  it('renders date filter menu with All selected by default', () => {
     const tasks = [
       createMockTask({ id: 'task-1', title: 'Done Task', status: 'done' }),
     ];
     render(<ArchiveView {...defaultProps} tasks={tasks} />);
 
-    const allTab = screen.getByRole('tab', { name: /all/i });
-    expect(allTab).toHaveAttribute('aria-selected', 'true');
+    expect(
+      screen.getByRole('button', { name: /date: all/i })
+    ).toBeInTheDocument();
   });
 
-  it('renders all date filter tabs', () => {
+  it('renders all date filter presets', () => {
     const tasks = [
       createMockTask({ id: 'task-1', title: 'Done Task', status: 'done' }),
     ];
     render(<ArchiveView {...defaultProps} tasks={tasks} />);
 
-    expect(screen.getByRole('tab', { name: /all/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /today/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /tomorrow/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /this week/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /date: all/i }));
+    const menu = within(screen.getByRole('dialog'));
+    expect(menu.getByRole('button', { name: /all/i })).toBeInTheDocument();
+    expect(menu.getByRole('button', { name: /today/i })).toBeInTheDocument();
+    expect(menu.getByRole('button', { name: /tomorrow/i })).toBeInTheDocument();
+    expect(
+      menu.getByRole('button', { name: /this week/i })
+    ).toBeInTheDocument();
   });
 
   describe('date filter interactions', () => {
@@ -691,7 +717,7 @@ describe('ArchiveView', () => {
       vi.useRealTimers();
     });
 
-    it('filters tasks when clicking Today tab', () => {
+    it('filters tasks when clicking Today preset', () => {
       const tasks = [
         createMockTask({
           id: 'task-1',
@@ -709,13 +735,18 @@ describe('ArchiveView', () => {
 
       render(<ArchiveView {...defaultProps} tasks={tasks} />);
 
-      fireEvent.click(screen.getByRole('tab', { name: /today/i }));
+      fireEvent.click(screen.getByRole('button', { name: /date: all/i }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: /today/i,
+        })
+      );
 
       expect(screen.getByText('Today Done')).toBeInTheDocument();
       expect(screen.queryByText('Tomorrow Done')).not.toBeInTheDocument();
     });
 
-    it('shows task counts for each filter tab', () => {
+    it('shows task counts for each filter preset', () => {
       const tasks = [
         createMockTask({
           id: 'task-1',
@@ -733,10 +764,12 @@ describe('ArchiveView', () => {
 
       render(<ArchiveView {...defaultProps} tasks={tasks} />);
 
-      const allTab = screen.getByRole('tab', { name: /all/i });
-      expect(allTab).toHaveTextContent('(2)');
-      const todayTab = screen.getByRole('tab', { name: /today/i });
-      expect(todayTab).toHaveTextContent('(1)');
+      fireEvent.click(screen.getByRole('button', { name: /date: all/i }));
+      const menu = within(screen.getByRole('dialog'));
+      const allButton = menu.getByRole('button', { name: /all/i });
+      expect(allButton).toHaveTextContent('2');
+      const todayButton = menu.getByRole('button', { name: /today/i });
+      expect(todayButton).toHaveTextContent('1');
     });
   });
 

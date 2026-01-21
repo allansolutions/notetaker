@@ -6,7 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { TasksProvider } from './context/TasksContext';
-import { ViewType, TaskType, TASK_TYPE_OPTIONS } from './types';
+import { ViewType, TaskType, TASK_TYPE_OPTIONS, DateRange } from './types';
 import {
   SpreadsheetView,
   SpreadsheetFilterState,
@@ -25,6 +25,11 @@ import {
   doesTaskMatchFilters,
   hasActiveFilters,
 } from './utils/filter-matching';
+import {
+  formatDateCompact,
+  formatDateRange,
+  parseDateQuery,
+} from './utils/date-query';
 
 interface TaskNotesContext {
   originalFilters: SpreadsheetFilterState;
@@ -45,6 +50,8 @@ const createEmptyFilterState = (): SpreadsheetFilterState => ({
     dueDate: null,
   },
   dateFilterPreset: 'all',
+  dateFilterDate: null,
+  dateFilterRange: null,
 });
 
 export function AppContent() {
@@ -65,6 +72,7 @@ export function AppContent() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isTaskFinderOpen, setIsTaskFinderOpen] = useState(false);
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [spreadsheetViewKey, setSpreadsheetViewKey] = useState(0);
   const [visibleTaskIds, setVisibleTaskIds] = useState<string[]>([]);
 
@@ -81,6 +89,10 @@ export function AppContent() {
     SIDEBAR_WIDTH_KEY,
     DEFAULT_SIDEBAR_WIDTH
   );
+  const locale = useMemo(() => {
+    if (typeof navigator === 'undefined') return 'en-GB';
+    return navigator.language || 'en-GB';
+  }, []);
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
@@ -138,6 +150,12 @@ export function AppContent() {
     setTaskNotesContext(null);
   }, [returnFilters, taskNotesContext]);
 
+  useEffect(() => {
+    if (currentView !== 'spreadsheet' && isAddTaskModalOpen) {
+      setIsAddTaskModalOpen(false);
+    }
+  }, [currentView, isAddTaskModalOpen]);
+
   const handleNavigateToFullDayNotes = useCallback(
     (filterState: SpreadsheetFilterState, visibleTaskIds: string[]) => {
       // Store context for filtering tasks in notes view
@@ -180,6 +198,13 @@ export function AppContent() {
     visibleTaskIds,
   ]);
 
+  const handleCommandNewTask = useCallback(() => {
+    if (currentView !== 'spreadsheet') {
+      handleBackToSpreadsheet();
+    }
+    setIsAddTaskModalOpen(true);
+  }, [currentView, handleBackToSpreadsheet]);
+
   const handleCommandSetPreset = useCallback(
     (preset: SpreadsheetFilterState['dateFilterPreset']) => {
       if (spreadsheetFilterState.dateFilterPreset === preset) {
@@ -189,6 +214,8 @@ export function AppContent() {
       const nextFilterState: SpreadsheetFilterState = {
         ...spreadsheetFilterState,
         dateFilterPreset: preset,
+        dateFilterDate: null,
+        dateFilterRange: null,
       };
 
       setSpreadsheetFilterState(nextFilterState);
@@ -203,6 +230,102 @@ export function AppContent() {
       }
     },
     [currentView, spreadsheetFilterState]
+  );
+
+  const handleCommandSetSpecificDate = useCallback(
+    (date: number) => {
+      const nextFilterState: SpreadsheetFilterState = {
+        ...spreadsheetFilterState,
+        dateFilterPreset: 'specific-date',
+        dateFilterDate: date,
+        dateFilterRange: null,
+      };
+
+      setSpreadsheetFilterState(nextFilterState);
+      setTaskNotesContext((prev) => {
+        if (!prev) return prev;
+        return { ...prev, originalFilters: nextFilterState };
+      });
+
+      if (currentView === 'spreadsheet') {
+        setReturnFilters(nextFilterState);
+        setSpreadsheetViewKey((prev) => prev + 1);
+      }
+    },
+    [currentView, spreadsheetFilterState]
+  );
+
+  const handleCommandSetDateRange = useCallback(
+    (range: DateRange) => {
+      const nextFilterState: SpreadsheetFilterState = {
+        ...spreadsheetFilterState,
+        dateFilterPreset: 'date-range',
+        dateFilterDate: null,
+        dateFilterRange: range,
+      };
+
+      setSpreadsheetFilterState(nextFilterState);
+      setTaskNotesContext((prev) => {
+        if (!prev) return prev;
+        return { ...prev, originalFilters: nextFilterState };
+      });
+
+      if (currentView === 'spreadsheet') {
+        setReturnFilters(nextFilterState);
+        setSpreadsheetViewKey((prev) => prev + 1);
+      }
+    },
+    [currentView, spreadsheetFilterState]
+  );
+
+  const getDateFilterCommand = useCallback(
+    (query: string) => {
+      const parsed = parseDateQuery(query, locale);
+
+      if (parsed.type === 'invalid-range') {
+        return [
+          {
+            id: 'date-range-invalid',
+            label: 'End date must be after start date',
+            disabled: true,
+            onExecute: () => {},
+          },
+        ];
+      }
+
+      if (parsed.type === 'single') {
+        const label = `Filter: Date - ${formatDateCompact(
+          new Date(parsed.date),
+          locale
+        )}`;
+        return [
+          {
+            id: `date-single-${parsed.date}`,
+            label,
+            keywords: ['date', 'filter'],
+            onExecute: () => handleCommandSetSpecificDate(parsed.date),
+          },
+        ];
+      }
+
+      if (parsed.type === 'range') {
+        const label = `Filter: Date Range - ${formatDateRange(
+          parsed.range,
+          locale
+        )}`;
+        return [
+          {
+            id: `date-range-${parsed.range.start}-${parsed.range.end}`,
+            label,
+            keywords: ['date', 'range', 'filter'],
+            onExecute: () => handleCommandSetDateRange(parsed.range),
+          },
+        ];
+      }
+
+      return [];
+    },
+    [handleCommandSetDateRange, handleCommandSetSpecificDate, locale]
   );
 
   const handleCommandSetTypeFilter = useCallback(
@@ -242,6 +365,8 @@ export function AppContent() {
     const emptyFilters = createEmptyFilterState();
     const isAlreadyEmpty =
       spreadsheetFilterState.dateFilterPreset === 'all' &&
+      !spreadsheetFilterState.dateFilterDate &&
+      !spreadsheetFilterState.dateFilterRange &&
       Object.values(spreadsheetFilterState.filters).every((filter) => {
         if (!filter) return true;
         if (filter.type === 'multiselect') return filter.selected.size === 0;
@@ -308,6 +433,12 @@ export function AppContent() {
         onExecute: handleCommandNavigateToTaskNotes,
       },
       {
+        id: 'task-new',
+        label: 'Task: New',
+        keywords: ['new', 'create', 'add', 'task'],
+        onExecute: handleCommandNewTask,
+      },
+      {
         id: 'view-task-list',
         label: 'Task: List',
         keywords: ['list', 'tasks', 'view', 'spreadsheet'],
@@ -329,6 +460,7 @@ export function AppContent() {
       handleCommandSetPreset,
       handleCommandClearFilters,
       handleCommandNavigateToTaskNotes,
+      handleCommandNewTask,
       handleCommandSetTypeFilter,
     ]
   );
@@ -406,6 +538,8 @@ export function AppContent() {
               dueDate: null,
             },
             dateFilterPreset: 'all',
+            dateFilterDate: null,
+            dateFilterRange: null,
           });
         }
       }
@@ -534,6 +668,8 @@ export function AppContent() {
             onReorder={reorder}
             onSelectTask={handleSelectTask}
             onAddTask={handleAddTask}
+            isAddTaskModalOpen={isAddTaskModalOpen}
+            onAddTaskModalOpenChange={setIsAddTaskModalOpen}
             onNavigateToFullDayNotes={handleNavigateToFullDayNotes}
             onNavigateToArchive={handleNavigateToArchive}
             initialFilters={initialFilters}
@@ -557,6 +693,7 @@ export function AppContent() {
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         commands={commandPaletteCommands}
+        getDynamicCommands={getDateFilterCommand}
         onClose={() => setIsCommandPaletteOpen(false)}
       />
       <TaskFinder

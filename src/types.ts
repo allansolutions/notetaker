@@ -149,6 +149,11 @@ export interface CalendarEvent {
   htmlLink?: string;
 }
 
+export interface DateRange {
+  start: number;
+  end: number;
+}
+
 export interface GoogleAuthState {
   isConnected: boolean;
   isLoading: boolean;
@@ -157,7 +162,13 @@ export interface GoogleAuthState {
 }
 
 // Date filter preset types
-export type DateFilterPreset = 'all' | 'today' | 'tomorrow' | 'this-week';
+export type DateFilterPreset =
+  | 'all'
+  | 'today'
+  | 'tomorrow'
+  | 'this-week'
+  | 'specific-date'
+  | 'date-range';
 
 export const DATE_FILTER_PRESET_OPTIONS: {
   value: DateFilterPreset;

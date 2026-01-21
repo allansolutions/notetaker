@@ -366,6 +366,29 @@ describe('doesTaskMatchFilters', () => {
       };
       expect(doesTaskMatchFilters(task, filterState)).toBe(false);
     });
+
+    it('matches task when preset is specific-date', () => {
+      const date = new Date(2025, 0, 10, 12, 0, 0);
+      const task = createMockTask({ dueDate: date.getTime() });
+      const filterState: SpreadsheetFilterState = {
+        ...emptyFilterState,
+        dateFilterPreset: 'specific-date',
+        dateFilterDate: date.getTime(),
+      };
+      expect(doesTaskMatchFilters(task, filterState)).toBe(true);
+    });
+
+    it('matches task when preset is date-range', () => {
+      const start = new Date(2025, 0, 10, 12, 0, 0);
+      const end = new Date(2025, 0, 15, 12, 0, 0);
+      const task = createMockTask({ dueDate: new Date(2025, 0, 12).getTime() });
+      const filterState: SpreadsheetFilterState = {
+        ...emptyFilterState,
+        dateFilterPreset: 'date-range',
+        dateFilterRange: { start: start.getTime(), end: end.getTime() },
+      };
+      expect(doesTaskMatchFilters(task, filterState)).toBe(true);
+    });
   });
 
   describe('combined filters', () => {
@@ -502,6 +525,24 @@ describe('hasActiveFilters', () => {
         ...emptyFilterState.filters,
         dueDate: { type: 'date', value: Date.now() },
       },
+    };
+    expect(hasActiveFilters(filterState)).toBe(true);
+  });
+
+  it('returns true when dateFilterDate is set', () => {
+    const filterState: SpreadsheetFilterState = {
+      ...emptyFilterState,
+      dateFilterDate: Date.now(),
+      dateFilterRange: null,
+    };
+    expect(hasActiveFilters(filterState)).toBe(true);
+  });
+
+  it('returns true when dateFilterRange is set', () => {
+    const filterState: SpreadsheetFilterState = {
+      ...emptyFilterState,
+      dateFilterDate: null,
+      dateFilterRange: { start: Date.now(), end: Date.now() + 86400000 },
     };
     expect(hasActiveFilters(filterState)).toBe(true);
   });

@@ -320,4 +320,87 @@ describe('matchesDatePreset', () => {
       expect(matchesDatePreset(dueDateNextWeek, 'this-week', now)).toBe(false);
     });
   });
+
+  describe('specific-date preset', () => {
+    it('returns true for task due on the specific date', () => {
+      const specificDate = new Date(2024, 5, 15, 12, 0).getTime();
+      const dueDate = new Date(2024, 5, 15, 14, 30).getTime();
+      expect(
+        matchesDatePreset(dueDate, 'specific-date', undefined, {
+          specificDate,
+        })
+      ).toBe(true);
+    });
+
+    it('returns false for task due on different date', () => {
+      const specificDate = new Date(2024, 5, 15, 12, 0).getTime();
+      const dueDate = new Date(2024, 5, 16, 14, 30).getTime();
+      expect(
+        matchesDatePreset(dueDate, 'specific-date', undefined, {
+          specificDate,
+        })
+      ).toBe(false);
+    });
+
+    it('returns false when specificDate option is missing', () => {
+      const dueDate = new Date(2024, 5, 15, 14, 30).getTime();
+      expect(matchesDatePreset(dueDate, 'specific-date')).toBe(false);
+    });
+
+    it('returns false for tasks without dueDate', () => {
+      const specificDate = new Date(2024, 5, 15, 12, 0).getTime();
+      expect(
+        matchesDatePreset(undefined, 'specific-date', undefined, {
+          specificDate,
+        })
+      ).toBe(false);
+    });
+  });
+
+  describe('date-range preset', () => {
+    it('returns true for task due within range', () => {
+      const range = {
+        start: new Date(2024, 5, 10, 12, 0).getTime(),
+        end: new Date(2024, 5, 20, 12, 0).getTime(),
+      };
+      const dueDate = new Date(2024, 5, 15, 14, 30).getTime();
+      expect(
+        matchesDatePreset(dueDate, 'date-range', undefined, { range })
+      ).toBe(true);
+    });
+
+    it('returns false for task due outside range', () => {
+      const range = {
+        start: new Date(2024, 5, 10, 12, 0).getTime(),
+        end: new Date(2024, 5, 20, 12, 0).getTime(),
+      };
+      const dueDate = new Date(2024, 5, 25, 14, 30).getTime();
+      expect(
+        matchesDatePreset(dueDate, 'date-range', undefined, { range })
+      ).toBe(false);
+    });
+
+    it('returns false when range option is missing', () => {
+      const dueDate = new Date(2024, 5, 15, 14, 30).getTime();
+      expect(matchesDatePreset(dueDate, 'date-range')).toBe(false);
+    });
+
+    it('returns false for tasks without dueDate', () => {
+      const range = {
+        start: new Date(2024, 5, 10, 12, 0).getTime(),
+        end: new Date(2024, 5, 20, 12, 0).getTime(),
+      };
+      expect(
+        matchesDatePreset(undefined, 'date-range', undefined, { range })
+      ).toBe(false);
+    });
+  });
+
+  describe('unknown presets', () => {
+    it('returns true for unknown preset', () => {
+      const dueDate = new Date(2024, 5, 15, 14, 30).getTime();
+      // TypeScript won't let us pass an unknown preset, so we cast
+      expect(matchesDatePreset(dueDate, 'unknown-preset' as 'all')).toBe(true);
+    });
+  });
 });

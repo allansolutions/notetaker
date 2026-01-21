@@ -1,14 +1,16 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Task, DateFilterPreset } from '../../types';
+import { Task, DateFilterPreset, DateRange } from '../../types';
 import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
 import { DocumentIcon, ArchiveIcon } from '../icons';
 import { AddTaskData } from '../AddTaskModal';
-import { DateFilterTabs } from '../DateFilterTabs';
+import { DateFilterMenu } from '../DateFilterMenu';
 import { matchesDatePreset } from '../../utils/date-filters';
 
 export interface SpreadsheetFilterState {
   filters: ColumnFilters;
   dateFilterPreset: DateFilterPreset;
+  dateFilterDate?: number | null;
+  dateFilterRange?: DateRange | null;
 }
 
 const defaultFilters: ColumnFilters = {
@@ -26,6 +28,8 @@ interface SpreadsheetViewProps {
   onReorder: (fromIndex: number, toIndex: number) => void;
   onSelectTask: (id: string) => void;
   onAddTask: (data: AddTaskData) => void;
+  isAddTaskModalOpen?: boolean;
+  onAddTaskModalOpenChange?: (isOpen: boolean) => void;
   onNavigateToFullDayNotes: (
     filterState: SpreadsheetFilterState,
     visibleTaskIds: string[]
@@ -43,6 +47,8 @@ export function SpreadsheetView({
   onReorder,
   onSelectTask,
   onAddTask,
+  isAddTaskModalOpen,
+  onAddTaskModalOpenChange,
   onNavigateToFullDayNotes,
   onNavigateToArchive,
   onVisibleTasksChange,
@@ -51,6 +57,12 @@ export function SpreadsheetView({
 }: SpreadsheetViewProps) {
   const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>(
     initialFilters?.dateFilterPreset ?? 'all'
+  );
+  const [dateFilterDate, setDateFilterDate] = useState<number | null>(
+    initialFilters?.dateFilterDate ?? null
+  );
+  const [dateFilterRange, setDateFilterRange] = useState<DateRange | null>(
+    initialFilters?.dateFilterRange ?? null
   );
   const [filters, setFilters] = useState<ColumnFilters>(
     initialFilters?.filters ?? defaultFilters
@@ -64,14 +76,27 @@ export function SpreadsheetView({
   useEffect(() => {
     if (initialFilters && !initialFiltersApplied.current) {
       setDateFilterPreset(initialFilters.dateFilterPreset);
+      setDateFilterDate(initialFilters.dateFilterDate ?? null);
+      setDateFilterRange(initialFilters.dateFilterRange ?? null);
       setFilters(initialFilters.filters);
       initialFiltersApplied.current = true;
     }
   }, [initialFilters]);
 
   useEffect(() => {
-    onFilterStateChange?.({ filters, dateFilterPreset });
-  }, [filters, dateFilterPreset, onFilterStateChange]);
+    onFilterStateChange?.({
+      filters,
+      dateFilterPreset,
+      dateFilterDate,
+      dateFilterRange,
+    });
+  }, [
+    filters,
+    dateFilterPreset,
+    dateFilterDate,
+    dateFilterRange,
+    onFilterStateChange,
+  ]);
 
   // Calculate counts for each preset
   const presetCounts = useMemo(() => {
@@ -101,9 +126,17 @@ export function SpreadsheetView({
     const filterState: SpreadsheetFilterState = {
       filters,
       dateFilterPreset,
+      dateFilterDate,
+      dateFilterRange,
     };
     onNavigateToFullDayNotes(filterState, visibleTaskIdsRef.current);
-  }, [filters, dateFilterPreset, onNavigateToFullDayNotes]);
+  }, [
+    filters,
+    dateFilterPreset,
+    dateFilterDate,
+    dateFilterRange,
+    onNavigateToFullDayNotes,
+  ]);
 
   return (
     <div className="flex flex-col h-full">
@@ -116,10 +149,40 @@ export function SpreadsheetView({
           <DocumentIcon />
           Task Notes
         </button>
-        <DateFilterTabs
+        <DateFilterMenu
           activePreset={dateFilterPreset}
-          onPresetChange={setDateFilterPreset}
+          selectedDate={dateFilterDate}
+          selectedRange={dateFilterRange}
           counts={presetCounts}
+          onPresetChange={(preset) => {
+            setDateFilterPreset(preset);
+            if (preset !== 'specific-date') {
+              setDateFilterDate(null);
+            }
+            if (preset !== 'date-range') {
+              setDateFilterRange(null);
+            }
+          }}
+          onDateChange={(date) => {
+            if (!date) {
+              setDateFilterPreset('all');
+              setDateFilterDate(null);
+              return;
+            }
+            setDateFilterPreset('specific-date');
+            setDateFilterDate(date);
+            setDateFilterRange(null);
+          }}
+          onRangeChange={(range) => {
+            if (!range) {
+              setDateFilterPreset('all');
+              setDateFilterRange(null);
+              return;
+            }
+            setDateFilterPreset('date-range');
+            setDateFilterRange(range);
+            setDateFilterDate(null);
+          }}
         />
         <button
           type="button"
@@ -138,6 +201,10 @@ export function SpreadsheetView({
         onReorder={onReorder}
         onSelectTask={onSelectTask}
         onAddTask={onAddTask}
+        dateFilterDate={dateFilterDate}
+        dateFilterRange={dateFilterRange}
+        isAddTaskModalOpen={isAddTaskModalOpen}
+        onAddTaskModalOpenChange={onAddTaskModalOpenChange}
         dateFilterPreset={dateFilterPreset}
         onVisibleTasksChange={handleVisibleTasksChange}
         filters={filters}

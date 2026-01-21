@@ -5,6 +5,7 @@ export interface CommandPaletteCommand {
   id: string;
   label: string;
   keywords?: string[];
+  disabled?: boolean;
   onExecute: () => void;
 }
 
@@ -41,12 +42,14 @@ const matchesQuery = (
 interface CommandPaletteProps {
   isOpen: boolean;
   commands: CommandPaletteCommand[];
+  getDynamicCommands?: (query: string) => CommandPaletteCommand[];
   onClose: () => void;
 }
 
 export function CommandPalette({
   isOpen,
   commands,
+  getDynamicCommands,
   onClose,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
@@ -62,6 +65,17 @@ export function CommandPalette({
     return commands.filter((command) => matchesQuery(command, queryTokens));
   }, [commands, query]);
 
+  const dynamicCommands = useMemo(() => {
+    if (!getDynamicCommands) return [];
+    const normalizedQuery = getNormalizedQuery(query);
+    return getDynamicCommands(normalizedQuery);
+  }, [getDynamicCommands, query]);
+
+  const visibleCommands = useMemo(
+    () => [...dynamicCommands, ...filteredCommands],
+    [dynamicCommands, filteredCommands]
+  );
+
   useEffect(() => {
     if (!isOpen) return;
     setQuery('');
@@ -70,10 +84,10 @@ export function CommandPalette({
   }, [isOpen]);
 
   useEffect(() => {
-    if (selectedIndex >= filteredCommands.length) {
+    if (selectedIndex >= visibleCommands.length) {
       setSelectedIndex(0);
     }
-  }, [filteredCommands.length, selectedIndex]);
+  }, [selectedIndex, visibleCommands.length]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -88,7 +102,7 @@ export function CommandPalette({
   }, [isOpen, onClose]);
 
   const handleExecute = (command: CommandPaletteCommand | undefined) => {
-    if (!command) return;
+    if (!command || command.disabled) return;
     command.onExecute();
     onClose();
   };
@@ -97,22 +111,22 @@ export function CommandPalette({
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       setSelectedIndex((prev) =>
-        filteredCommands.length === 0 ? 0 : (prev + 1) % filteredCommands.length
+        visibleCommands.length === 0 ? 0 : (prev + 1) % visibleCommands.length
       );
       return;
     }
     if (event.key === 'ArrowUp') {
       event.preventDefault();
       setSelectedIndex((prev) =>
-        filteredCommands.length === 0
+        visibleCommands.length === 0
           ? 0
-          : (prev - 1 + filteredCommands.length) % filteredCommands.length
+          : (prev - 1 + visibleCommands.length) % visibleCommands.length
       );
       return;
     }
     if (event.key === 'Enter') {
       event.preventDefault();
-      handleExecute(filteredCommands[selectedIndex]);
+      handleExecute(visibleCommands[selectedIndex]);
     }
   };
 
@@ -155,28 +169,34 @@ export function CommandPalette({
           aria-label="Commands"
           className="max-h-72 overflow-y-auto pb-2"
         >
-          {filteredCommands.length === 0 ? (
+          {visibleCommands.length === 0 ? (
             <div className="px-4 py-3 text-sm text-muted">
               No commands found.
             </div>
           ) : (
-            filteredCommands.map((command, index) => (
-              <button
-                key={command.id}
-                type="button"
-                role="option"
-                aria-selected={index === selectedIndex}
-                onMouseEnter={() => setSelectedIndex(index)}
-                onClick={() => handleExecute(command)}
-                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                  index === selectedIndex
-                    ? 'bg-accent-subtle text-primary'
-                    : 'text-primary hover:bg-accent-subtle'
-                }`}
-              >
-                {command.label}
-              </button>
-            ))
+            visibleCommands.map((command, index) => {
+              let commandClass = 'text-primary hover:bg-accent-subtle';
+              if (command.disabled) {
+                commandClass = 'text-muted cursor-not-allowed';
+              } else if (index === selectedIndex) {
+                commandClass = 'bg-accent-subtle text-primary';
+              }
+
+              return (
+                <button
+                  key={command.id}
+                  type="button"
+                  role="option"
+                  aria-selected={index === selectedIndex}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  disabled={command.disabled}
+                  onClick={() => handleExecute(command)}
+                  className={`w-full text-left px-4 py-2 text-sm transition-colors ${commandClass}`}
+                >
+                  {command.label}
+                </button>
+              );
+            })
           )}
         </div>
       </div>

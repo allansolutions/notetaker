@@ -301,8 +301,10 @@ describe('useTasks', () => {
         await result.current.removeTask('task-1');
       });
 
-      expect(result.current.tasks).toHaveLength(1);
-      expect(result.current.tasks[0].title).toBe('Task 2');
+      await waitFor(() => {
+        expect(result.current.tasks).toHaveLength(1);
+        expect(result.current.tasks[0].title).toBe('Task 2');
+      });
     });
   });
 

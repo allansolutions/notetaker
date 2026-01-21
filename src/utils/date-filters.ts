@@ -1,4 +1,4 @@
-import { DateFilterPreset } from '../types';
+import { DateFilterPreset, DateRange } from '../types';
 
 /**
  * Get the start of a day (midnight 00:00:00.000)
@@ -74,7 +74,11 @@ export function isInDateRange(
 export function matchesDatePreset(
   dueDate: number | undefined,
   preset: DateFilterPreset,
-  now: Date = new Date()
+  now: Date = new Date(),
+  options?: {
+    specificDate?: number | null;
+    range?: DateRange | null;
+  }
 ): boolean {
   // 'all' shows everything including tasks without dueDate
   if (preset === 'all') {
@@ -100,6 +104,20 @@ export function matchesDatePreset(
       const weekStart = getWeekStart(now);
       const weekEnd = getWeekEnd(now);
       return isInDateRange(dueDate, weekStart, weekEnd);
+    }
+
+    case 'specific-date': {
+      if (!options?.specificDate) return false;
+      return isOnDate(dueDate, new Date(options.specificDate));
+    }
+
+    case 'date-range': {
+      if (!options?.range) return false;
+      return isInDateRange(
+        dueDate,
+        startOfDay(new Date(options.range.start)),
+        endOfDay(new Date(options.range.end))
+      );
     }
 
     default:

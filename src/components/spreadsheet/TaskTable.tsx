@@ -31,6 +31,7 @@ import {
   TaskStatus,
   TaskImportance,
   DateFilterPreset,
+  DateRange,
   TASK_TYPE_OPTIONS,
   TASK_STATUS_OPTIONS,
   TASK_IMPORTANCE_OPTIONS,
@@ -125,6 +126,10 @@ interface TaskTableProps {
   onReorder: (fromIndex: number, toIndex: number) => void;
   onSelectTask: (id: string) => void;
   onAddTask: (data: AddTaskData) => void;
+  isAddTaskModalOpen?: boolean;
+  onAddTaskModalOpenChange?: (isOpen: boolean) => void;
+  dateFilterDate?: number | null;
+  dateFilterRange?: DateRange | null;
   dateFilterPreset?: DateFilterPreset;
   onVisibleTasksChange?: (tasks: Task[]) => void;
   // Optional controlled filter state
@@ -243,12 +248,18 @@ export function TaskTable({
   onReorder,
   onSelectTask,
   onAddTask,
+  isAddTaskModalOpen,
+  onAddTaskModalOpenChange,
+  dateFilterDate,
+  dateFilterRange,
   dateFilterPreset = 'all',
   onVisibleTasksChange,
   filters: controlledFilters,
   onFiltersChange,
 }: TaskTableProps) {
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [internalAddModalOpen, setInternalAddModalOpen] = useState(false);
+  const showAddModal = isAddTaskModalOpen ?? internalAddModalOpen;
+  const setShowAddModal = onAddTaskModalOpenChange ?? setInternalAddModalOpen;
   const [sorting, setSorting] = useState<SortingState>([]);
   const [internalFilters, setInternalFilters] =
     useState<ColumnFilters>(defaultFilters);
@@ -273,7 +284,12 @@ export function TaskTable({
   const tasksFilteredByOtherColumns = useMemo(() => {
     return tasks.filter((task) => {
       // Apply date preset filter first
-      if (!matchesDatePreset(task.dueDate, dateFilterPreset)) {
+      if (
+        !matchesDatePreset(task.dueDate, dateFilterPreset, new Date(), {
+          specificDate: dateFilterDate,
+          range: dateFilterRange,
+        })
+      ) {
         return false;
       }
 
@@ -293,6 +309,8 @@ export function TaskTable({
     filters.importance,
     filters.dueDate,
     dateFilterPreset,
+    dateFilterDate,
+    dateFilterRange,
   ]);
 
   // Filter tasks based on date preset and column filters (including title)

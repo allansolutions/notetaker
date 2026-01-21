@@ -98,10 +98,16 @@ export function doesTaskMatchFilters(
   task: Task,
   filterState: SpreadsheetFilterState
 ): boolean {
-  const { filters, dateFilterPreset } = filterState;
+  const { filters, dateFilterPreset, dateFilterDate, dateFilterRange } =
+    filterState;
 
   // Check date preset filter
-  if (!matchesDatePreset(task.dueDate, dateFilterPreset)) {
+  if (
+    !matchesDatePreset(task.dueDate, dateFilterPreset, new Date(), {
+      specificDate: dateFilterDate,
+      range: dateFilterRange,
+    })
+  ) {
     return false;
   }
 
@@ -142,10 +148,15 @@ function matchesTitleFilter(
  * Check if there are any active filters in the filter state.
  */
 export function hasActiveFilters(filterState: SpreadsheetFilterState): boolean {
-  const { filters, dateFilterPreset } = filterState;
+  const { filters, dateFilterPreset, dateFilterDate, dateFilterRange } =
+    filterState;
 
   // Check date preset
   if (dateFilterPreset !== 'all') {
+    return true;
+  }
+
+  if (dateFilterDate || dateFilterRange) {
     return true;
   }
 
