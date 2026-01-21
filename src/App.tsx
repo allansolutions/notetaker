@@ -2,6 +2,11 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTasks } from './hooks/useTasks';
 import { useCalendarEvents } from './hooks/useCalendarEvents';
+import {
+  useUrlRouter,
+  getInitialRouterState,
+  routerFiltersToState,
+} from './hooks/useUrlRouter';
 import { ThemeProvider } from './context/ThemeContext';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
@@ -33,6 +38,9 @@ import {
 } from './utils/date-query';
 import { getSingleDateFromFilter, startOfDay } from './utils/date-filters';
 
+// Get initial state from URL before first render
+const initialRouterState = getInitialRouterState();
+
 interface TaskNotesContext {
   originalFilters: SpreadsheetFilterState;
   pinnedTaskIds: string[];
@@ -61,6 +69,7 @@ function createEmptyFilterState(): SpreadsheetFilterState {
 export function AppContent() {
   const {
     tasks,
+    isLoading: isLoadingTasks,
     addTask,
     updateTaskById,
     removeTask,
@@ -72,8 +81,13 @@ export function AppContent() {
 
   const { events: calendarEvents } = useCalendarEvents();
 
-  const [currentView, setCurrentView] = useState<ViewType>('spreadsheet');
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  // Initialize view and filter state from URL
+  const [currentView, setCurrentView] = useState<ViewType>(
+    initialRouterState.view
+  );
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
+    initialRouterState.taskId
+  );
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isTaskFinderOpen, setIsTaskFinderOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
@@ -87,7 +101,36 @@ export function AppContent() {
   const [returnFilters, setReturnFilters] =
     useState<SpreadsheetFilterState | null>(null);
   const [spreadsheetFilterState, setSpreadsheetFilterState] =
-    useState<SpreadsheetFilterState>(createEmptyFilterState());
+    useState<SpreadsheetFilterState>(() =>
+      routerFiltersToState(initialRouterState.filters)
+    );
+
+  // URL Router - manages browser history and URL state
+  const handleUrlNavigate = useCallback(
+    (state: {
+      view: ViewType;
+      taskId: string | null;
+      filters: Partial<SpreadsheetFilterState>;
+    }) => {
+      setCurrentView(state.view);
+      setSelectedTaskId(state.taskId);
+      if (Object.keys(state.filters).length > 0) {
+        const newFilterState = routerFiltersToState(state.filters);
+        setSpreadsheetFilterState(newFilterState);
+        setReturnFilters(newFilterState);
+        setSpreadsheetViewKey((prev) => prev + 1);
+      }
+      // Clear task notes context when navigating via browser back/forward
+      setTaskNotesContext(null);
+    },
+    []
+  );
+
+  const router = useUrlRouter({ onNavigate: handleUrlNavigate });
+
+  // Store router in ref for use in callbacks that shouldn't re-create on router change
+  const routerRef = useRef(router);
+  routerRef.current = router;
 
   const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
     SIDEBAR_WIDTH_KEY,
@@ -133,10 +176,14 @@ export function AppContent() {
     [sidebarWidth]
   );
 
-  const handleSelectTask = useCallback((id: string) => {
-    setSelectedTaskId(id);
-    setCurrentView('task-detail');
-  }, []);
+  const handleSelectTask = useCallback(
+    (id: string) => {
+      setSelectedTaskId(id);
+      setCurrentView('task-detail');
+      router.navigate('task-detail', { taskId: id });
+    },
+    [router]
+  );
 
   const handleBackToSpreadsheet = useCallback(() => {
     setCurrentView('spreadsheet');
@@ -149,7 +196,8 @@ export function AppContent() {
     }
     // Clear task notes context when going back
     setTaskNotesContext(null);
-  }, [returnFilters, taskNotesContext]);
+    router.navigate('spreadsheet');
+  }, [returnFilters, taskNotesContext, router]);
 
   useEffect(() => {
     if (currentView !== 'spreadsheet' && isAddTaskModalOpen) {
@@ -165,13 +213,15 @@ export function AppContent() {
         pinnedTaskIds: visibleTaskIds,
       });
       setCurrentView('full-day-notes');
+      router.navigate('full-day-notes');
     },
-    []
+    [router]
   );
 
   const handleNavigateToArchive = useCallback(() => {
     setCurrentView('archive');
-  }, []);
+    router.navigate('archive');
+  }, [router]);
 
   // Split tasks into active and archived
   const activeTasks = useMemo(
@@ -437,6 +487,7 @@ export function AppContent() {
         onExecute: () => {
           if (currentView !== 'spreadsheet') {
             setCurrentView('spreadsheet');
+            router.navigate('spreadsheet');
           }
         },
       },
@@ -449,6 +500,7 @@ export function AppContent() {
     ],
     [
       currentView,
+      router,
       handleCommandSetPreset,
       handleCommandClearFilters,
       handleCommandNavigateToTaskNotes,
@@ -550,6 +602,21 @@ export function AppContent() {
     ? tasks.find((t) => t.id === selectedTaskId)
     : null;
 
+  // Handle invalid task ID in URL - redirect to spreadsheet
+  // Only check after tasks have loaded to avoid premature redirects
+  useEffect(() => {
+    if (
+      !isLoadingTasks &&
+      currentView === 'task-detail' &&
+      selectedTaskId &&
+      !selectedTask
+    ) {
+      setCurrentView('spreadsheet');
+      setSelectedTaskId(null);
+      router.navigate('spreadsheet');
+    }
+  }, [isLoadingTasks, currentView, selectedTaskId, selectedTask, router]);
+
   // Filter tasks for task notes view based on pinned task IDs
   const filteredTasksForNotes = useMemo(() => {
     const baseTasks =
@@ -570,6 +637,16 @@ export function AppContent() {
   const handleVisibleTasksChange = useCallback((tasks: { id: string }[]) => {
     setVisibleTaskIds(tasks.map((task) => task.id));
   }, []);
+
+  // Handle filter state change - updates both React state and URL
+  // Uses routerRef to avoid infinite re-renders from callback dependency
+  const handleFilterStateChange = useCallback(
+    (state: SpreadsheetFilterState) => {
+      setSpreadsheetFilterState(state);
+      routerRef.current.updateFilters(state);
+    },
+    []
+  );
 
   const isTypingTarget = (target: EventTarget | null): boolean => {
     if (!(target instanceof HTMLElement)) return false;
@@ -614,11 +691,40 @@ export function AppContent() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Keyboard shortcuts for browser back/forward navigation
+  // Cmd+[ / Cmd+] on Mac, Alt+Left / Alt+Right as fallback
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTypingTarget(event.target)) return;
+
+      // Cmd+[ or Alt+Left for back
+      const isBack =
+        (event.metaKey && event.key === '[') ||
+        (event.altKey && event.key === 'ArrowLeft');
+
+      // Cmd+] or Alt+Right for forward
+      const isForward =
+        (event.metaKey && event.key === ']') ||
+        (event.altKey && event.key === 'ArrowRight');
+
+      if (isBack) {
+        event.preventDefault();
+        window.history.back();
+      } else if (isForward) {
+        event.preventDefault();
+        window.history.forward();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const renderView = () => {
     switch (currentView) {
       case 'task-detail':
+        // Invalid task ID case handled by useEffect above
         if (!selectedTask) {
-          setCurrentView('spreadsheet');
           return null;
         }
         return (
@@ -660,8 +766,9 @@ export function AppContent() {
         );
       case 'spreadsheet':
       default: {
-        // Clear return filters after rendering with them
-        const initialFilters = returnFilters ?? undefined;
+        // Use returnFilters if set (navigating back from task notes),
+        // otherwise use current spreadsheetFilterState (preserves URL filters on initial load)
+        const initialFilters = returnFilters ?? spreadsheetFilterState;
         if (returnFilters) {
           // Use setTimeout to clear after render
           setTimeout(handleClearReturnFilters, 0);
@@ -680,7 +787,7 @@ export function AppContent() {
             onNavigateToFullDayNotes={handleNavigateToFullDayNotes}
             onNavigateToArchive={handleNavigateToArchive}
             initialFilters={initialFilters}
-            onFilterStateChange={setSpreadsheetFilterState}
+            onFilterStateChange={handleFilterStateChange}
             onVisibleTasksChange={handleVisibleTasksChange}
           />
         );

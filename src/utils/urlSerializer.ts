@@ -1,0 +1,300 @@
+import { ViewType, DateFilterPreset, DateRange } from '../types';
+import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
+
+export interface RouterState {
+  view: ViewType;
+  taskId: string | null;
+  filters: Partial<SpreadsheetFilterState>;
+}
+
+/**
+ * Serialize a multiselect filter to a comma-separated lowercase string
+ */
+function serializeMultiselect(values: Set<string>): string | null {
+  if (values.size === 0) return null;
+  return Array.from(values).join(',');
+}
+
+/**
+ * Parse a comma-separated string back to a Set
+ */
+function parseMultiselect(value: string): Set<string> {
+  return new Set(value.split(',').filter(Boolean));
+}
+
+/**
+ * Serialize date filter to URL params
+ */
+function serializeDateFilter(
+  filters: SpreadsheetFilterState,
+  params: URLSearchParams
+): void {
+  if (filters.dateFilterPreset === 'specific-date' && filters.dateFilterDate) {
+    params.set('date', 'specific');
+    params.set('d', String(filters.dateFilterDate));
+  } else if (
+    filters.dateFilterPreset === 'date-range' &&
+    filters.dateFilterRange
+  ) {
+    params.set('date', 'range');
+    params.set('start', String(filters.dateFilterRange.start));
+    params.set('end', String(filters.dateFilterRange.end));
+  } else if (
+    filters.dateFilterPreset &&
+    filters.dateFilterPreset !== 'all' &&
+    filters.dateFilterPreset !== 'specific-date' &&
+    filters.dateFilterPreset !== 'date-range'
+  ) {
+    params.set('date', filters.dateFilterPreset);
+  }
+}
+
+/**
+ * Serialize title filter to URL params
+ */
+function serializeTitleFilter(
+  titleFilter: SpreadsheetFilterState['filters']['title'],
+  params: URLSearchParams
+): void {
+  if (titleFilter?.type === 'text' && titleFilter.value.trim()) {
+    params.set('title', titleFilter.value);
+  } else if (titleFilter?.type === 'title-enhanced') {
+    if (titleFilter.searchText.trim()) {
+      params.set('title', titleFilter.searchText);
+    }
+    // Note: selectedTaskIds are not serialized to URL as they're transient state
+  }
+}
+
+/**
+ * Serialize column filters to URL params
+ */
+function serializeColumnFilters(
+  filters: SpreadsheetFilterState,
+  params: URLSearchParams
+): void {
+  const columnFilters = filters.filters;
+
+  if (columnFilters.type?.type === 'multiselect') {
+    const serialized = serializeMultiselect(columnFilters.type.selected);
+    if (serialized) params.set('type', serialized);
+  }
+
+  if (columnFilters.status?.type === 'multiselect') {
+    const serialized = serializeMultiselect(columnFilters.status.selected);
+    if (serialized) params.set('status', serialized);
+  }
+
+  if (columnFilters.importance?.type === 'multiselect') {
+    const serialized = serializeMultiselect(columnFilters.importance.selected);
+    if (serialized) params.set('importance', serialized);
+  }
+
+  serializeTitleFilter(columnFilters.title, params);
+
+  if (
+    columnFilters.dueDate?.type === 'date' &&
+    columnFilters.dueDate.value !== null
+  ) {
+    params.set('dueDate', String(columnFilters.dueDate.value));
+  }
+}
+
+/**
+ * Convert filter state to URL search params
+ */
+export function serializeFiltersToParams(
+  filters: SpreadsheetFilterState
+): URLSearchParams {
+  const params = new URLSearchParams();
+  serializeDateFilter(filters, params);
+  serializeColumnFilters(filters, params);
+  return params;
+}
+
+/**
+ * Parse URL search params back to filter state
+ */
+export function parseParamsToFilters(
+  params: URLSearchParams
+): Partial<SpreadsheetFilterState> {
+  const result: Partial<SpreadsheetFilterState> = {
+    filters: {
+      type: null,
+      title: null,
+      status: null,
+      importance: null,
+      dueDate: null,
+    },
+  };
+
+  // Date filter
+  const dateParam = params.get('date');
+  if (dateParam === 'specific') {
+    const d = params.get('d');
+    if (d) {
+      result.dateFilterPreset = 'specific-date';
+      result.dateFilterDate = Number(d);
+    }
+  } else if (dateParam === 'range') {
+    const start = params.get('start');
+    const end = params.get('end');
+    if (start && end) {
+      result.dateFilterPreset = 'date-range';
+      result.dateFilterRange = {
+        start: Number(start),
+        end: Number(end),
+      } as DateRange;
+    }
+  } else if (dateParam) {
+    // Preset names: today, tomorrow, yesterday, this-week
+    const validPresets: DateFilterPreset[] = [
+      'today',
+      'tomorrow',
+      'yesterday',
+      'this-week',
+      'all',
+    ];
+    if (validPresets.includes(dateParam as DateFilterPreset)) {
+      result.dateFilterPreset = dateParam as DateFilterPreset;
+    }
+  }
+
+  // Column filters
+  const typeParam = params.get('type');
+  if (typeParam) {
+    result.filters!.type = {
+      type: 'multiselect',
+      selected: parseMultiselect(typeParam),
+    };
+  }
+
+  const statusParam = params.get('status');
+  if (statusParam) {
+    result.filters!.status = {
+      type: 'multiselect',
+      selected: parseMultiselect(statusParam),
+    };
+  }
+
+  const importanceParam = params.get('importance');
+  if (importanceParam) {
+    result.filters!.importance = {
+      type: 'multiselect',
+      selected: parseMultiselect(importanceParam),
+    };
+  }
+
+  const titleParam = params.get('title');
+  if (titleParam) {
+    result.filters!.title = {
+      type: 'text',
+      value: titleParam,
+    };
+  }
+
+  const dueDateParam = params.get('dueDate');
+  if (dueDateParam) {
+    result.filters!.dueDate = {
+      type: 'date',
+      value: Number(dueDateParam),
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Build a URL path and search string from view state
+ */
+export function buildUrl(
+  view: ViewType,
+  taskId?: string | null,
+  filters?: SpreadsheetFilterState
+): string {
+  let path: string;
+
+  switch (view) {
+    case 'task-detail':
+      if (!taskId) {
+        path = '/';
+      } else {
+        path = `/task/${taskId}`;
+      }
+      break;
+    case 'full-day-notes':
+      path = '/notes';
+      break;
+    case 'archive':
+      path = '/archive';
+      break;
+    case 'spreadsheet':
+    default:
+      path = '/';
+      break;
+  }
+
+  // Only add filters for views that use them
+  if (filters && (view === 'spreadsheet' || view === 'full-day-notes')) {
+    const params = serializeFiltersToParams(filters);
+    const search = params.toString();
+    if (search) {
+      return `${path}?${search}`;
+    }
+  }
+
+  return path;
+}
+
+/**
+ * Parse a URL path and search string into router state
+ */
+export function parseUrl(pathname: string, search: string): RouterState {
+  const result: RouterState = {
+    view: 'spreadsheet',
+    taskId: null,
+    filters: {},
+  };
+
+  // Parse path
+  if (pathname === '/notes') {
+    result.view = 'full-day-notes';
+  } else if (pathname === '/archive') {
+    result.view = 'archive';
+  } else if (pathname.startsWith('/task/')) {
+    const taskId = pathname.slice(6); // Remove '/task/'
+    if (taskId) {
+      result.view = 'task-detail';
+      result.taskId = taskId;
+    }
+  }
+  // Default: spreadsheet (for '/' or any unmatched path)
+
+  // Parse search params for filters
+  if (search) {
+    const params = new URLSearchParams(search);
+    result.filters = parseParamsToFilters(params);
+  }
+
+  return result;
+}
+
+/**
+ * Merge partial filter state with defaults to create a complete SpreadsheetFilterState
+ */
+export function mergeWithDefaultFilters(
+  partial: Partial<SpreadsheetFilterState>
+): SpreadsheetFilterState {
+  return {
+    filters: {
+      type: partial.filters?.type ?? null,
+      title: partial.filters?.title ?? null,
+      status: partial.filters?.status ?? null,
+      importance: partial.filters?.importance ?? null,
+      dueDate: partial.filters?.dueDate ?? null,
+    },
+    dateFilterPreset: partial.dateFilterPreset ?? 'all',
+    dateFilterDate: partial.dateFilterDate ?? null,
+    dateFilterRange: partial.dateFilterRange ?? null,
+  };
+}
