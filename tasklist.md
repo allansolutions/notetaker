@@ -23,3 +23,11 @@ Make the task types configurable. We need an account screen where you configure 
 A new status: blocked. When you change the status of a task to blocked, you should be immediately shown a dialogue where you have to state and enter the reason why that task is blocked. When that task moves from being blocked to any other status, you can delete the blocked reason associated with that task.
 
 ---
+
+## 3. Migrate to Convex database
+
+**Status:** pending | **Added:** 2026-01-21
+
+Migrate to Convex db - use plan already created
+
+---
