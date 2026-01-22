@@ -8,6 +8,11 @@ import {
   insertBlockAfter,
   deleteBlock,
   mergeBlockWithPrevious,
+  getBlockLevel,
+  canIndentBlock,
+  indentBlock,
+  unindentBlock,
+  MAX_INDENT_LEVEL,
 } from './block-operations';
 import { Block, BlockType } from '../types';
 
@@ -549,5 +554,241 @@ describe('mergeBlockWithPrevious', () => {
     expect(blocks.length).toBe(2);
     expect(blocks[0].content).toBe(original[0].content);
     expect(blocks[1].content).toBe(original[1].content);
+  });
+});
+
+describe('getBlockLevel', () => {
+  it('returns 0 for block without level property', () => {
+    const block = makeBlock('1', 'bullet', 'item');
+    expect(getBlockLevel(block)).toBe(0);
+  });
+
+  it('returns the level when defined', () => {
+    const block: Block = { id: '1', type: 'bullet', content: 'item', level: 2 };
+    expect(getBlockLevel(block)).toBe(2);
+  });
+
+  it('returns 0 for level: 0', () => {
+    const block: Block = { id: '1', type: 'bullet', content: 'item', level: 0 };
+    expect(getBlockLevel(block)).toBe(0);
+  });
+});
+
+describe('canIndentBlock', () => {
+  it('returns false for non-bullet blocks', () => {
+    const blocks = [makeBlock('1', 'paragraph', 'text')];
+    expect(canIndentBlock(blocks, '1')).toBe(false);
+  });
+
+  it('returns false for first bullet (no parent)', () => {
+    const blocks = [makeBlock('1', 'bullet', 'item')];
+    expect(canIndentBlock(blocks, '1')).toBe(false);
+  });
+
+  it('returns true for second bullet at level 0', () => {
+    const blocks = [
+      makeBlock('1', 'bullet', 'first'),
+      makeBlock('2', 'bullet', 'second'),
+    ];
+    expect(canIndentBlock(blocks, '2')).toBe(true);
+  });
+
+  it('returns false when already at max level', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'first', level: MAX_INDENT_LEVEL },
+      { id: '2', type: 'bullet', content: 'second', level: MAX_INDENT_LEVEL },
+    ];
+    expect(canIndentBlock(blocks, '2')).toBe(false);
+  });
+
+  it('returns false when would be more than 1 level deeper than parent', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'first', level: 0 },
+      { id: '2', type: 'bullet', content: 'second', level: 1 },
+    ];
+    // Block at level 1 cannot indent further because parent is at level 0
+    expect(canIndentBlock(blocks, '2')).toBe(false);
+  });
+
+  it('returns true when previous bullet is at same level', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'first', level: 1 },
+      { id: '2', type: 'bullet', content: 'second', level: 1 },
+    ];
+    expect(canIndentBlock(blocks, '2')).toBe(true);
+  });
+
+  it('returns false for numbered blocks', () => {
+    const blocks = [
+      makeBlock('1', 'numbered', 'first'),
+      makeBlock('2', 'numbered', 'second'),
+    ];
+    expect(canIndentBlock(blocks, '2')).toBe(false);
+  });
+
+  it('returns false for todo blocks', () => {
+    const blocks = [
+      makeBlock('1', 'todo', 'first'),
+      makeBlock('2', 'todo', 'second'),
+    ];
+    expect(canIndentBlock(blocks, '2')).toBe(false);
+  });
+
+  it('returns false when block not found', () => {
+    const blocks = [makeBlock('1', 'bullet', 'first')];
+    expect(canIndentBlock(blocks, 'nonexistent')).toBe(false);
+  });
+
+  it('finds previous bullet across non-bullet blocks', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'first', level: 0 },
+      { id: '2', type: 'paragraph', content: 'text' },
+      { id: '3', type: 'bullet', content: 'second', level: 0 },
+    ];
+    expect(canIndentBlock(blocks, '3')).toBe(true);
+  });
+});
+
+describe('indentBlock', () => {
+  it('increases level by 1', () => {
+    const blocks = [
+      makeBlock('1', 'bullet', 'first'),
+      makeBlock('2', 'bullet', 'second'),
+    ];
+    const result = indentBlock(blocks, '2');
+    expect(result[1].level).toBe(1);
+  });
+
+  it('returns unchanged array when cannot indent', () => {
+    const blocks = [makeBlock('1', 'bullet', 'first')];
+    const result = indentBlock(blocks, '1');
+    expect(result).toBe(blocks);
+  });
+
+  it('does not mutate original array', () => {
+    const blocks = [
+      makeBlock('1', 'bullet', 'first'),
+      makeBlock('2', 'bullet', 'second'),
+    ];
+    const original = blocks.map((b) => ({ ...b }));
+    indentBlock(blocks, '2');
+    expect(blocks[1].level).toBe(original[1].level);
+  });
+
+  it('preserves other block properties', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'first', level: 0 },
+      { id: '2', type: 'bullet', content: 'second', level: 0 },
+    ];
+    const result = indentBlock(blocks, '2');
+    expect(result[1].id).toBe('2');
+    expect(result[1].content).toBe('second');
+    expect(result[1].type).toBe('bullet');
+  });
+
+  it('increments existing level', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'first', level: 1 },
+      { id: '2', type: 'bullet', content: 'second', level: 1 },
+    ];
+    const result = indentBlock(blocks, '2');
+    expect(result[1].level).toBe(2);
+  });
+});
+
+describe('unindentBlock', () => {
+  it('decreases level by 1', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'first', level: 0 },
+      { id: '2', type: 'bullet', content: 'second', level: 1 },
+    ];
+    const result = unindentBlock(blocks, '2');
+    expect(result[1].level).toBe(0);
+  });
+
+  it('returns unchanged array when already at level 0', () => {
+    const blocks = [makeBlock('1', 'bullet', 'first')];
+    const result = unindentBlock(blocks, '1');
+    expect(result).toBe(blocks);
+  });
+
+  it('returns unchanged array for non-bullet blocks', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'paragraph', content: 'text', level: 1 },
+    ];
+    const result = unindentBlock(blocks, '1');
+    expect(result).toBe(blocks);
+  });
+
+  it('returns unchanged array when block not found', () => {
+    const blocks = [makeBlock('1', 'bullet', 'first')];
+    const result = unindentBlock(blocks, 'nonexistent');
+    expect(result).toBe(blocks);
+  });
+
+  it('does not mutate original array', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'first', level: 0 },
+      { id: '2', type: 'bullet', content: 'second', level: 1 },
+    ];
+    const originalLevel = blocks[1].level;
+    unindentBlock(blocks, '2');
+    expect(blocks[1].level).toBe(originalLevel);
+  });
+
+  it('preserves other block properties', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'first', level: 0 },
+      { id: '2', type: 'bullet', content: 'second', level: 2 },
+    ];
+    const result = unindentBlock(blocks, '2');
+    expect(result[1].id).toBe('2');
+    expect(result[1].content).toBe('second');
+    expect(result[1].type).toBe('bullet');
+    expect(result[1].level).toBe(1);
+  });
+});
+
+describe('insertBlockAfter with level inheritance', () => {
+  const createBlockWithLevel = (
+    type: BlockType = 'paragraph',
+    content = ''
+  ): Block => ({
+    id: `new-level-${Date.now()}`,
+    type,
+    content,
+  });
+
+  it('inherits level from bullet block', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'item', level: 2 },
+    ];
+    const result = insertBlockAfter(blocks, '1', createBlockWithLevel);
+    expect(result.blocks[1].type).toBe('bullet');
+    expect(result.blocks[1].level).toBe(2);
+  });
+
+  it('creates bullet at level 0 when current block has no level', () => {
+    const blocks = [makeBlock('1', 'bullet', 'item')];
+    const result = insertBlockAfter(blocks, '1', createBlockWithLevel);
+    expect(result.blocks[1].type).toBe('bullet');
+    expect(result.blocks[1].level).toBeUndefined();
+  });
+
+  it('does not inherit level for non-bullet blocks', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'numbered', content: 'item', level: 1 },
+    ];
+    const result = insertBlockAfter(blocks, '1', createBlockWithLevel);
+    expect(result.blocks[1].type).toBe('numbered');
+    expect(result.blocks[1].level).toBeUndefined();
+  });
+
+  it('inherits level 1', () => {
+    const blocks: Block[] = [
+      { id: '1', type: 'bullet', content: 'item', level: 1 },
+    ];
+    const result = insertBlockAfter(blocks, '1', createBlockWithLevel);
+    expect(result.blocks[1].level).toBe(1);
   });
 });

@@ -15,6 +15,7 @@ export interface Block {
   id: string;
   type: BlockType;
   content: string;
+  level?: number; // 0, 1, or 2 - only for bullet type
 }
 
 export interface TimeSession {

@@ -30,6 +30,10 @@ interface BlockInputProps {
   isLastBlock?: boolean;
   /** Callback when user types $ prefix and presses Enter in last block */
   onTaskCreate?: (title: string) => void;
+  /** Callback to indent a bullet block (Tab key) */
+  onIndent?: (id: string) => void;
+  /** Callback to unindent a bullet block (Shift+Tab key) */
+  onUnindent?: (id: string) => void;
 }
 
 const wrapperBaseClasses: Partial<Record<BlockType, string>> = {
@@ -77,6 +81,8 @@ export function BlockInput({
   pendingCursorOffset,
   isLastBlock,
   onTaskCreate,
+  onIndent,
+  onUnindent,
 }: BlockInputProps) {
   const inputRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -248,6 +254,9 @@ export function BlockInput({
     // For todo blocks, convert to paragraph (remove checkbox) instead of merge/delete
     if (block.type === 'todo' || block.type === 'todo-checked') {
       onUpdate(block.id, text, 'paragraph');
+    } else if (block.type === 'bullet' && (block.level ?? 0) > 0) {
+      // For indented bullets, unindent first
+      onUnindent?.(block.id);
     } else if (text === '') {
       onBackspace(block.id);
     } else {
@@ -269,8 +278,21 @@ export function BlockInput({
     return true;
   };
 
+  // Handle Tab key for bullet indentation, returns true if handled
+  const handleTabKey = (e: KeyboardEvent<HTMLDivElement>): boolean => {
+    if (block.type !== 'bullet') return false;
+    e.preventDefault();
+    if (e.shiftKey) {
+      onUnindent?.(block.id);
+    } else {
+      onIndent?.(block.id);
+    }
+    return true;
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (handleMetaShortcut(e)) return;
+    if (e.key === 'Tab' && handleTabKey(e)) return;
 
     const sel = window.getSelection();
     const text = inputRef.current?.textContent || '';
@@ -419,7 +441,10 @@ export function BlockInput({
         );
       case 'bullet':
         return (
-          <span className="shrink-0 select-none text-primary w-6 h-6 flex items-center justify-center text-[1.4em] leading-none">
+          <span
+            className="shrink-0 select-none text-primary w-6 h-6 flex items-center justify-center text-[1.4em] leading-none"
+            style={{ marginLeft: (block.level ?? 0) * 24 }}
+          >
             •
           </span>
         );

@@ -863,4 +863,134 @@ describe('BlockInput', () => {
       expect(props.onEnter).toHaveBeenCalled();
     });
   });
+
+  describe('bullet indentation', () => {
+    it('calls onIndent when Tab pressed on bullet block', async () => {
+      const onIndent = vi.fn();
+      const props = createMockProps({ type: 'bullet', content: 'item' });
+      render(<BlockInput {...props} isFocused={true} onIndent={onIndent} />);
+
+      const input = document.querySelector('.block-input');
+      fireEvent.keyDown(input!, { key: 'Tab' });
+
+      expect(onIndent).toHaveBeenCalledWith('test-1');
+    });
+
+    it('calls onUnindent when Shift+Tab pressed on bullet block', async () => {
+      const onUnindent = vi.fn();
+      const props = createMockProps({ type: 'bullet', content: 'item' });
+      render(
+        <BlockInput {...props} isFocused={true} onUnindent={onUnindent} />
+      );
+
+      const input = document.querySelector('.block-input');
+      fireEvent.keyDown(input!, { key: 'Tab', shiftKey: true });
+
+      expect(onUnindent).toHaveBeenCalledWith('test-1');
+    });
+
+    it('does not call onIndent for non-bullet blocks', async () => {
+      const onIndent = vi.fn();
+      const props = createMockProps({ type: 'paragraph', content: 'text' });
+      render(<BlockInput {...props} isFocused={true} onIndent={onIndent} />);
+
+      const input = document.querySelector('.block-input');
+      fireEvent.keyDown(input!, { key: 'Tab' });
+
+      expect(onIndent).not.toHaveBeenCalled();
+    });
+
+    it('does not call onUnindent for non-bullet blocks', async () => {
+      const onUnindent = vi.fn();
+      const props = createMockProps({ type: 'numbered', content: 'item' });
+      render(
+        <BlockInput {...props} isFocused={true} onUnindent={onUnindent} />
+      );
+
+      const input = document.querySelector('.block-input');
+      fireEvent.keyDown(input!, { key: 'Tab', shiftKey: true });
+
+      expect(onUnindent).not.toHaveBeenCalled();
+    });
+
+    it('calls onUnindent when backspace at start of indented bullet', async () => {
+      const onUnindent = vi.fn();
+      const props = createMockProps({ type: 'bullet', content: 'item' });
+      const block = { ...props.block, level: 1 };
+      render(
+        <BlockInput
+          {...props}
+          block={block}
+          isFocused={true}
+          onUnindent={onUnindent}
+        />
+      );
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = 'item';
+
+      // Simulate cursor at start
+      const range = document.createRange();
+      range.setStart(input!, 0);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+
+      fireEvent.keyDown(input!, { key: 'Backspace' });
+
+      expect(onUnindent).toHaveBeenCalledWith('test-1');
+      expect(props.onMerge).not.toHaveBeenCalled();
+    });
+
+    it('calls onMerge when backspace at start of non-indented bullet', async () => {
+      const onUnindent = vi.fn();
+      const props = createMockProps({ type: 'bullet', content: 'item' });
+      render(
+        <BlockInput {...props} isFocused={true} onUnindent={onUnindent} />
+      );
+
+      const input = document.querySelector('.block-input');
+      input!.textContent = 'item';
+
+      // Simulate cursor at start
+      const range = document.createRange();
+      range.setStart(input!, 0);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+
+      fireEvent.keyDown(input!, { key: 'Backspace' });
+
+      expect(onUnindent).not.toHaveBeenCalled();
+      expect(props.onMerge).toHaveBeenCalledWith('test-1');
+    });
+
+    it('renders bullet with indentation based on level', () => {
+      const props = createMockProps({ type: 'bullet', content: 'item' });
+      const block = { ...props.block, level: 2 };
+      render(<BlockInput {...props} block={block} />);
+
+      const bulletSpan = screen.getByText('•');
+      expect(bulletSpan.style.marginLeft).toBe('48px');
+    });
+
+    it('renders bullet at level 1 with correct margin', () => {
+      const props = createMockProps({ type: 'bullet', content: 'item' });
+      const block = { ...props.block, level: 1 };
+      render(<BlockInput {...props} block={block} />);
+
+      const bulletSpan = screen.getByText('•');
+      expect(bulletSpan.style.marginLeft).toBe('24px');
+    });
+
+    it('renders bullet at level 0 with no margin', () => {
+      const props = createMockProps({ type: 'bullet', content: 'item' });
+      render(<BlockInput {...props} />);
+
+      const bulletSpan = screen.getByText('•');
+      expect(bulletSpan.style.marginLeft).toBe('0px');
+    });
+  });
 });

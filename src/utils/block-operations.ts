@@ -1,5 +1,97 @@
 import { Block, BlockType } from '../types';
 
+// Constants for indentation
+export const MAX_INDENT_LEVEL = 2;
+export const INDENT_BLOCK_TYPES: BlockType[] = ['bullet'];
+
+/**
+ * Gets the indentation level of a block.
+ * Returns 0 for blocks without a level property.
+ */
+export function getBlockLevel(block: Block): number {
+  return block.level ?? 0;
+}
+
+/**
+ * Checks if a block can be indented based on validation rules:
+ * - Must be a bullet block
+ * - Cannot exceed MAX_INDENT_LEVEL
+ * - Must have a bullet block before it
+ * - Cannot be more than 1 level deeper than the previous bullet
+ */
+export function canIndentBlock(blocks: Block[], id: string): boolean {
+  const index = blocks.findIndex((b) => b.id === id);
+  if (index < 0) return false;
+
+  const block = blocks[index];
+
+  // Only bullet blocks can be indented
+  if (!INDENT_BLOCK_TYPES.includes(block.type)) return false;
+
+  const currentLevel = getBlockLevel(block);
+
+  // Cannot exceed max level
+  if (currentLevel >= MAX_INDENT_LEVEL) return false;
+
+  // Find previous bullet block
+  let prevBulletLevel = -1;
+  for (let i = index - 1; i >= 0; i--) {
+    if (blocks[i].type === 'bullet') {
+      prevBulletLevel = getBlockLevel(blocks[i]);
+      break;
+    }
+  }
+
+  // Must have a previous bullet
+  if (prevBulletLevel === -1) return false;
+
+  // Cannot indent more than 1 level deeper than previous bullet
+  if (currentLevel >= prevBulletLevel + 1) return false;
+
+  return true;
+}
+
+/**
+ * Indents a block by increasing its level.
+ * Returns unchanged array if indentation is not valid.
+ */
+export function indentBlock(blocks: Block[], id: string): Block[] {
+  if (!canIndentBlock(blocks, id)) return blocks;
+
+  return blocks.map((block) => {
+    if (block.id === id) {
+      return { ...block, level: getBlockLevel(block) + 1 };
+    }
+    return block;
+  });
+}
+
+/**
+ * Unindents a block by decreasing its level.
+ * Returns unchanged array if block is already at level 0.
+ */
+export function unindentBlock(blocks: Block[], id: string): Block[] {
+  const index = blocks.findIndex((b) => b.id === id);
+  if (index < 0) return blocks;
+
+  const block = blocks[index];
+
+  // Only bullet blocks can be unindented
+  if (!INDENT_BLOCK_TYPES.includes(block.type)) return blocks;
+
+  const currentLevel = getBlockLevel(block);
+
+  // Already at base level
+  if (currentLevel <= 0) return blocks;
+
+  return blocks.map((b) => {
+    if (b.id === id) {
+      return { ...b, level: currentLevel - 1 };
+    }
+    return b;
+  });
+}
+
 /**
  * Swaps a block with the previous block in the array.
  * Returns the original array if the block is already first.
@@ -154,7 +246,15 @@ export function insertBlockAfter(
     newType = currentBlock.type === 'todo-checked' ? 'todo' : currentBlock.type;
   }
 
-  const newBlock = createBlock(newType, newBlockContent);
+  let newBlock = createBlock(newType, newBlockContent);
+
+  // Inherit level for bullet blocks
+  if (newType === 'bullet' && currentBlock.type === 'bullet') {
+    const currentLevel = getBlockLevel(currentBlock);
+    if (currentLevel > 0) {
+      newBlock = { ...newBlock, level: currentLevel };
+    }
+  }
 
   // Update current block content if split, then insert new block
   const newBlocks = blocks.map((b) =>

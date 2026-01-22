@@ -17,7 +17,11 @@ import {
 import { BlockInput } from './BlockInput';
 import { TypeSelectionModal } from './TypeSelectionModal';
 import { generateId } from '../utils/markdown';
-import { getNumberedIndex } from '../utils/block-operations';
+import {
+  getNumberedIndex,
+  indentBlock as indentBlockUtil,
+  unindentBlock as unindentBlockUtil,
+} from '../utils/block-operations';
 import {
   formatMinutes,
   computeTimeSpentWithActive,
@@ -387,6 +391,33 @@ export function TaskNotesEditor({
     setPendingTaskTitle(title);
   }, []);
 
+  // Handle indent/unindent for bullet blocks
+  const indentBlock = useCallback(
+    (taskId: string, blockId: string) => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      const newBlocks = indentBlockUtil(task.blocks, blockId);
+      if (newBlocks !== task.blocks) {
+        onUpdateTask(taskId, { blocks: newBlocks });
+      }
+    },
+    [tasks, onUpdateTask]
+  );
+
+  const unindentBlock = useCallback(
+    (taskId: string, blockId: string) => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      const newBlocks = unindentBlockUtil(task.blocks, blockId);
+      if (newBlocks !== task.blocks) {
+        onUpdateTask(taskId, { blocks: newBlocks });
+      }
+    },
+    [tasks, onUpdateTask]
+  );
+
   // Handle task type selection
   const handleTypeSelect = useCallback(
     async (type: TaskType) => {
@@ -492,6 +523,8 @@ export function TaskNotesEditor({
               numberedIndex={getNumberedIndex(task.blocks, blockIndex)}
               isLastBlock={isLastBlock}
               onTaskCreate={(title) => handleTaskCreate(task.id, title)}
+              onIndent={(id) => indentBlock(task.id, id)}
+              onUnindent={(id) => unindentBlock(task.id, id)}
             />
           );
         }

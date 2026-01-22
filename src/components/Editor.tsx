@@ -11,6 +11,8 @@ import {
   mergeBlockWithPrevious as mergeBlockWithPreviousUtil,
   moveBlockDown,
   moveBlockUp,
+  indentBlock as indentBlockUtil,
+  unindentBlock as unindentBlockUtil,
   SplitInfo,
 } from '../utils/block-operations';
 import { generateId } from '../utils/markdown';
@@ -197,6 +199,20 @@ export function Editor({
     [setBlocks]
   );
 
+  const handleIndent = useCallback(
+    (id: string) => {
+      setBlocks((prev) => indentBlockUtil(prev, id));
+    },
+    [setBlocks]
+  );
+
+  const handleUnindent = useCallback(
+    (id: string) => {
+      setBlocks((prev) => unindentBlockUtil(prev, id));
+    },
+    [setBlocks]
+  );
+
   return (
     <div className="w-full">
       {visibleBlocks.map((block) => {
@@ -228,6 +244,8 @@ export function Editor({
                 ? pendingCursorOffset.offset
                 : null
             }
+            onIndent={handleIndent}
+            onUnindent={handleUnindent}
           />
         );
       })}
