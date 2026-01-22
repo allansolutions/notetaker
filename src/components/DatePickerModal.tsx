@@ -12,7 +12,9 @@ function getDaysInMonth(year: number, month: number): number {
 }
 
 function getFirstDayOfMonth(year: number, month: number): number {
-  return new Date(year, month, 1).getDay();
+  // Convert Sunday=0 to Monday=0 based index
+  const day = new Date(year, month, 1).getDay();
+  return (day + 6) % 7;
 }
 
 const MONTH_NAMES = [
@@ -30,7 +32,7 @@ const MONTH_NAMES = [
   'December',
 ];
 
-const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const DAY_NAMES = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 export function DatePickerModal({
   value,
