@@ -47,6 +47,7 @@ export interface ApiTask {
   duration?: number;
   estimate?: number;
   dueDate?: number;
+  blockedReason?: string;
   orderIndex: number;
   createdAt: number;
   updatedAt: number;
@@ -77,6 +78,7 @@ export function apiTaskToTask(
     duration: apiTask.duration,
     estimate: apiTask.estimate,
     dueDate: apiTask.dueDate,
+    blockedReason: apiTask.blockedReason,
     sessions,
     createdAt: apiTask.createdAt,
     updatedAt: apiTask.updatedAt,

@@ -279,8 +279,8 @@ export function AppContent() {
 
     if (!targetTaskId) return;
 
-    // Mark the task as done
-    updateTaskById(targetTaskId, { status: 'done' });
+    // Mark the task as done and clear blockedReason if it was set
+    updateTaskById(targetTaskId, { status: 'done', blockedReason: undefined });
 
     // Navigate based on context: task-detail → spreadsheet, task-notes → stay
     if (currentView === 'task-detail') {

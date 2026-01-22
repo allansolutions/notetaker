@@ -52,12 +52,14 @@ import { DateCell } from './DateCell';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
 import { DragHandleIcon, TrashIcon, PlusIcon } from '../icons';
 import { AddTaskModal, AddTaskData } from '../AddTaskModal';
+import { BlockedReasonModal } from '../BlockedReasonModal';
 
 // Sort order maps for custom sorting
 const STATUS_ORDER: Record<TaskStatus, number> = {
   todo: 0,
   'in-progress': 1,
-  done: 2,
+  blocked: 2,
+  done: 3,
 };
 
 const IMPORTANCE_ORDER: Record<TaskImportance, number> = {
@@ -241,6 +243,11 @@ const defaultFilters: ColumnFilters = {
   dueDate: null,
 };
 
+interface BlockedReasonModalState {
+  isOpen: boolean;
+  taskId: string | null;
+}
+
 export function TaskTable({
   tasks,
   onUpdateTask,
@@ -263,6 +270,8 @@ export function TaskTable({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [internalFilters, setInternalFilters] =
     useState<ColumnFilters>(defaultFilters);
+  const [blockedReasonModal, setBlockedReasonModal] =
+    useState<BlockedReasonModalState>({ isOpen: false, taskId: null });
 
   // Use controlled or internal filters
   const isControlled = controlledFilters !== undefined;
@@ -279,6 +288,36 @@ export function TaskTable({
     },
     [filters, isControlled, onFiltersChange]
   );
+
+  // Handle status change - intercept 'blocked' to show reason modal
+  const handleStatusChange = useCallback(
+    (taskId: string, newStatus: TaskStatus) => {
+      if (newStatus === 'blocked') {
+        setBlockedReasonModal({ isOpen: true, taskId });
+      } else {
+        // Clear blockedReason when changing away from blocked
+        onUpdateTask(taskId, { status: newStatus, blockedReason: undefined });
+      }
+    },
+    [onUpdateTask]
+  );
+
+  const handleBlockedReasonSubmit = useCallback(
+    (reason: string) => {
+      if (blockedReasonModal.taskId) {
+        onUpdateTask(blockedReasonModal.taskId, {
+          status: 'blocked',
+          blockedReason: reason,
+        });
+      }
+      setBlockedReasonModal({ isOpen: false, taskId: null });
+    },
+    [blockedReasonModal.taskId, onUpdateTask]
+  );
+
+  const handleBlockedReasonCancel = useCallback(() => {
+    setBlockedReasonModal({ isOpen: false, taskId: null });
+  }, []);
 
   // Compute tasks filtered by all columns except title (for TitleFilter's checkbox list)
   const tasksFilteredByOtherColumns = useMemo(() => {
@@ -353,9 +392,7 @@ export function TaskTable({
         cell: ({ row, getValue }) => (
           <StatusCell
             value={getValue() as TaskStatus}
-            onChange={(value) =>
-              onUpdateTask(row.original.id, { status: value })
-            }
+            onChange={(value) => handleStatusChange(row.original.id, value)}
           />
         ),
         size: 110,
@@ -420,7 +457,7 @@ export function TaskTable({
         },
       }),
     ],
-    [onUpdateTask, onSelectTask]
+    [onUpdateTask, onSelectTask, handleStatusChange]
   );
 
   const table = useReactTable({
@@ -596,6 +633,13 @@ export function TaskTable({
         <AddTaskModal
           onSubmit={handleAddTask}
           onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {blockedReasonModal.isOpen && (
+        <BlockedReasonModal
+          onSubmit={handleBlockedReasonSubmit}
+          onCancel={handleBlockedReasonCancel}
         />
       )}
     </div>

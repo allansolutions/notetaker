@@ -50,7 +50,7 @@ export type TaskType =
   | 'personal'
   | 'fitness';
 
-export type TaskStatus = 'todo' | 'in-progress' | 'done';
+export type TaskStatus = 'todo' | 'in-progress' | 'blocked' | 'done';
 export type TaskImportance = 'high' | 'mid' | 'low';
 export type ViewType =
   | 'spreadsheet'
@@ -71,6 +71,7 @@ export interface Task {
   estimate?: number; // Estimated time in minutes
   sessions?: TimeSession[]; // Log of all work sessions
   dueDate?: number; // Unix timestamp (ms) - optional due date
+  blockedReason?: string; // Reason why task is blocked (required when status is 'blocked')
   createdAt: number;
   updatedAt: number;
 }
@@ -120,6 +121,7 @@ export const TASK_TYPE_OPTIONS: { value: TaskType; label: string }[] = [
 export const TASK_STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: 'todo', label: 'To-do' },
   { value: 'in-progress', label: 'In progress' },
+  { value: 'blocked', label: 'Blocked' },
   { value: 'done', label: 'Done' },
 ];
 

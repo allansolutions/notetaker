@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useMemo } from 'react';
 import {
   TaskType,
   TaskStatus,
@@ -50,6 +51,12 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
   const importanceRef = useRef<HTMLButtonElement>(null!);
   const estimateRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLButtonElement>(null);
+
+  // Filter out 'blocked' status - it only makes sense for existing tasks
+  const addTaskStatusOptions = useMemo(
+    () => TASK_STATUS_OPTIONS.filter((opt) => opt.value !== 'blocked'),
+    []
+  );
 
   const isValid =
     type !== '' &&
@@ -209,7 +216,7 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
               value={status}
               onChange={setStatus}
               onAdvance={() => importanceRef.current?.focus()}
-              options={TASK_STATUS_OPTIONS}
+              options={addTaskStatusOptions}
               placeholder="Select status..."
               triggerRef={statusRef}
               id="add-task-status"
