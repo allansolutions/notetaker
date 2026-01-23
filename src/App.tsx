@@ -27,6 +27,7 @@ import { AuthGuard } from './components/AuthGuard';
 import { MigrationPrompt } from './components/MigrationPrompt';
 import { CommandPalette } from './components/CommandPalette';
 import { TaskFinder } from './components/TaskFinder';
+import { AreaSwitcher } from './components/AreaSwitcher';
 import {
   doesTaskMatchFilters,
   hasActiveFilters,
@@ -931,7 +932,7 @@ export function AppContent() {
       className={`flex min-h-screen ${isResizing ? 'select-none cursor-col-resize' : ''}`}
     >
       <div
-        className={`flex-1 mx-auto py-20 px-24 ${
+        className={`flex-1 mx-auto py-20 px-24 relative ${
           currentView === 'spreadsheet' ||
           currentView === 'archive' ||
           currentView === 'crm-list'
@@ -939,6 +940,13 @@ export function AppContent() {
             : 'max-w-[var(--width-content)]'
         }`}
       >
+        <div className="absolute top-6 right-6">
+          <AreaSwitcher
+            currentView={currentView}
+            onNavigateToTasks={handleBackToSpreadsheet}
+            onNavigateToCrm={handleNavigateToCrm}
+          />
+        </div>
         {renderView()}
       </div>
       <CommandPalette
