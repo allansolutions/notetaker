@@ -6,10 +6,10 @@ import {
   DateRange,
 } from '../../types';
 import { BackButton } from '../BackButton';
-import { TaskNotesEditor } from '../TaskNotesEditor';
+import { TaskDetailsEditor } from '../TaskDetailsEditor';
 import { DateFilterTitle } from '../DateFilterTitle';
 
-interface FullDayNotesViewProps {
+interface FullDayDetailsViewProps {
   tasks: Task[];
   onSelectTask: (id: string) => void;
   onBack: () => void;
@@ -30,7 +30,7 @@ interface FullDayNotesViewProps {
 const noopUpdateTask = (): void => {};
 const noopAddTask = async (): Promise<null> => null;
 
-export function FullDayNotesView({
+export function FullDayDetailsView({
   tasks,
   onSelectTask,
   onBack,
@@ -41,12 +41,12 @@ export function FullDayNotesView({
   dateFilterPreset = 'all',
   dateFilterDate,
   dateFilterRange,
-}: FullDayNotesViewProps) {
+}: FullDayDetailsViewProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-4 mb-6">
         <BackButton onClick={onBack} />
-        <h1 className="text-lg font-semibold text-primary">Task Notes</h1>
+        <h1 className="text-lg font-semibold text-primary">Task Details</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -60,7 +60,7 @@ export function FullDayNotesView({
             No tasks match the current filters.
           </p>
         ) : (
-          <TaskNotesEditor
+          <TaskDetailsEditor
             tasks={tasks}
             onUpdateTask={onUpdateTask}
             onAddTask={onAddTask}

@@ -104,18 +104,18 @@ describe('useUrlRouter', () => {
       );
     });
 
-    it('navigates to notes view', () => {
+    it('navigates to details view', () => {
       const onNavigate = vi.fn();
       const { result } = renderHook(() => useUrlRouter({ onNavigate }));
 
       act(() => {
-        result.current.navigate('full-day-notes');
+        result.current.navigate('full-day-details');
       });
 
       expect(mockPushState).toHaveBeenCalledWith(
-        { view: 'full-day-notes', taskId: null },
+        { view: 'full-day-details', taskId: null },
         '',
-        '/notes'
+        '/details'
       );
     });
 
@@ -246,8 +246,8 @@ describe('useUrlRouter', () => {
       expect(mockReplaceState).not.toHaveBeenCalled();
     });
 
-    it('updates URL for notes view', () => {
-      setLocation('/notes', '');
+    it('updates URL for details view', () => {
+      setLocation('/details', '');
       const onNavigate = vi.fn();
       const { result } = renderHook(() => useUrlRouter({ onNavigate }));
 
@@ -269,9 +269,9 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockReplaceState).toHaveBeenCalledWith(
-        { view: 'full-day-notes', taskId: null },
+        { view: 'full-day-details', taskId: null },
         '',
-        '/notes?date=today'
+        '/details?date=today'
       );
     });
   });
@@ -298,12 +298,12 @@ describe('useUrlRouter', () => {
       const onNavigate = vi.fn();
       const { result } = renderHook(() => useUrlRouter({ onNavigate }));
 
-      setLocation('/notes', '?date=today');
+      setLocation('/details', '?date=today');
       act(() => {
         window.dispatchEvent(new PopStateEvent('popstate'));
       });
 
-      expect(result.current.currentState.view).toBe('full-day-notes');
+      expect(result.current.currentState.view).toBe('full-day-details');
       expect(result.current.currentState.filters.dateFilterPreset).toBe(
         'today'
       );

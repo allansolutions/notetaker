@@ -29,7 +29,7 @@ import {
 import { PencilIcon } from './icons';
 import { useMultiTaskTimeTracking } from '../hooks/useMultiTaskTimeTracking';
 
-interface TaskNotesEditorProps {
+interface TaskDetailsEditorProps {
   tasks: Task[];
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onAddTask: (
@@ -65,7 +65,7 @@ function parseItemId(
 }
 
 // A unified item that can be either a task header or a block
-type NotesItem =
+type DetailsItem =
   | { kind: 'task-header'; task: Task; itemId: string }
   | {
       kind: 'block';
@@ -189,14 +189,14 @@ function TaskHeader({
   );
 }
 
-export function TaskNotesEditor({
+export function TaskDetailsEditor({
   tasks,
   onUpdateTask,
   onAddTask,
   onSelectTask,
   onAddSession,
   onFocusedTaskChange,
-}: TaskNotesEditorProps) {
+}: TaskDetailsEditorProps) {
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
   const [pendingTaskTitle, setPendingTaskTitle] = useState<string | null>(null);
   // Track where the new task should be inserted (task ID to insert after, or null for beginning)
@@ -234,7 +234,7 @@ export function TaskNotesEditor({
 
   // Build a flat list of all items (headers + blocks)
   const items = useMemo(() => {
-    const result: NotesItem[] = [];
+    const result: DetailsItem[] = [];
 
     tasks.forEach((task) => {
       // Task header

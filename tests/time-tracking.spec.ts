@@ -7,13 +7,15 @@ import {
 } from './helpers/auth';
 
 /**
- * Navigate to the full-day notes view from the spreadsheet
+ * Navigate to the full-day details view from the spreadsheet
  */
-async function navigateToFullDayNotes(page: import('@playwright/test').Page) {
-  const notesButton = page.getByRole('button', { name: 'Task Notes' });
-  await notesButton.click();
-  // Wait for the notes view to load - verify the title is visible
-  await expect(page.getByRole('heading', { name: 'Task Notes' })).toBeVisible();
+async function navigateToFullDayDetails(page: import('@playwright/test').Page) {
+  const detailsButton = page.getByRole('button', { name: 'Task Details' });
+  await detailsButton.click();
+  // Wait for the details view to load - verify the title is visible
+  await expect(
+    page.getByRole('heading', { name: 'Task Details' })
+  ).toBeVisible();
 }
 
 // Parse minutes from time display text like "5m / 15m" or "1h 30m / 2h"
@@ -255,7 +257,7 @@ test.describe('Time Tracking', () => {
   });
 });
 
-test.describe('Time Tracking in Notes View', () => {
+test.describe('Time Tracking in Details View', () => {
   test('should show time display when focusing on task block with estimate', async ({
     page,
   }) => {
@@ -282,8 +284,8 @@ test.describe('Time Tracking in Notes View', () => {
     await page.goto('http://localhost:5173');
     await page.waitForSelector('[data-testid="sidebar"]');
 
-    // Navigate to full-day notes
-    await navigateToFullDayNotes(page);
+    // Navigate to full-day details
+    await navigateToFullDayDetails(page);
 
     // Initially no time display should be visible
     await expect(
@@ -322,7 +324,7 @@ test.describe('Time Tracking in Notes View', () => {
     await page.goto('http://localhost:5173');
     await page.waitForSelector('[data-testid="sidebar"]');
 
-    await navigateToFullDayNotes(page);
+    await navigateToFullDayDetails(page);
 
     // Click on the task header (title area)
     const taskHeader = page.locator('[data-testid="task-header-task-1"]');
@@ -352,7 +354,7 @@ test.describe('Time Tracking in Notes View', () => {
     await page.goto('http://localhost:5173');
     await page.waitForSelector('[data-testid="sidebar"]');
 
-    await navigateToFullDayNotes(page);
+    await navigateToFullDayDetails(page);
 
     // Click on the block content
     const taskBlock = page.getByText('Some notes');
@@ -390,7 +392,7 @@ test.describe('Time Tracking in Notes View', () => {
     await page.goto('http://localhost:5173');
     await page.waitForSelector('[data-testid="sidebar"]');
 
-    await navigateToFullDayNotes(page);
+    await navigateToFullDayDetails(page);
 
     // Focus on first task's block
     await page.getByText('First task notes').click();

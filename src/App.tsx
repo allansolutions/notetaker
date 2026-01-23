@@ -18,7 +18,7 @@ import {
 } from './components/views/SpreadsheetView';
 import { AddTaskData } from './components/AddTaskModal';
 import { TaskDetailView } from './components/views/TaskDetailView';
-import { FullDayNotesView } from './components/views/FullDayNotesView';
+import { FullDayDetailsView } from './components/views/FullDayDetailsView';
 import { ArchiveView } from './components/views/ArchiveView';
 import { Sidebar } from './components/Sidebar';
 import { LoginPage } from './components/LoginPage';
@@ -41,7 +41,7 @@ import { getSingleDateFromFilter, startOfDay } from './utils/date-filters';
 // Get initial state from URL before first render
 const initialRouterState = getInitialRouterState();
 
-interface TaskNotesContext {
+interface TaskDetailsContext {
   originalFilters: SpreadsheetFilterState;
   pinnedTaskIds: string[];
 }
@@ -95,14 +95,14 @@ export function AppContent() {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [spreadsheetViewKey, setSpreadsheetViewKey] = useState(0);
   const [visibleTaskIds, setVisibleTaskIds] = useState<string[]>([]);
-  // Tracks which task is focused in the task-notes view (for context-aware commands)
-  const [focusedNotesTaskId, setFocusedNotesTaskId] = useState<string | null>(
-    null
-  );
+  // Tracks which task is focused in the task-details view (for context-aware commands)
+  const [focusedDetailsTaskId, setFocusedDetailsTaskId] = useState<
+    string | null
+  >(null);
 
-  // Task notes context - tracks filter state when navigating to task notes
-  const [taskNotesContext, setTaskNotesContext] =
-    useState<TaskNotesContext | null>(null);
+  // Task details context - tracks filter state when navigating to task details
+  const [taskDetailsContext, setTaskDetailsContext] =
+    useState<TaskDetailsContext | null>(null);
   // Return filters - filters to apply when returning to spreadsheet from task notes
   const [returnFilters, setReturnFilters] =
     useState<SpreadsheetFilterState | null>(null);
@@ -126,8 +126,8 @@ export function AppContent() {
         setReturnFilters(newFilterState);
         setSpreadsheetViewKey((prev) => prev + 1);
       }
-      // Clear task notes context when navigating via browser back/forward
-      setTaskNotesContext(null);
+      // Clear task details context when navigating via browser back/forward
+      setTaskDetailsContext(null);
     },
     []
   );
@@ -198,17 +198,17 @@ export function AppContent() {
   const handleBackToSpreadsheet = useCallback(() => {
     setCurrentView('spreadsheet');
     setSelectedTaskId(null);
-    setFocusedNotesTaskId(null);
+    setFocusedDetailsTaskId(null);
     // Restore filters when going back to spreadsheet
     // If returnFilters is already set (from creating out-of-filter task), use those
-    // Otherwise restore the original filters from task notes context
-    if (!returnFilters && taskNotesContext) {
-      setReturnFilters(taskNotesContext.originalFilters);
+    // Otherwise restore the original filters from task details context
+    if (!returnFilters && taskDetailsContext) {
+      setReturnFilters(taskDetailsContext.originalFilters);
     }
-    // Clear task notes context when going back
-    setTaskNotesContext(null);
+    // Clear task details context when going back
+    setTaskDetailsContext(null);
     router.navigate('spreadsheet');
-  }, [returnFilters, taskNotesContext, router]);
+  }, [returnFilters, taskDetailsContext, router]);
 
   useEffect(() => {
     if (currentView !== 'spreadsheet' && isAddTaskModalOpen) {
@@ -216,15 +216,15 @@ export function AppContent() {
     }
   }, [currentView, isAddTaskModalOpen]);
 
-  const handleNavigateToFullDayNotes = useCallback(
+  const handleNavigateToFullDayDetails = useCallback(
     (filterState: SpreadsheetFilterState, visibleTaskIds: string[]) => {
-      // Store context for filtering tasks in notes view
-      setTaskNotesContext({
+      // Store context for filtering tasks in details view
+      setTaskDetailsContext({
         originalFilters: filterState,
         pinnedTaskIds: visibleTaskIds,
       });
-      setCurrentView('full-day-notes');
-      router.navigate('full-day-notes');
+      setCurrentView('full-day-details');
+      router.navigate('full-day-details');
     },
     [router]
   );
@@ -244,18 +244,18 @@ export function AppContent() {
     [tasks]
   );
 
-  const handleCommandNavigateToTaskNotes = useCallback(() => {
-    if (currentView === 'full-day-notes') return;
+  const handleCommandNavigateToTaskDetails = useCallback(() => {
+    if (currentView === 'full-day-details') return;
     const fallbackVisibleTaskIds = activeTasks
       .filter((task) => doesTaskMatchFilters(task, spreadsheetFilterState))
       .map((task) => task.id);
     const nextVisibleTaskIds =
       visibleTaskIds.length > 0 ? visibleTaskIds : fallbackVisibleTaskIds;
-    handleNavigateToFullDayNotes(spreadsheetFilterState, nextVisibleTaskIds);
+    handleNavigateToFullDayDetails(spreadsheetFilterState, nextVisibleTaskIds);
   }, [
     activeTasks,
     currentView,
-    handleNavigateToFullDayNotes,
+    handleNavigateToFullDayDetails,
     spreadsheetFilterState,
     visibleTaskIds,
   ]);
@@ -273,8 +273,8 @@ export function AppContent() {
     let targetTaskId: string | null = null;
     if (currentView === 'task-detail') {
       targetTaskId = selectedTaskId;
-    } else if (currentView === 'full-day-notes') {
-      targetTaskId = focusedNotesTaskId;
+    } else if (currentView === 'full-day-details') {
+      targetTaskId = focusedDetailsTaskId;
     }
 
     if (!targetTaskId) return;
@@ -282,14 +282,14 @@ export function AppContent() {
     // Mark the task as done and clear blockedReason if it was set
     updateTaskById(targetTaskId, { status: 'done', blockedReason: undefined });
 
-    // Navigate based on context: task-detail → spreadsheet, task-notes → stay
+    // Navigate based on context: task-detail → spreadsheet, task-details → stay
     if (currentView === 'task-detail') {
       handleBackToSpreadsheet();
     }
   }, [
     currentView,
     selectedTaskId,
-    focusedNotesTaskId,
+    focusedDetailsTaskId,
     updateTaskById,
     handleBackToSpreadsheet,
   ]);
@@ -298,7 +298,7 @@ export function AppContent() {
   const applyFilterState = useCallback(
     (nextFilterState: SpreadsheetFilterState) => {
       setSpreadsheetFilterState(nextFilterState);
-      setTaskNotesContext((prev) => {
+      setTaskDetailsContext((prev) => {
         if (!prev) return prev;
         return { ...prev, originalFilters: nextFilterState };
       });
@@ -507,10 +507,10 @@ export function AppContent() {
         onExecute: () => handleCommandSetPreset('this-week'),
       },
       {
-        id: 'view-task-notes',
-        label: 'Task: Notes',
-        keywords: ['notes', 'full day', 'view'],
-        onExecute: handleCommandNavigateToTaskNotes,
+        id: 'view-task-details',
+        label: 'Task: Details',
+        keywords: ['details', 'full day', 'view'],
+        onExecute: handleCommandNavigateToTaskDetails,
       },
       {
         id: 'task-new',
@@ -524,7 +524,7 @@ export function AppContent() {
         keywords: ['complete', 'finish', 'done', 'mark'],
         shouldShow: () =>
           (currentView === 'task-detail' && selectedTaskId !== null) ||
-          (currentView === 'full-day-notes' && focusedNotesTaskId !== null),
+          (currentView === 'full-day-details' && focusedDetailsTaskId !== null),
         onExecute: handleCommandMarkDone,
       },
       {
@@ -556,13 +556,13 @@ export function AppContent() {
       router,
       handleCommandSetPreset,
       handleCommandClearFilters,
-      handleCommandNavigateToTaskNotes,
+      handleCommandNavigateToTaskDetails,
       handleCommandNewTask,
       handleCommandMarkDone,
       handleCommandSetTypeFilter,
       handleNavigateToArchive,
       selectedTaskId,
-      focusedNotesTaskId,
+      focusedDetailsTaskId,
     ]
   );
 
@@ -609,15 +609,15 @@ export function AppContent() {
         insertAtIndex
       );
 
-      // If we're in task notes with active filters, check if the new task matches
-      if (newTask && taskNotesContext) {
-        const hasFilters = hasActiveFilters(taskNotesContext.originalFilters);
+      // If we're in task details with active filters, check if the new task matches
+      if (newTask && taskDetailsContext) {
+        const hasFilters = hasActiveFilters(taskDetailsContext.originalFilters);
         const matchesFilters = hasFilters
-          ? doesTaskMatchFilters(newTask, taskNotesContext.originalFilters)
+          ? doesTaskMatchFilters(newTask, taskDetailsContext.originalFilters)
           : true;
 
-        // Always pin the new task so it shows immediately in notes view.
-        setTaskNotesContext((prev) => {
+        // Always pin the new task so it shows immediately in details view.
+        setTaskDetailsContext((prev) => {
           if (!prev) return prev;
           return {
             ...prev,
@@ -635,7 +635,7 @@ export function AppContent() {
                 type: 'title-enhanced',
                 searchText: '',
                 selectedTaskIds: new Set([
-                  ...(taskNotesContext?.pinnedTaskIds ?? []),
+                  ...(taskDetailsContext?.pinnedTaskIds ?? []),
                   newTask.id,
                 ]),
               },
@@ -652,7 +652,7 @@ export function AppContent() {
 
       return newTask;
     },
-    [addTask, tasks, taskNotesContext, spreadsheetFilterState]
+    [addTask, tasks, taskDetailsContext, spreadsheetFilterState]
   );
 
   const selectedTask = selectedTaskId
@@ -674,17 +674,17 @@ export function AppContent() {
     }
   }, [isLoadingTasks, currentView, selectedTaskId, selectedTask, router]);
 
-  // Filter tasks for task notes view based on pinned task IDs
+  // Filter tasks for task details view based on pinned task IDs
   // Excludes done tasks so they disappear when marked complete
-  const filteredTasksForNotes = useMemo(() => {
+  const filteredTasksForDetails = useMemo(() => {
     const baseTasks =
-      taskNotesContext && taskNotesContext.pinnedTaskIds.length > 0
-        ? tasks.filter((t) => taskNotesContext.pinnedTaskIds.includes(t.id))
+      taskDetailsContext && taskDetailsContext.pinnedTaskIds.length > 0
+        ? tasks.filter((t) => taskDetailsContext.pinnedTaskIds.includes(t.id))
         : tasks;
     return baseTasks
       .filter((task) => task.status !== 'done')
       .filter((task) => doesTaskMatchFilters(task, spreadsheetFilterState));
-  }, [tasks, taskNotesContext, spreadsheetFilterState]);
+  }, [tasks, taskDetailsContext, spreadsheetFilterState]);
 
   // Handle clearing return filters after they've been applied
   const handleClearReturnFilters = useCallback(() => {
@@ -795,21 +795,23 @@ export function AppContent() {
             onBack={handleBackToSpreadsheet}
           />
         );
-      case 'full-day-notes':
+      case 'full-day-details':
         return (
-          <FullDayNotesView
-            tasks={filteredTasksForNotes}
+          <FullDayDetailsView
+            tasks={filteredTasksForDetails}
             onSelectTask={handleSelectTask}
             onBack={handleBackToSpreadsheet}
             onUpdateTask={updateTaskById}
             onAddTask={handleInlineTaskCreate}
             onAddSession={addSession}
-            onFocusedTaskChange={setFocusedNotesTaskId}
+            onFocusedTaskChange={setFocusedDetailsTaskId}
             dateFilterPreset={
-              taskNotesContext?.originalFilters.dateFilterPreset
+              taskDetailsContext?.originalFilters.dateFilterPreset
             }
-            dateFilterDate={taskNotesContext?.originalFilters.dateFilterDate}
-            dateFilterRange={taskNotesContext?.originalFilters.dateFilterRange}
+            dateFilterDate={taskDetailsContext?.originalFilters.dateFilterDate}
+            dateFilterRange={
+              taskDetailsContext?.originalFilters.dateFilterRange
+            }
           />
         );
       case 'archive':
@@ -825,7 +827,7 @@ export function AppContent() {
         );
       case 'spreadsheet':
       default: {
-        // Use returnFilters if set (navigating back from task notes),
+        // Use returnFilters if set (navigating back from task details),
         // otherwise use current spreadsheetFilterState (preserves URL filters on initial load)
         const initialFilters = returnFilters ?? spreadsheetFilterState;
         if (returnFilters) {
@@ -843,7 +845,7 @@ export function AppContent() {
             onAddTask={handleAddTask}
             isAddTaskModalOpen={isAddTaskModalOpen}
             onAddTaskModalOpenChange={setIsAddTaskModalOpen}
-            onNavigateToFullDayNotes={handleNavigateToFullDayNotes}
+            onNavigateToFullDayDetails={handleNavigateToFullDayDetails}
             onNavigateToArchive={handleNavigateToArchive}
             initialFilters={initialFilters}
             onFilterStateChange={handleFilterStateChange}

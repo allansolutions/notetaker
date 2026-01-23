@@ -54,13 +54,13 @@ vi.mock('./components/Sidebar', () => ({
 
 type SpreadsheetViewMockProps = {
   tasks: Task[];
-  onNavigateToFullDayNotes: (
+  onNavigateToFullDayDetails: (
     filterState: SpreadsheetFilterState,
     visibleTaskIds: string[]
   ) => void;
 };
 
-type FullDayNotesViewMockProps = {
+type FullDayDetailsViewMockProps = {
   tasks: Task[];
   onAddTask?: (
     title: string,
@@ -74,10 +74,10 @@ vi.mock('./components/views/SpreadsheetView', async () => {
   return {
     SpreadsheetView: ({
       tasks,
-      onNavigateToFullDayNotes,
+      onNavigateToFullDayDetails,
     }: SpreadsheetViewMockProps) => {
       React.useEffect(() => {
-        onNavigateToFullDayNotes(
+        onNavigateToFullDayDetails(
           {
             filters: {
               type: null,
@@ -90,16 +90,16 @@ vi.mock('./components/views/SpreadsheetView', async () => {
           },
           tasks.map((task: Task) => task.id)
         );
-      }, [onNavigateToFullDayNotes, tasks]);
+      }, [onNavigateToFullDayDetails, tasks]);
       return <div data-testid="spreadsheet-view" />;
     },
   };
 });
 
-vi.mock('./components/views/FullDayNotesView', () => ({
-  FullDayNotesView: ({ tasks, onAddTask }: FullDayNotesViewMockProps) => (
+vi.mock('./components/views/FullDayDetailsView', () => ({
+  FullDayDetailsView: ({ tasks, onAddTask }: FullDayDetailsViewMockProps) => (
     <div>
-      <div data-testid="notes-count">{tasks.length}</div>
+      <div data-testid="details-count">{tasks.length}</div>
       <button
         type="button"
         onClick={() =>
@@ -117,7 +117,7 @@ vi.mock('./components/views/FullDayNotesView', () => ({
   ),
 }));
 
-describe('AppContent task notes inline creation', () => {
+describe('AppContent task details inline creation', () => {
   beforeEach(() => {
     mockTasks = [createMockTask()];
     addTask.mockReset();
@@ -135,15 +135,15 @@ describe('AppContent task notes inline creation', () => {
   it('shows newly created inline task immediately with no filters', async () => {
     render(<AppContent />);
 
-    await screen.findByTestId('notes-count');
-    expect(screen.getByTestId('notes-count')).toHaveTextContent('1');
+    await screen.findByTestId('details-count');
+    expect(screen.getByTestId('details-count')).toHaveTextContent('1');
 
     fireEvent.click(
       screen.getByRole('button', { name: /create inline task/i })
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('notes-count')).toHaveTextContent('2');
+      expect(screen.getByTestId('details-count')).toHaveTextContent('2');
     });
     expect(screen.getByText('New Task')).toBeInTheDocument();
   });

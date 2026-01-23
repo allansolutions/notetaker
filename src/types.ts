@@ -55,7 +55,7 @@ export type TaskImportance = 'high' | 'mid' | 'low';
 export type ViewType =
   | 'spreadsheet'
   | 'task-detail'
-  | 'full-day-notes'
+  | 'full-day-details'
   | 'archive';
 
 export interface Task {

@@ -42,7 +42,7 @@ interface UseMultiTaskTimeTrackingResult {
 }
 
 /**
- * Time tracking hook for multi-task views like TaskNotesEditor.
+ * Time tracking hook for multi-task views like TaskDetailsEditor.
  * Tracks time against whichever task is currently active (has focus on a block).
  * Handles session switching when focus moves between tasks.
  */

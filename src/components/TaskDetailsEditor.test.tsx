@@ -6,7 +6,7 @@ import {
   waitFor,
   act,
 } from '@testing-library/react';
-import { TaskNotesEditor } from './TaskNotesEditor';
+import { TaskDetailsEditor } from './TaskDetailsEditor';
 import { Task, Block } from '../types';
 
 const createMockTask = (overrides: Partial<Task> = {}): Task => ({
@@ -23,7 +23,7 @@ const createMockTask = (overrides: Partial<Task> = {}): Task => ({
   ...overrides,
 });
 
-describe('TaskNotesEditor', () => {
+describe('TaskDetailsEditor', () => {
   const defaultProps = {
     tasks: [] as Task[],
     onUpdateTask: vi.fn(),
@@ -37,7 +37,7 @@ describe('TaskNotesEditor', () => {
 
   describe('rendering', () => {
     it('renders empty state with no tasks', () => {
-      render(<TaskNotesEditor {...defaultProps} />);
+      render(<TaskDetailsEditor {...defaultProps} />);
       // No tasks means no content rendered
       expect(document.querySelector('.w-full')).toBeInTheDocument();
     });
@@ -47,7 +47,7 @@ describe('TaskNotesEditor', () => {
         createMockTask({ id: 'task-1', title: 'Task One' }),
         createMockTask({ id: 'task-2', title: 'Task Two' }),
       ];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       expect(screen.getByText('Task One')).toBeInTheDocument();
       expect(screen.getByText('Task Two')).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('TaskNotesEditor', () => {
 
     it('renders Untitled for empty title', () => {
       const tasks = [createMockTask({ id: 'task-1', title: '' })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       expect(screen.getByText('Untitled')).toBeInTheDocument();
     });
@@ -65,14 +65,14 @@ describe('TaskNotesEditor', () => {
         { id: 'b1', type: 'paragraph', content: 'Block content' },
       ];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       expect(screen.getByText('Block content')).toBeInTheDocument();
     });
 
     it('renders edit button for each task', () => {
       const tasks = [createMockTask({ id: 'task-1', title: 'My Task' })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       expect(screen.getByLabelText('Edit My Task')).toBeInTheDocument();
     });
@@ -83,7 +83,7 @@ describe('TaskNotesEditor', () => {
       const onSelectTask = vi.fn();
       const tasks = [createMockTask({ id: 'task-1', title: 'My Task' })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onSelectTask={onSelectTask}
@@ -98,7 +98,7 @@ describe('TaskNotesEditor', () => {
       const onUpdateTask = vi.fn();
       const tasks = [createMockTask({ id: 'task-1', title: 'Original' })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onUpdateTask={onUpdateTask}
@@ -119,7 +119,7 @@ describe('TaskNotesEditor', () => {
         { id: 'b1', type: 'paragraph', content: 'First block' },
       ];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       const header = screen.getByTestId('task-header-task-1');
       fireEvent.focus(header);
@@ -134,7 +134,7 @@ describe('TaskNotesEditor', () => {
       const onUpdateTask = vi.fn();
       const tasks = [createMockTask({ id: 'task-1', blocks: [] })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onUpdateTask={onUpdateTask}
@@ -161,7 +161,7 @@ describe('TaskNotesEditor', () => {
       ];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onUpdateTask={onUpdateTask}
@@ -185,7 +185,7 @@ describe('TaskNotesEditor', () => {
       ];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onUpdateTask={onUpdateTask}
@@ -211,7 +211,7 @@ describe('TaskNotesEditor', () => {
       ];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onUpdateTask={onUpdateTask}
@@ -233,7 +233,7 @@ describe('TaskNotesEditor', () => {
     it('shows type modal when typing $ prefix and pressing Enter in last block', () => {
       const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       // Find the last block (which is also the only block)
       const blockInput = document.querySelector('.block-input');
@@ -246,7 +246,7 @@ describe('TaskNotesEditor', () => {
     it('does not show type modal for regular text in last block', () => {
       const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       const blockInput = document.querySelector('.block-input');
       blockInput!.textContent = 'Regular text';
@@ -258,7 +258,7 @@ describe('TaskNotesEditor', () => {
     it('does not show type modal for empty $ prefix', () => {
       const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       const blockInput = document.querySelector('.block-input');
       blockInput!.textContent = '$  ';
@@ -273,7 +273,7 @@ describe('TaskNotesEditor', () => {
         { id: 'b2', type: 'paragraph', content: '' },
       ];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       // Find the first block (not the last)
       const blockInputs = document.querySelectorAll('.block-input');
@@ -291,7 +291,7 @@ describe('TaskNotesEditor', () => {
       const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onAddTask={onAddTask}
@@ -329,7 +329,7 @@ describe('TaskNotesEditor', () => {
       const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onAddTask={onAddTask}
@@ -350,7 +350,7 @@ describe('TaskNotesEditor', () => {
     it('closes type modal on cancel', () => {
       const blocks: Block[] = [{ id: 'b1', type: 'paragraph', content: '' }];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       const blockInput = document.querySelector('.block-input');
       blockInput!.textContent = '$ New task';
@@ -375,7 +375,7 @@ describe('TaskNotesEditor', () => {
         }),
         createMockTask({ id: 'task-2', title: 'Task Two' }),
       ];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       const header2 = screen.getByTestId('task-header-task-2');
       fireEvent.focus(header2);
@@ -392,7 +392,7 @@ describe('TaskNotesEditor', () => {
       const tasks = [
         createMockTask({ id: 'task-1', title: 'Task One', blocks }),
       ];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       const header = screen.getByTestId('task-header-task-1');
       fireEvent.focus(header);
@@ -411,7 +411,7 @@ describe('TaskNotesEditor', () => {
       ];
       const tasks = [createMockTask({ id: 'task-1', blocks })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onFocusedTaskChange={onFocusedTaskChange}
@@ -427,7 +427,7 @@ describe('TaskNotesEditor', () => {
       const onFocusedTaskChange = vi.fn();
       const tasks = [createMockTask({ id: 'task-1', title: 'My Task' })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onFocusedTaskChange={onFocusedTaskChange}
@@ -453,7 +453,7 @@ describe('TaskNotesEditor', () => {
         createMockTask({ id: 'task-2', blocks: blocks2 }),
       ];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onFocusedTaskChange={onFocusedTaskChange}
@@ -471,7 +471,7 @@ describe('TaskNotesEditor', () => {
       const onFocusedTaskChange = vi.fn();
       const tasks = [createMockTask({ id: 'task-1' })];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onFocusedTaskChange={onFocusedTaskChange}
@@ -506,7 +506,7 @@ describe('TaskNotesEditor', () => {
           estimate: 30,
         }),
       ];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       // Time display should NOT be visible initially (no tracking)
       expect(
@@ -529,7 +529,7 @@ describe('TaskNotesEditor', () => {
       const tasks = [
         createMockTask({ id: 'task-1', title: 'Task One', blocks }), // No estimate
       ];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       // Focus on the block
       fireEvent.focus(screen.getByText('Block content'));
@@ -561,7 +561,7 @@ describe('TaskNotesEditor', () => {
           estimate: 60,
         }),
       ];
-      render(<TaskNotesEditor {...defaultProps} tasks={tasks} />);
+      render(<TaskDetailsEditor {...defaultProps} tasks={tasks} />);
 
       // Focus on task 1's block
       fireEvent.focus(screen.getByText('Task 1 block'));
@@ -605,7 +605,7 @@ describe('TaskNotesEditor', () => {
         }),
       ];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onAddSession={onAddSession}
@@ -656,7 +656,7 @@ describe('TaskNotesEditor', () => {
         }),
       ];
       render(
-        <TaskNotesEditor
+        <TaskDetailsEditor
           {...defaultProps}
           tasks={tasks}
           onAddSession={onAddSession}

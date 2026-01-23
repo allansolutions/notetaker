@@ -328,8 +328,8 @@ describe('buildUrl', () => {
     expect(buildUrl('task-detail', 'task-123')).toBe('/task/task-123');
   });
 
-  it('builds notes path', () => {
-    expect(buildUrl('full-day-notes')).toBe('/notes');
+  it('builds details path', () => {
+    expect(buildUrl('full-day-details')).toBe('/details');
   });
 
   it('builds archive path', () => {
@@ -344,12 +344,14 @@ describe('buildUrl', () => {
     expect(buildUrl('spreadsheet', null, state)).toBe('/?date=today');
   });
 
-  it('includes filters for notes view', () => {
+  it('includes filters for details view', () => {
     const state: SpreadsheetFilterState = {
       ...emptyFilterState,
       dateFilterPreset: 'today',
     };
-    expect(buildUrl('full-day-notes', null, state)).toBe('/notes?date=today');
+    expect(buildUrl('full-day-details', null, state)).toBe(
+      '/details?date=today'
+    );
   });
 
   it('does not include filters for task-detail view', () => {
@@ -386,9 +388,9 @@ describe('parseUrl', () => {
     expect(result.taskId).toBe('task-123');
   });
 
-  it('parses notes path', () => {
-    const result = parseUrl('/notes', '');
-    expect(result.view).toBe('full-day-notes');
+  it('parses details path', () => {
+    const result = parseUrl('/details', '');
+    expect(result.view).toBe('full-day-details');
   });
 
   it('parses archive path', () => {

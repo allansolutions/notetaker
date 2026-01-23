@@ -103,9 +103,9 @@ test.describe('Archive View', () => {
     // Click back
     await page.getByRole('button', { name: /back/i }).click();
 
-    // Should be back in spreadsheet - Task Notes button visible
+    // Should be back in spreadsheet - Task Details button visible
     await expect(
-      page.getByRole('button', { name: /task notes/i })
+      page.getByRole('button', { name: /task details/i })
     ).toBeVisible();
     // Active task visible again
     await expect(

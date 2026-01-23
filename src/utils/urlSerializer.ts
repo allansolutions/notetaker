@@ -222,8 +222,8 @@ export function buildUrl(
         path = `/task/${taskId}`;
       }
       break;
-    case 'full-day-notes':
-      path = '/notes';
+    case 'full-day-details':
+      path = '/details';
       break;
     case 'archive':
       path = '/archive';
@@ -235,7 +235,7 @@ export function buildUrl(
   }
 
   // Only add filters for views that use them
-  if (filters && (view === 'spreadsheet' || view === 'full-day-notes')) {
+  if (filters && (view === 'spreadsheet' || view === 'full-day-details')) {
     const params = serializeFiltersToParams(filters);
     const search = params.toString();
     if (search) {
@@ -257,8 +257,8 @@ export function parseUrl(pathname: string, search: string): RouterState {
   };
 
   // Parse path
-  if (pathname === '/notes') {
-    result.view = 'full-day-notes';
+  if (pathname === '/details') {
+    result.view = 'full-day-details';
   } else if (pathname === '/archive') {
     result.view = 'archive';
   } else if (pathname.startsWith('/task/')) {

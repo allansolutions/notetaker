@@ -32,11 +32,11 @@ test.describe('URL-Based Navigation', () => {
       await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
     });
 
-    test('loads notes view from URL', async ({ page }) => {
-      await page.goto('http://localhost:5173/notes');
+    test('loads details view from URL', async ({ page }) => {
+      await page.goto('http://localhost:5173/details');
       await page.waitForSelector('[data-testid="sidebar"]');
 
-      // Should show task notes view
+      // Should show task details view
       await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
     });
 

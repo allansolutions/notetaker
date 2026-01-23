@@ -31,7 +31,7 @@ interface SpreadsheetViewProps {
   onAddTask: (data: AddTaskData) => void;
   isAddTaskModalOpen?: boolean;
   onAddTaskModalOpenChange?: (isOpen: boolean) => void;
-  onNavigateToFullDayNotes: (
+  onNavigateToFullDayDetails: (
     filterState: SpreadsheetFilterState,
     visibleTaskIds: string[]
   ) => void;
@@ -50,7 +50,7 @@ export function SpreadsheetView({
   onAddTask,
   isAddTaskModalOpen,
   onAddTaskModalOpenChange,
-  onNavigateToFullDayNotes,
+  onNavigateToFullDayDetails,
   onNavigateToArchive,
   onVisibleTasksChange,
   initialFilters,
@@ -72,7 +72,7 @@ export function SpreadsheetView({
   // Track visible task IDs for navigation
   const visibleTaskIdsRef = useRef<string[]>([]);
 
-  // Apply initial filters when they change (e.g., returning from task notes)
+  // Apply initial filters when they change (e.g., returning from task details)
   const initialFiltersApplied = useRef(false);
   useEffect(() => {
     if (initialFilters && !initialFiltersApplied.current) {
@@ -109,20 +109,20 @@ export function SpreadsheetView({
     [onVisibleTasksChange]
   );
 
-  const handleNavigateToFullDayNotes = useCallback(() => {
+  const handleNavigateToFullDayDetails = useCallback(() => {
     const filterState: SpreadsheetFilterState = {
       filters,
       dateFilterPreset,
       dateFilterDate,
       dateFilterRange,
     };
-    onNavigateToFullDayNotes(filterState, visibleTaskIdsRef.current);
+    onNavigateToFullDayDetails(filterState, visibleTaskIdsRef.current);
   }, [
     filters,
     dateFilterPreset,
     dateFilterDate,
     dateFilterRange,
-    onNavigateToFullDayNotes,
+    onNavigateToFullDayDetails,
   ]);
 
   return (
@@ -130,11 +130,11 @@ export function SpreadsheetView({
       <div className="flex items-center justify-between mb-6">
         <button
           type="button"
-          onClick={handleNavigateToFullDayNotes}
+          onClick={handleNavigateToFullDayDetails}
           className="text-small text-muted hover:text-primary flex items-center gap-1"
         >
           <DocumentIcon />
-          Task Notes
+          Task Details
         </button>
         <DateFilterMenu
           activePreset={dateFilterPreset}

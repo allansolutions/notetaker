@@ -70,7 +70,7 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
       // Only update URL if current view uses filters
       if (
         currentState.view === 'spreadsheet' ||
-        currentState.view === 'full-day-notes'
+        currentState.view === 'full-day-details'
       ) {
         const url = buildUrl(currentState.view, currentState.taskId, filters);
         window.history.replaceState(
