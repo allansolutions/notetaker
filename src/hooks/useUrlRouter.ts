@@ -13,7 +13,10 @@ export interface UseUrlRouterOptions {
 }
 
 export interface UseUrlRouterResult {
-  navigate: (view: ViewType, params?: { taskId?: string }) => void;
+  navigate: (
+    view: ViewType,
+    params?: { taskId?: string; contactId?: string }
+  ) => void;
   updateFilters: (filters: SpreadsheetFilterState) => void;
   currentState: RouterState;
 }
@@ -41,20 +44,22 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
 
   // Navigate to a new view (pushState)
   const navigate = useCallback(
-    (view: ViewType, params?: { taskId?: string }) => {
+    (view: ViewType, params?: { taskId?: string; contactId?: string }) => {
       const taskId = params?.taskId ?? null;
+      const contactId = params?.contactId ?? null;
 
       // Build URL - include current filters for views that use them
       const filters = filtersRef.current ?? undefined;
-      const url = buildUrl(view, taskId, filters);
+      const url = buildUrl(view, taskId, filters, contactId);
 
       // Update browser history
-      window.history.pushState({ view, taskId }, '', url);
+      window.history.pushState({ view, taskId, contactId }, '', url);
 
       // Update internal state
       const newState: RouterState = {
         view,
         taskId,
+        contactId,
         filters: filters ? { ...filters } : {},
       };
       setCurrentState(newState);
@@ -72,9 +77,18 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
         currentState.view === 'spreadsheet' ||
         currentState.view === 'full-day-details'
       ) {
-        const url = buildUrl(currentState.view, currentState.taskId, filters);
+        const url = buildUrl(
+          currentState.view,
+          currentState.taskId,
+          filters,
+          currentState.contactId
+        );
         window.history.replaceState(
-          { view: currentState.view, taskId: currentState.taskId },
+          {
+            view: currentState.view,
+            taskId: currentState.taskId,
+            contactId: currentState.contactId,
+          },
           '',
           url
         );
@@ -86,7 +100,7 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
         }));
       }
     },
-    [currentState.view, currentState.taskId]
+    [currentState.view, currentState.taskId, currentState.contactId]
   );
 
   // Listen to popstate events (browser back/forward)

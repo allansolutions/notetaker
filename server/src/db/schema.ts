@@ -74,3 +74,61 @@ export const userSettings = sqliteTable('user_settings', {
 
 export type DbUserSettings = typeof userSettings.$inferSelect;
 export type NewDbUserSettings = typeof userSettings.$inferInsert;
+
+// Cross-module entity linking table
+export const entityLinks = sqliteTable('entity_links', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  sourceType: text('source_type').notNull(), // 'task' | 'contact' | 'company' | 'wiki-page'
+  sourceId: text('source_id').notNull(),
+  targetType: text('target_type').notNull(), // 'task' | 'contact' | 'company' | 'wiki-page'
+  targetId: text('target_id').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+export type DbEntityLink = typeof entityLinks.$inferSelect;
+export type NewDbEntityLink = typeof entityLinks.$inferInsert;
+
+// CRM - Companies
+export const companies = sqliteTable('companies', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  street: text('street'),
+  city: text('city'),
+  country: text('country'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export type DbCompany = typeof companies.$inferSelect;
+export type NewDbCompany = typeof companies.$inferInsert;
+
+// CRM - Contacts
+export const contacts = sqliteTable('contacts', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  firstName: text('first_name').notNull(),
+  lastName: text('last_name').notNull(),
+  email: text('email'),
+  phone: text('phone'),
+  linkedIn: text('linked_in'),
+  instagram: text('instagram'),
+  street: text('street'),
+  city: text('city'),
+  country: text('country'),
+  companyId: text('company_id').references(() => companies.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export type DbContact = typeof contacts.$inferSelect;
+export type NewDbContact = typeof contacts.$inferInsert;

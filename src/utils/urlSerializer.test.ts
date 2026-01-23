@@ -373,6 +373,24 @@ describe('buildUrl', () => {
   it('falls back to root when task-detail has no taskId', () => {
     expect(buildUrl('task-detail', null)).toBe('/');
   });
+
+  it('builds crm-list path', () => {
+    expect(buildUrl('crm-list')).toBe('/crm');
+  });
+
+  it('builds crm-new path', () => {
+    expect(buildUrl('crm-new')).toBe('/crm/new');
+  });
+
+  it('builds crm-detail path with contactId', () => {
+    expect(buildUrl('crm-detail', null, undefined, 'contact-123')).toBe(
+      '/crm/contacts/contact-123'
+    );
+  });
+
+  it('falls back to /crm when crm-detail has no contactId', () => {
+    expect(buildUrl('crm-detail', null, undefined, null)).toBe('/crm');
+  });
 });
 
 describe('parseUrl', () => {
@@ -410,6 +428,24 @@ describe('parseUrl', () => {
   it('handles unknown paths as spreadsheet', () => {
     const result = parseUrl('/unknown/path', '');
     expect(result.view).toBe('spreadsheet');
+  });
+
+  it('parses crm-list path', () => {
+    const result = parseUrl('/crm', '');
+    expect(result.view).toBe('crm-list');
+    expect(result.contactId).toBeNull();
+  });
+
+  it('parses crm-new path', () => {
+    const result = parseUrl('/crm/new', '');
+    expect(result.view).toBe('crm-new');
+    expect(result.contactId).toBeNull();
+  });
+
+  it('parses crm-detail path', () => {
+    const result = parseUrl('/crm/contacts/contact-123', '');
+    expect(result.view).toBe('crm-detail');
+    expect(result.contactId).toBe('contact-123');
   });
 });
 

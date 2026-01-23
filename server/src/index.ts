@@ -6,6 +6,8 @@ import { calendarRoutes } from './routes/calendar';
 import { taskRoutes } from './routes/tasks';
 import { settingsRoutes } from './routes/settings';
 import { migrateRoutes } from './routes/migrate';
+import { contactRoutes } from './routes/contacts';
+import { companyRoutes } from './routes/companies';
 import type { Env, Variables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -32,5 +34,7 @@ app.route('/api/calendar', calendarRoutes);
 app.route('/api/tasks', taskRoutes);
 app.route('/api/settings', settingsRoutes);
 app.route('/api/migrate', migrateRoutes);
+app.route('/api/contacts', contactRoutes);
+app.route('/api/companies', companyRoutes);
 
 export default app;

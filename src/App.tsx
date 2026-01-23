@@ -11,6 +11,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { TasksProvider } from './context/TasksContext';
+import { CrmProvider, ContactListView, ContactDetailView } from './modules/crm';
 import { ViewType, TaskType, TASK_TYPE_OPTIONS, DateRange } from './types';
 import {
   SpreadsheetView,
@@ -90,6 +91,9 @@ export function AppContent() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
     initialRouterState.taskId
   );
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(
+    initialRouterState.contactId
+  );
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isTaskFinderOpen, setIsTaskFinderOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
@@ -116,10 +120,12 @@ export function AppContent() {
     (state: {
       view: ViewType;
       taskId: string | null;
+      contactId: string | null;
       filters: Partial<SpreadsheetFilterState>;
     }) => {
       setCurrentView(state.view);
       setSelectedTaskId(state.taskId);
+      setSelectedContactId(state.contactId);
       if (Object.keys(state.filters).length > 0) {
         const newFilterState = routerFiltersToState(state.filters);
         setSpreadsheetFilterState(newFilterState);
@@ -233,6 +239,32 @@ export function AppContent() {
     setCurrentView('archive');
     router.navigate('archive');
   }, [router]);
+
+  // CRM Navigation Handlers
+  const handleNavigateToCrm = useCallback(() => {
+    setCurrentView('crm-list');
+    setSelectedContactId(null);
+    router.navigate('crm-list');
+  }, [router]);
+
+  const handleNavigateToCrmNew = useCallback(() => {
+    setCurrentView('crm-new');
+    setSelectedContactId(null);
+    router.navigate('crm-new');
+  }, [router]);
+
+  const handleSelectContact = useCallback(
+    (contactId: string) => {
+      setSelectedContactId(contactId);
+      setCurrentView('crm-detail');
+      router.navigate('crm-detail', { contactId });
+    },
+    [router]
+  );
+
+  const handleContactSaved = useCallback(() => {
+    handleNavigateToCrm();
+  }, [handleNavigateToCrm]);
 
   // Split tasks into active and archived
   const activeTasks = useMemo(
@@ -544,6 +576,18 @@ export function AppContent() {
         keywords: ['archive', 'completed', 'done', 'tasks'],
         onExecute: handleNavigateToArchive,
       },
+      {
+        id: 'view-crm',
+        label: 'CRM: Contacts',
+        keywords: ['crm', 'contacts', 'people', 'relationships'],
+        onExecute: handleNavigateToCrm,
+      },
+      {
+        id: 'crm-new-contact',
+        label: 'CRM: New Contact',
+        keywords: ['crm', 'contact', 'new', 'create', 'add'],
+        onExecute: handleNavigateToCrmNew,
+      },
       ...TASK_TYPE_OPTIONS.map((option) => ({
         id: `task-type-${option.value}`,
         label: `Type: ${option.label}`,
@@ -561,6 +605,8 @@ export function AppContent() {
       handleCommandMarkDone,
       handleCommandSetTypeFilter,
       handleNavigateToArchive,
+      handleNavigateToCrm,
+      handleNavigateToCrmNew,
       selectedTaskId,
       focusedDetailsTaskId,
     ]
@@ -825,6 +871,30 @@ export function AppContent() {
             onBack={handleBackToSpreadsheet}
           />
         );
+      case 'crm-list':
+        return (
+          <ContactListView
+            onBack={handleBackToSpreadsheet}
+            onNewContact={handleNavigateToCrmNew}
+            onSelectContact={handleSelectContact}
+          />
+        );
+      case 'crm-new':
+        return (
+          <ContactDetailView
+            contactId={null}
+            onBack={handleNavigateToCrm}
+            onSaved={handleContactSaved}
+          />
+        );
+      case 'crm-detail':
+        return (
+          <ContactDetailView
+            contactId={selectedContactId}
+            onBack={handleNavigateToCrm}
+            onSaved={handleContactSaved}
+          />
+        );
       case 'spreadsheet':
       default: {
         // Use returnFilters if set (navigating back from task details),
@@ -862,7 +932,9 @@ export function AppContent() {
     >
       <div
         className={`flex-1 mx-auto py-20 px-24 ${
-          currentView === 'spreadsheet' || currentView === 'archive'
+          currentView === 'spreadsheet' ||
+          currentView === 'archive' ||
+          currentView === 'crm-list'
             ? 'max-w-[var(--width-content-wide)]'
             : 'max-w-[var(--width-content)]'
         }`}
@@ -931,8 +1003,10 @@ function AuthenticatedApp() {
     <ThemeProvider>
       <GoogleAuthProvider>
         <TasksProvider>
-          <MigrationPrompt />
-          <AppContent />
+          <CrmProvider>
+            <MigrationPrompt />
+            <AppContent />
+          </CrmProvider>
         </TasksProvider>
       </GoogleAuthProvider>
     </ThemeProvider>

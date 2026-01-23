@@ -80,7 +80,7 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenCalledWith(
-        { view: 'task-detail', taskId: 'task-456' },
+        { view: 'task-detail', taskId: 'task-456', contactId: null },
         '',
         '/task/task-456'
       );
@@ -98,7 +98,7 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenCalledWith(
-        { view: 'spreadsheet', taskId: null },
+        { view: 'spreadsheet', taskId: null, contactId: null },
         '',
         '/'
       );
@@ -113,7 +113,7 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenCalledWith(
-        { view: 'full-day-details', taskId: null },
+        { view: 'full-day-details', taskId: null, contactId: null },
         '',
         '/details'
       );
@@ -128,7 +128,7 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenCalledWith(
-        { view: 'archive', taskId: null },
+        { view: 'archive', taskId: null, contactId: null },
         '',
         '/archive'
       );
@@ -160,7 +160,7 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenLastCalledWith(
-        { view: 'spreadsheet', taskId: null },
+        { view: 'spreadsheet', taskId: null, contactId: null },
         '',
         '/?date=today&type=admin'
       );
@@ -215,7 +215,7 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockReplaceState).toHaveBeenCalledWith(
-        { view: 'spreadsheet', taskId: null },
+        { view: 'spreadsheet', taskId: null, contactId: null },
         '',
         '/?date=this-week&type=admin&title=search'
       );
@@ -269,7 +269,7 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockReplaceState).toHaveBeenCalledWith(
-        { view: 'full-day-details', taskId: null },
+        { view: 'full-day-details', taskId: null, contactId: null },
         '',
         '/details?date=today'
       );
@@ -290,6 +290,7 @@ describe('useUrlRouter', () => {
       expect(onNavigate).toHaveBeenCalledWith({
         view: 'task-detail',
         taskId: 'task-789',
+        contactId: null,
         filters: {},
       });
     });

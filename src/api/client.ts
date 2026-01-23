@@ -1,4 +1,5 @@
 import type { Task, TimeSession, Block } from '../types';
+import type { Contact, Company } from '../modules/crm/types';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -220,6 +221,158 @@ export const migrateApi = {
     return fetchApi<MigrationResult>('/api/migrate', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  },
+};
+
+// Entity link types
+export type EntityType = 'task' | 'contact' | 'company' | 'wiki-page';
+
+export interface ApiEntityLink {
+  id: string;
+  userId: string;
+  sourceType: EntityType;
+  sourceId: string;
+  targetType: EntityType;
+  targetId: string;
+  createdAt: number;
+}
+
+// Entity link operations
+export const entityLinkApi = {
+  /** Get all links from a source entity */
+  async getFromSource(
+    sourceType: EntityType,
+    sourceId: string
+  ): Promise<ApiEntityLink[]> {
+    const data = await fetchApi<{ links: ApiEntityLink[] }>(
+      `/api/links?sourceType=${sourceType}&sourceId=${sourceId}`
+    );
+    return data.links;
+  },
+
+  /** Get all links to a target entity (backlinks) */
+  async getToTarget(
+    targetType: EntityType,
+    targetId: string
+  ): Promise<ApiEntityLink[]> {
+    const data = await fetchApi<{ links: ApiEntityLink[] }>(
+      `/api/links?targetType=${targetType}&targetId=${targetId}`
+    );
+    return data.links;
+  },
+
+  /** Create a new link between entities */
+  async create(link: {
+    sourceType: EntityType;
+    sourceId: string;
+    targetType: EntityType;
+    targetId: string;
+  }): Promise<ApiEntityLink> {
+    const data = await fetchApi<{ link: ApiEntityLink }>('/api/links', {
+      method: 'POST',
+      body: JSON.stringify(link),
+    });
+    return data.link;
+  },
+
+  /** Delete a link */
+  async delete(id: string): Promise<void> {
+    await fetchApi<{ success: boolean }>(`/api/links/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Contact operations
+export const contactApi = {
+  async getAll(): Promise<Contact[]> {
+    const data = await fetchApi<{ contacts: Contact[] }>('/api/contacts');
+    return data.contacts;
+  },
+
+  async get(id: string): Promise<Contact> {
+    const data = await fetchApi<{ contact: Contact }>(`/api/contacts/${id}`);
+    return data.contact;
+  },
+
+  async create(
+    contact: Omit<Contact, 'id' | 'createdAt' | 'updatedAt' | 'company'> & {
+      newCompanyName?: string;
+    }
+  ): Promise<Contact> {
+    const data = await fetchApi<{ contact: Contact }>('/api/contacts', {
+      method: 'POST',
+      body: JSON.stringify(contact),
+    });
+    return data.contact;
+  },
+
+  async update(
+    id: string,
+    updates: Partial<
+      Omit<Contact, 'id' | 'createdAt' | 'company'> & {
+        newCompanyName?: string;
+      }
+    >
+  ): Promise<Contact> {
+    const data = await fetchApi<{ contact: Contact }>(`/api/contacts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    return data.contact;
+  },
+
+  async delete(id: string): Promise<void> {
+    await fetchApi<{ success: boolean }>(`/api/contacts/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Company operations
+export const companyApi = {
+  async getAll(): Promise<Company[]> {
+    const data = await fetchApi<{ companies: Company[] }>('/api/companies');
+    return data.companies;
+  },
+
+  async search(query: string): Promise<Company[]> {
+    const data = await fetchApi<{ companies: Company[] }>(
+      `/api/companies/search?q=${encodeURIComponent(query)}`
+    );
+    return data.companies;
+  },
+
+  async get(id: string): Promise<Company> {
+    const data = await fetchApi<{ company: Company }>(`/api/companies/${id}`);
+    return data.company;
+  },
+
+  async create(
+    company: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<Company> {
+    const data = await fetchApi<{ company: Company }>('/api/companies', {
+      method: 'POST',
+      body: JSON.stringify(company),
+    });
+    return data.company;
+  },
+
+  async update(
+    id: string,
+    updates: Partial<Omit<Company, 'id' | 'createdAt'>>
+  ): Promise<Company> {
+    const data = await fetchApi<{ company: Company }>(`/api/companies/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    return data.company;
+  },
+
+  async delete(id: string): Promise<void> {
+    await fetchApi<{ success: boolean }>(`/api/companies/${id}`, {
+      method: 'DELETE',
     });
   },
 };

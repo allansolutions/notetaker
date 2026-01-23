@@ -4,6 +4,7 @@ import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
 export interface RouterState {
   view: ViewType;
   taskId: string | null;
+  contactId: string | null;
   filters: Partial<SpreadsheetFilterState>;
 }
 
@@ -210,7 +211,8 @@ export function parseParamsToFilters(
 export function buildUrl(
   view: ViewType,
   taskId?: string | null,
-  filters?: SpreadsheetFilterState
+  filters?: SpreadsheetFilterState,
+  contactId?: string | null
 ): string {
   let path: string;
 
@@ -227,6 +229,19 @@ export function buildUrl(
       break;
     case 'archive':
       path = '/archive';
+      break;
+    case 'crm-list':
+      path = '/crm';
+      break;
+    case 'crm-new':
+      path = '/crm/new';
+      break;
+    case 'crm-detail':
+      if (!contactId) {
+        path = '/crm';
+      } else {
+        path = `/crm/contacts/${contactId}`;
+      }
       break;
     case 'spreadsheet':
     default:
@@ -253,6 +268,7 @@ export function parseUrl(pathname: string, search: string): RouterState {
   const result: RouterState = {
     view: 'spreadsheet',
     taskId: null,
+    contactId: null,
     filters: {},
   };
 
@@ -266,6 +282,16 @@ export function parseUrl(pathname: string, search: string): RouterState {
     if (taskId) {
       result.view = 'task-detail';
       result.taskId = taskId;
+    }
+  } else if (pathname === '/crm') {
+    result.view = 'crm-list';
+  } else if (pathname === '/crm/new') {
+    result.view = 'crm-new';
+  } else if (pathname.startsWith('/crm/contacts/')) {
+    const contactId = pathname.slice(14); // Remove '/crm/contacts/'
+    if (contactId) {
+      result.view = 'crm-detail';
+      result.contactId = contactId;
     }
   }
   // Default: spreadsheet (for '/' or any unmatched path)
