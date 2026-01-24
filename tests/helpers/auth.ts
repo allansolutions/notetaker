@@ -142,6 +142,33 @@ export async function mockAncillaryApis(page: Page): Promise<void> {
       await route.continue();
     }
   });
+
+  // Mock teams API
+  await page.route('**/api/teams/**', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ members: [], invites: [] }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  await page.route('**/api/teams', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ teams: [] }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
 }
 
 /**

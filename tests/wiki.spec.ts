@@ -227,17 +227,17 @@ test.describe('Wiki Module', () => {
     // Wait for app to fully load
     await page.waitForSelector('[data-testid="sidebar"]');
 
-    // Open search with Cmd+P
-    await page.keyboard.press('Meta+p');
+    // Open search with Cmd+K
+    await page.keyboard.press('Meta+k');
 
     // Should show the dialog
     await expect(page.getByRole('dialog')).toBeVisible();
 
     // Type search query
-    await page.getByPlaceholder(/Search tasks and wiki pages/i).fill('meeting');
+    await page.getByPlaceholder(/Search commands, tasks/i).fill('meeting');
 
     // Should show the wiki page in results
     await expect(page.getByText('Meeting Notes')).toBeVisible();
-    await expect(page.getByText('Wiki')).toBeVisible(); // Type indicator
+    await expect(page.getByText('Page')).toBeVisible(); // Type indicator
   });
 });
