@@ -88,3 +88,21 @@ For the wiki, pages would have both concepts:
 For example, call notes could have the category of "admin" because the call was largely about admin topics, while the type would be "call notes."
 
 ---
+
+## 10. Add pending actions queue with manual review workflow
+
+**Status:** pending | **Added:** 2026-01-23
+
+Add the concept of actions—things that are executed that aren't purely triggered by the end user.
+
+As an example, when a Fathom recording ends and that triggers the webhook for our API to handle that, there will often be tasks that can be identified within the content of the call. There should be a convenient mechanism for turning those into real tasks in the task manager. They shouldn't all just appear automatically—there needs to be a manual review step. This would be an action.
+
+Next time you get back to the application, you'll see pending actions. For example, it might show 4 tasks it thinks should be created based on the content of the last call. You can go through and approve those, and then they'll be created.
+
+Key concepts:
+
+- **Actions**: automated suggestions that require manual approval before execution
+- **Pending actions queue**: a place to review and approve/reject suggested actions
+- Future actions could include other automated suggestions beyond task creation
+
+---
