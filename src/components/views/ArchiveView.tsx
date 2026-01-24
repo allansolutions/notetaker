@@ -1,18 +1,9 @@
-import { useState } from 'react';
-import { Task } from '../../types';
+import { useMemo } from 'react';
+import { Task, DateFilterPreset, DateRange } from '../../types';
 import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
 import { BackButton } from '../BackButton';
 import { DateFilterMenu } from '../DateFilterMenu';
-import { useDateFilter } from '../../hooks/useDateFilter';
-
-const DEFAULT_FILTERS: ColumnFilters = {
-  type: null,
-  assignee: null,
-  title: null,
-  status: null,
-  importance: null,
-  dueDate: null,
-};
+import { computePresetCounts } from '../../utils/date-filters';
 
 const noop = (): void => {};
 
@@ -23,6 +14,16 @@ interface ArchiveViewProps {
   onReorder: (activeId: string, overId: string) => void;
   onSelectTask: (id: string) => void;
   onBack: () => void;
+  dateFilterPreset: DateFilterPreset;
+  dateFilterDate: number | null;
+  dateFilterRange: DateRange | null;
+  onDateFilterChange: (
+    preset: DateFilterPreset,
+    date: number | null,
+    range: DateRange | null
+  ) => void;
+  filters: ColumnFilters;
+  onFiltersChange: (filters: ColumnFilters) => void;
 }
 
 export function ArchiveView({
@@ -32,17 +33,36 @@ export function ArchiveView({
   onReorder,
   onSelectTask,
   onBack,
+  dateFilterPreset,
+  dateFilterDate,
+  dateFilterRange,
+  onDateFilterChange,
+  filters,
+  onFiltersChange,
 }: ArchiveViewProps): JSX.Element {
-  const {
-    preset: dateFilterPreset,
-    date: dateFilterDate,
-    range: dateFilterRange,
-    presetCounts,
-    onPresetChange,
-    onDateChange,
-    onRangeChange,
-  } = useDateFilter({ tasks });
-  const [filters, setFilters] = useState<ColumnFilters>(DEFAULT_FILTERS);
+  const presetCounts = useMemo(() => computePresetCounts(tasks), [tasks]);
+
+  const handlePresetChange = (preset: DateFilterPreset) => {
+    const newDate = preset !== 'specific-date' ? null : dateFilterDate;
+    const newRange = preset !== 'date-range' ? null : dateFilterRange;
+    onDateFilterChange(preset, newDate, newRange);
+  };
+
+  const handleDateChange = (date: number | null) => {
+    if (!date) {
+      onDateFilterChange('all', null, null);
+    } else {
+      onDateFilterChange('specific-date', date, null);
+    }
+  };
+
+  const handleRangeChange = (range: DateRange | null) => {
+    if (!range) {
+      onDateFilterChange('all', null, null);
+    } else {
+      onDateFilterChange('date-range', null, range);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -56,9 +76,9 @@ export function ArchiveView({
           selectedDate={dateFilterDate}
           selectedRange={dateFilterRange}
           counts={presetCounts}
-          onPresetChange={onPresetChange}
-          onDateChange={onDateChange}
-          onRangeChange={onRangeChange}
+          onPresetChange={handlePresetChange}
+          onDateChange={handleDateChange}
+          onRangeChange={handleRangeChange}
         />
         <div className="w-24"></div>
       </div>
@@ -77,7 +97,7 @@ export function ArchiveView({
           dateFilterDate={dateFilterDate}
           dateFilterRange={dateFilterRange}
           filters={filters}
-          onFiltersChange={setFilters}
+          onFiltersChange={onFiltersChange}
         />
       )}
     </div>

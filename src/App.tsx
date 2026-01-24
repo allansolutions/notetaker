@@ -32,7 +32,15 @@ import {
   AcceptInvitePage,
   getInviteTokenFromUrl,
 } from './modules/teams/components/AcceptInvitePage';
-import { ViewType, TaskType, TASK_TYPE_OPTIONS, DateRange } from './types';
+import {
+  ViewType,
+  TaskType,
+  TASK_TYPE_OPTIONS,
+  TaskImportance,
+  TASK_IMPORTANCE_OPTIONS,
+  DateRange,
+  DateFilterPreset,
+} from './types';
 import {
   SpreadsheetView,
   SpreadsheetFilterState,
@@ -631,6 +639,32 @@ export function AppContent() {
     [applyFilterState, spreadsheetFilterState]
   );
 
+  const handleDateFilterChange = useCallback(
+    (
+      preset: DateFilterPreset,
+      date: number | null,
+      range: DateRange | null
+    ) => {
+      applyFilterState({
+        ...spreadsheetFilterState,
+        dateFilterPreset: preset,
+        dateFilterDate: date,
+        dateFilterRange: range,
+      });
+    },
+    [applyFilterState, spreadsheetFilterState]
+  );
+
+  const handleColumnFiltersChange = useCallback(
+    (filters: SpreadsheetFilterState['filters']) => {
+      applyFilterState({
+        ...spreadsheetFilterState,
+        filters,
+      });
+    },
+    [applyFilterState, spreadsheetFilterState]
+  );
+
   const getDateFilterCommand = useCallback(
     (query: string) => {
       const parsed = parseDateQuery(query, locale);
@@ -723,6 +757,27 @@ export function AppContent() {
         filters: {
           ...spreadsheetFilterState.filters,
           assignee: { type: 'multiselect', selected: new Set([assigneeId]) },
+        },
+      });
+    },
+    [applyFilterState, spreadsheetFilterState]
+  );
+
+  const handleCommandSetImportanceFilter = useCallback(
+    (importance: TaskImportance) => {
+      const currentImportanceFilter = spreadsheetFilterState.filters.importance;
+      if (
+        currentImportanceFilter?.type === 'multiselect' &&
+        currentImportanceFilter.selected.size === 1 &&
+        currentImportanceFilter.selected.has(importance)
+      ) {
+        return;
+      }
+      applyFilterState({
+        ...spreadsheetFilterState,
+        filters: {
+          ...spreadsheetFilterState.filters,
+          importance: { type: 'multiselect', selected: new Set([importance]) },
         },
       });
     },
@@ -895,6 +950,14 @@ export function AppContent() {
         ],
         onExecute: () => handleCommandSetAssigneeFilter(member.userId),
       })),
+      // Priority/Importance filter commands
+      ...TASK_IMPORTANCE_OPTIONS.map((option) => ({
+        id: `priority-${option.value}`,
+        label: `Priority: ${option.label}`,
+        type: 'command' as const,
+        keywords: ['priority', 'importance', option.label.toLowerCase()],
+        onExecute: () => handleCommandSetImportanceFilter(option.value),
+      })),
     ],
     [
       currentView,
@@ -906,6 +969,7 @@ export function AppContent() {
       handleCommandMarkDone,
       handleCommandSetTypeFilter,
       handleCommandSetAssigneeFilter,
+      handleCommandSetImportanceFilter,
       handleNavigateToArchive,
       handleNavigateToCrm,
       handleNavigateToCrmNew,
@@ -1205,6 +1269,12 @@ export function AppContent() {
             onReorder={reorder}
             onSelectTask={handleSelectTask}
             onBack={handleBackToSpreadsheet}
+            dateFilterPreset={spreadsheetFilterState.dateFilterPreset}
+            dateFilterDate={spreadsheetFilterState.dateFilterDate ?? null}
+            dateFilterRange={spreadsheetFilterState.dateFilterRange ?? null}
+            onDateFilterChange={handleDateFilterChange}
+            filters={spreadsheetFilterState.filters}
+            onFiltersChange={handleColumnFiltersChange}
           />
         );
       case 'crm-list':
