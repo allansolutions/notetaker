@@ -52,6 +52,7 @@ import { DateCell } from './DateCell';
 import { AssigneeCell } from './AssigneeCell';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
 import { DragHandleIcon, TrashIcon, PlusIcon } from '../icons';
+import { useTeam } from '@/modules/teams/context/TeamContext';
 import { AddTaskModal, AddTaskData } from '../AddTaskModal';
 import { BlockedReasonModal } from '../BlockedReasonModal';
 
@@ -72,6 +73,7 @@ const IMPORTANCE_ORDER: Record<TaskImportance, number> = {
 // Filter state type
 export interface ColumnFilters {
   type: FilterValue | null;
+  assignee: FilterValue | null;
   title: FilterValue | null;
   status: FilterValue | null;
   importance: FilterValue | null;
@@ -238,6 +240,7 @@ function SortableRow({ row, onDelete }: SortableRowProps) {
 
 const defaultFilters: ColumnFilters = {
   type: null,
+  assignee: null,
   title: null,
   status: null,
   importance: null,
@@ -265,6 +268,7 @@ export function TaskTable({
   filters: controlledFilters,
   onFiltersChange,
 }: TaskTableProps) {
+  const { members } = useTeam();
   const [internalAddModalOpen, setInternalAddModalOpen] = useState(false);
   const showAddModal = isAddTaskModalOpen ?? internalAddModalOpen;
   const setShowAddModal = onAddTaskModalOpenChange ?? setInternalAddModalOpen;
@@ -337,6 +341,7 @@ export function TaskTable({
       const skipDueDateFilter = dateFilterPreset !== 'all';
       return (
         matchesMultiselect(filters.type, task.type) &&
+        matchesMultiselect(filters.assignee, task.assigneeId ?? '') &&
         matchesMultiselect(filters.status, task.status) &&
         matchesMultiselect(filters.importance, task.importance ?? '') &&
         (skipDueDateFilter || matchesDateFilter(filters.dueDate, task.dueDate))
@@ -345,6 +350,7 @@ export function TaskTable({
   }, [
     tasks,
     filters.type,
+    filters.assignee,
     filters.status,
     filters.importance,
     filters.dueDate,
@@ -501,6 +507,16 @@ export function TaskTable({
     }
   }, [visibleRows, onVisibleTasksChange]);
 
+  // Build assignee options from team members
+  const assigneeOptions = useMemo(() => {
+    const options = members.map((member) => ({
+      value: member.userId,
+      label: member.user.name || member.user.email,
+    }));
+    // Add "Unassigned" option with empty string as value
+    return [{ value: '', label: 'Unassigned' }, ...options];
+  }, [members]);
+
   // Map column IDs to filter config
   const filterConfig: Record<
     string,
@@ -509,25 +525,33 @@ export function TaskTable({
       options?: { value: string; label: string }[];
       filterKey: keyof ColumnFilters;
     }
-  > = {
-    type: {
-      type: 'multiselect',
-      options: TASK_TYPE_OPTIONS,
-      filterKey: 'type',
-    },
-    title: { type: 'title-enhanced', filterKey: 'title' },
-    status: {
-      type: 'multiselect',
-      options: TASK_STATUS_OPTIONS,
-      filterKey: 'status',
-    },
-    importance: {
-      type: 'multiselect',
-      options: TASK_IMPORTANCE_OPTIONS,
-      filterKey: 'importance',
-    },
-    dueDate: { type: 'date', filterKey: 'dueDate' },
-  };
+  > = useMemo(
+    () => ({
+      type: {
+        type: 'multiselect',
+        options: TASK_TYPE_OPTIONS,
+        filterKey: 'type',
+      },
+      assigneeId: {
+        type: 'multiselect',
+        options: assigneeOptions,
+        filterKey: 'assignee',
+      },
+      title: { type: 'title-enhanced', filterKey: 'title' },
+      status: {
+        type: 'multiselect',
+        options: TASK_STATUS_OPTIONS,
+        filterKey: 'status',
+      },
+      importance: {
+        type: 'multiselect',
+        options: TASK_IMPORTANCE_OPTIONS,
+        filterKey: 'importance',
+      },
+      dueDate: { type: 'date', filterKey: 'dueDate' },
+    }),
+    [assigneeOptions]
+  );
 
   // Prepare available tasks for title filter (filtered by other columns)
   const availableTasksForTitleFilter = useMemo(

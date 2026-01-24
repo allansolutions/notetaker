@@ -25,7 +25,7 @@ import {
   useWiki,
   type WikiPage,
 } from './modules/wiki';
-import { TeamProvider } from './modules/teams/context/TeamContext';
+import { TeamProvider, useTeam } from './modules/teams/context/TeamContext';
 import { TeamSwitcher } from './modules/teams/components/TeamSwitcher';
 import { TeamSettingsModal } from './modules/teams/components/TeamSettingsModal';
 import {
@@ -100,6 +100,7 @@ function createEmptyFilterState(): SpreadsheetFilterState {
   return {
     filters: {
       type: null,
+      assignee: null,
       title: null,
       status: null,
       importance: null,
@@ -267,6 +268,7 @@ export function AppContent() {
   const { events: calendarEvents } = useCalendarEvents();
   const { pages } = useWiki();
   const { contacts } = useCrm();
+  const { members } = useTeam();
   const { searchTasks } = useTaskSearchIndex(tasks);
 
   // Initialize view and filter state from URL
@@ -706,6 +708,27 @@ export function AppContent() {
     [applyFilterState, spreadsheetFilterState]
   );
 
+  const handleCommandSetAssigneeFilter = useCallback(
+    (assigneeId: string) => {
+      const currentAssigneeFilter = spreadsheetFilterState.filters.assignee;
+      if (
+        currentAssigneeFilter?.type === 'multiselect' &&
+        currentAssigneeFilter.selected.size === 1 &&
+        currentAssigneeFilter.selected.has(assigneeId)
+      ) {
+        return;
+      }
+      applyFilterState({
+        ...spreadsheetFilterState,
+        filters: {
+          ...spreadsheetFilterState.filters,
+          assignee: { type: 'multiselect', selected: new Set([assigneeId]) },
+        },
+      });
+    },
+    [applyFilterState, spreadsheetFilterState]
+  );
+
   const handleCommandClearFilters = useCallback(() => {
     const emptyFilters = createEmptyFilterState();
     const isAlreadyEmpty =
@@ -852,6 +875,26 @@ export function AppContent() {
         keywords: ['task', 'type', option.label.toLowerCase()],
         onExecute: () => handleCommandSetTypeFilter(option.value),
       })),
+      // Assignee filter commands
+      {
+        id: 'assignee-unassigned',
+        label: 'Assignee: Unassigned',
+        type: 'command' as const,
+        keywords: ['assignee', 'unassigned', 'filter', 'nobody'],
+        onExecute: () => handleCommandSetAssigneeFilter(''),
+      },
+      ...members.map((member) => ({
+        id: `assignee-${member.userId}`,
+        label: `Assignee: ${member.user.name || member.user.email}`,
+        type: 'command' as const,
+        keywords: [
+          'assignee',
+          'filter',
+          (member.user.name || '').toLowerCase(),
+          member.user.email.toLowerCase(),
+        ],
+        onExecute: () => handleCommandSetAssigneeFilter(member.userId),
+      })),
     ],
     [
       currentView,
@@ -862,6 +905,7 @@ export function AppContent() {
       handleCommandNewTask,
       handleCommandMarkDone,
       handleCommandSetTypeFilter,
+      handleCommandSetAssigneeFilter,
       handleNavigateToArchive,
       handleNavigateToCrm,
       handleNavigateToCrmNew,
@@ -869,6 +913,7 @@ export function AppContent() {
       handleCreateWikiPage,
       selectedTaskId,
       focusedDetailsTaskId,
+      members,
     ]
   );
 
@@ -992,6 +1037,7 @@ export function AppContent() {
           setReturnFilters({
             filters: {
               type: null,
+              assignee: null,
               title: {
                 type: 'title-enhanced',
                 searchText: '',

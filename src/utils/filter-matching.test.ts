@@ -19,6 +19,7 @@ function createMockTask(overrides: Partial<Task> = {}): Task {
 const emptyFilterState: SpreadsheetFilterState = {
   filters: {
     type: null,
+    assignee: null,
     title: null,
     status: null,
     importance: null,
@@ -406,6 +407,7 @@ describe('doesTaskMatchFilters', () => {
       const filterState: SpreadsheetFilterState = {
         filters: {
           type: { type: 'multiselect', selected: new Set(['admin']) },
+          assignee: null,
           title: {
             type: 'title-enhanced',
             searchText: 'Buy',

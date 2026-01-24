@@ -88,6 +88,11 @@ function serializeColumnFilters(
     if (serialized) params.set('type', serialized);
   }
 
+  if (columnFilters.assignee?.type === 'multiselect') {
+    const serialized = serializeMultiselect(columnFilters.assignee.selected);
+    if (serialized) params.set('assignee', serialized);
+  }
+
   if (columnFilters.status?.type === 'multiselect') {
     const serialized = serializeMultiselect(columnFilters.status.selected);
     if (serialized) params.set('status', serialized);
@@ -121,22 +126,12 @@ export function serializeFiltersToParams(
 }
 
 /**
- * Parse URL search params back to filter state
+ * Parse date filter from URL params
  */
-export function parseParamsToFilters(
-  params: URLSearchParams
-): Partial<SpreadsheetFilterState> {
-  const result: Partial<SpreadsheetFilterState> = {
-    filters: {
-      type: null,
-      title: null,
-      status: null,
-      importance: null,
-      dueDate: null,
-    },
-  };
-
-  // Date filter
+function parseDateFilter(
+  params: URLSearchParams,
+  result: Partial<SpreadsheetFilterState>
+): void {
   const dateParam = params.get('date');
   if (dateParam === 'specific') {
     const d = params.get('d');
@@ -155,7 +150,6 @@ export function parseParamsToFilters(
       } as DateRange;
     }
   } else if (dateParam) {
-    // Preset names: today, tomorrow, yesterday, this-week
     const validPresets: DateFilterPreset[] = [
       'today',
       'tomorrow',
@@ -167,13 +161,28 @@ export function parseParamsToFilters(
       result.dateFilterPreset = dateParam as DateFilterPreset;
     }
   }
+}
 
-  // Column filters
+/**
+ * Parse column filters from URL params
+ */
+function parseColumnFilters(
+  params: URLSearchParams,
+  result: Partial<SpreadsheetFilterState>
+): void {
   const typeParam = params.get('type');
   if (typeParam) {
     result.filters!.type = {
       type: 'multiselect',
       selected: parseMultiselect(typeParam),
+    };
+  }
+
+  const assigneeParam = params.get('assignee');
+  if (assigneeParam) {
+    result.filters!.assignee = {
+      type: 'multiselect',
+      selected: parseMultiselect(assigneeParam),
     };
   }
 
@@ -208,6 +217,27 @@ export function parseParamsToFilters(
       value: Number(dueDateParam),
     };
   }
+}
+
+/**
+ * Parse URL search params back to filter state
+ */
+export function parseParamsToFilters(
+  params: URLSearchParams
+): Partial<SpreadsheetFilterState> {
+  const result: Partial<SpreadsheetFilterState> = {
+    filters: {
+      type: null,
+      assignee: null,
+      title: null,
+      status: null,
+      importance: null,
+      dueDate: null,
+    },
+  };
+
+  parseDateFilter(params, result);
+  parseColumnFilters(params, result);
 
   return result;
 }
@@ -329,6 +359,7 @@ export function mergeWithDefaultFilters(
   return {
     filters: {
       type: partial.filters?.type ?? null,
+      assignee: partial.filters?.assignee ?? null,
       title: partial.filters?.title ?? null,
       status: partial.filters?.status ?? null,
       importance: partial.filters?.importance ?? null,

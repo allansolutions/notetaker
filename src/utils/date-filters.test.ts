@@ -560,6 +560,7 @@ describe('getSingleDateFromFilter', () => {
   ): SpreadsheetFilterState => ({
     filters: {
       type: null,
+      assignee: null,
       title: null,
       status: null,
       importance: null,

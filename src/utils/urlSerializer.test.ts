@@ -11,6 +11,7 @@ import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
 const emptyFilterState: SpreadsheetFilterState = {
   filters: {
     type: null,
+    assignee: null,
     title: null,
     status: null,
     importance: null,
@@ -192,6 +193,7 @@ describe('parseParamsToFilters', () => {
     const result = parseParamsToFilters(params);
     expect(result.filters).toEqual({
       type: null,
+      assignee: null,
       title: null,
       status: null,
       importance: null,
@@ -289,6 +291,7 @@ describe('roundtrip serialization', () => {
     const state: SpreadsheetFilterState = {
       filters: {
         type: { type: 'multiselect', selected: new Set(['admin', 'personal']) },
+        assignee: null,
         title: { type: 'text', value: 'my search' },
         status: { type: 'multiselect', selected: new Set(['todo']) },
         importance: { type: 'multiselect', selected: new Set(['high']) },
@@ -455,6 +458,7 @@ describe('mergeWithDefaultFilters', () => {
       dateFilterPreset: 'today' as const,
       filters: {
         type: { type: 'multiselect' as const, selected: new Set(['admin']) },
+        assignee: null,
         title: null,
         status: null,
         importance: null,

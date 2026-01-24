@@ -16,6 +16,7 @@ export interface SpreadsheetFilterState {
 
 const defaultFilters: ColumnFilters = {
   type: null,
+  assignee: null,
   title: null,
   status: null,
   importance: null,

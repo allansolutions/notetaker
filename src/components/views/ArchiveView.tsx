@@ -7,6 +7,7 @@ import { useDateFilter } from '../../hooks/useDateFilter';
 
 const DEFAULT_FILTERS: ColumnFilters = {
   type: null,
+  assignee: null,
   title: null,
   status: null,
   importance: null,

@@ -117,6 +117,7 @@ export function doesTaskMatchFilters(
 
   return (
     matchesMultiselect(filters.type, task.type) &&
+    matchesMultiselect(filters.assignee, task.assigneeId ?? '') &&
     matchesTitleFilter(filters.title, task) &&
     matchesMultiselect(filters.status, task.status) &&
     matchesMultiselect(filters.importance, task.importance ?? '') &&
