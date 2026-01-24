@@ -716,6 +716,9 @@ export function TaskTable({
         e.preventDefault();
         const taskId = navigableTaskIds[activeRowIndex];
         if (taskId) onSelectTask(taskId);
+      } else if (e.key === 'Escape' && activeRowIndex !== null) {
+        e.preventDefault();
+        setActiveRowIndex(null);
       }
     };
 

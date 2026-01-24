@@ -145,6 +145,32 @@ test.describe('Keyboard Row Navigation', () => {
     await expect(page).toHaveURL(/\/task\/task-2$/);
   });
 
+  test('pressing Escape deactivates the active row', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
+    await page.waitForSelector('table');
+
+    await page.click('body');
+
+    // Activate second row
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('[data-testid="task-row-task-2"]')).toHaveClass(
+      /ring-2/
+    );
+
+    // Press Escape - should deactivate
+    await page.keyboard.press('Escape');
+    await expect(
+      page.locator('[data-testid="task-row-task-2"]')
+    ).not.toHaveClass(/ring-2/);
+
+    // Down arrow should now activate first row again
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('[data-testid="task-row-task-1"]')).toHaveClass(
+      /ring-2/
+    );
+  });
+
   test('keyboard navigation does not trigger when input is focused', async ({
     page,
   }) => {
