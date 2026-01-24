@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-- `npm run dev` - Start development server (Vite, runs on port 5173)
-- `npm run build` - Type-check with TypeScript then build for production
-- `npx playwright test` - Run Playwright e2e tests (requires dev server running)
-- `npx playwright test tests/visual.spec.ts` - Run a single test file
+- `bun dev` - Start development server (Vite, runs on port 5173)
+- `bun run build` - Type-check with TypeScript then build for production
+- `bunx playwright test` - Run Playwright e2e tests (requires dev server running)
+- `bunx playwright test tests/visual.spec.ts` - Run a single test file
 
 **Note:** Assume the dev server is always running. Do not start it manually.
 
@@ -49,8 +49,8 @@ The editor uses a block-based architecture where each piece of content is a `Blo
 Every new function, hook, or component MUST have corresponding tests before the code is considered complete. Do not move to the next task until tests exist.
 
 - Tests live alongside source files: `ComponentName.test.tsx` or `hookName.test.ts`
-- Run `npm test` during development to verify tests pass
-- Run `npm run test:coverage` to check coverage before committing
+- Run `bun test` during development to verify tests pass
+- Run `bun run test:coverage` to check coverage before committing
 
 When creating todo items for new features, always include tests as an explicit step:
 

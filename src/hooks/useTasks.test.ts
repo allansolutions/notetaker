@@ -5,23 +5,27 @@ import { TasksProvider, useTasks } from '../context/TasksContext';
 import { AuthProvider } from '../context/AuthContext';
 import * as apiClient from '../api/client';
 
-// Mock the API client
-vi.mock('../api/client', () => ({
-  taskApi: {
-    getAll: vi.fn(),
-    get: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    reorder: vi.fn(),
-  },
-  sessionApi: {
-    getAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-  },
-}));
+// Mock the API client - preserve other exports
+vi.mock('../api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/client')>();
+  return {
+    ...actual,
+    taskApi: {
+      getAll: vi.fn(),
+      get: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      reorder: vi.fn(),
+    },
+    sessionApi: {
+      getAll: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+  };
+});
 
 // Mock the TeamContext
 vi.mock('../modules/teams/context/TeamContext', () => ({
@@ -463,8 +467,9 @@ describe('useTasks', () => {
         wrapper: createWrapper(),
       });
 
+      // Wait for tasks to be loaded
       await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
+        expect(result.current.tasks).toHaveLength(1);
       });
 
       const session = { id: 'temp-1', startTime: 1000, endTime: 2000 };
@@ -473,7 +478,9 @@ describe('useTasks', () => {
         await result.current.addSession('task-1', session);
       });
 
-      expect(result.current.tasks[0].sessions).toHaveLength(1);
+      await waitFor(() => {
+        expect(result.current.tasks[0].sessions).toHaveLength(1);
+      });
     });
   });
 });

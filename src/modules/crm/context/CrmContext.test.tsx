@@ -6,24 +6,28 @@ import { CrmProvider, useCrm } from './CrmContext';
 import { AuthProvider } from '@/context/AuthContext';
 import * as apiClient from '@/api/client';
 
-// Mock the API client
-vi.mock('@/api/client', () => ({
-  contactApi: {
-    getAll: vi.fn(),
-    get: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-  },
-  companyApi: {
-    getAll: vi.fn(),
-    search: vi.fn(),
-    get: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-  },
-}));
+// Mock the API client - preserve other exports
+vi.mock('@/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/client')>();
+  return {
+    ...actual,
+    contactApi: {
+      getAll: vi.fn(),
+      get: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    companyApi: {
+      getAll: vi.fn(),
+      search: vi.fn(),
+      get: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+  };
+});
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch as typeof fetch;
@@ -400,6 +404,11 @@ describe('CrmContext', () => {
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
+      });
+
+      // Wait for initial company fetch to complete
+      await waitFor(() => {
+        expect(apiClient.companyApi.getAll).toHaveBeenCalledTimes(1);
       });
 
       await act(async () => {

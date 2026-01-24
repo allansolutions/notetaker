@@ -7,19 +7,23 @@ import { AuthProvider } from '@/context/AuthContext';
 import * as apiClient from '@/api/client';
 import type { WikiPage } from '../types';
 
-// Mock the API client
-vi.mock('@/api/client', () => ({
-  wikiApi: {
-    getAll: vi.fn(),
-    get: vi.fn(),
-    getBySlug: vi.fn(),
-    getAncestors: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    move: vi.fn(),
-    delete: vi.fn(),
-  },
-}));
+// Mock the API client - preserve other exports
+vi.mock('@/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/client')>();
+  return {
+    ...actual,
+    wikiApi: {
+      getAll: vi.fn(),
+      get: vi.fn(),
+      getBySlug: vi.fn(),
+      getAncestors: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      move: vi.fn(),
+      delete: vi.fn(),
+    },
+  };
+});
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch as typeof fetch;
@@ -593,7 +597,9 @@ describe('WikiContext', () => {
       });
 
       expect(createdPage).toBeNull();
-      expect(result.current.error).toBe('Failed to create page');
+      await waitFor(() => {
+        expect(result.current.error).toBe('Failed to create page');
+      });
     });
 
     it('handles non-Error exception when updating page', async () => {
