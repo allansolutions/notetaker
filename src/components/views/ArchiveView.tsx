@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 import { Task, DateFilterPreset, DateRange } from '../../types';
-import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
+import {
+  TaskTable,
+  ColumnFilters,
+  GroupByMode,
+} from '../spreadsheet/TaskTable';
 import { BackButton } from '../BackButton';
 import { DateFilterMenu } from '../DateFilterMenu';
 import { computePresetCounts } from '../../utils/date-filters';
@@ -24,6 +28,8 @@ interface ArchiveViewProps {
   ) => void;
   filters: ColumnFilters;
   onFiltersChange: (filters: ColumnFilters) => void;
+  groupBy?: GroupByMode;
+  onGroupByChange?: (groupBy: GroupByMode) => void;
 }
 
 export function ArchiveView({
@@ -39,6 +45,8 @@ export function ArchiveView({
   onDateFilterChange,
   filters,
   onFiltersChange,
+  groupBy = 'none',
+  onGroupByChange,
 }: ArchiveViewProps): JSX.Element {
   const presetCounts = useMemo(() => computePresetCounts(tasks), [tasks]);
 
@@ -98,6 +106,8 @@ export function ArchiveView({
           dateFilterRange={dateFilterRange}
           filters={filters}
           onFiltersChange={onFiltersChange}
+          groupBy={groupBy}
+          onGroupByChange={onGroupByChange}
         />
       )}
     </div>

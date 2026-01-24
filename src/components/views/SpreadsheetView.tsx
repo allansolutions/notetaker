@@ -1,6 +1,10 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Task, DateFilterPreset, DateRange } from '../../types';
-import { TaskTable, ColumnFilters } from '../spreadsheet/TaskTable';
+import {
+  TaskTable,
+  ColumnFilters,
+  GroupByMode,
+} from '../spreadsheet/TaskTable';
 import { DocumentIcon, ArchiveIcon } from '../icons';
 import { AddTaskData } from '../AddTaskModal';
 import { DateFilterMenu } from '../DateFilterMenu';
@@ -40,6 +44,8 @@ interface SpreadsheetViewProps {
   onVisibleTasksChange?: (tasks: Task[]) => void;
   initialFilters?: SpreadsheetFilterState;
   onFilterStateChange?: (state: SpreadsheetFilterState) => void;
+  groupBy?: GroupByMode;
+  onGroupByChange?: (groupBy: GroupByMode) => void;
 }
 
 export function SpreadsheetView({
@@ -56,6 +62,8 @@ export function SpreadsheetView({
   onVisibleTasksChange,
   initialFilters,
   onFilterStateChange,
+  groupBy = 'none',
+  onGroupByChange,
 }: SpreadsheetViewProps) {
   const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>(
     initialFilters?.dateFilterPreset ?? 'all'
@@ -203,6 +211,8 @@ export function SpreadsheetView({
         onVisibleTasksChange={handleVisibleTasksChange}
         filters={filters}
         onFiltersChange={setFilters}
+        groupBy={groupBy}
+        onGroupByChange={onGroupByChange}
       />
     </div>
   );

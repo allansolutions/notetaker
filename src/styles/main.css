@@ -172,4 +172,42 @@
     content: attr(data-placeholder);
     @apply text-muted pointer-events-none;
   }
+
+  /* Task table date grouping */
+  .group-header-row td {
+    @apply border-none;
+  }
+
+  .group-container-row {
+    @apply border-l border-r border-border;
+  }
+
+  .group-container-row.group-first {
+    @apply border-t rounded-t-md;
+  }
+
+  .group-container-row.group-first td:first-child {
+    @apply rounded-tl-md;
+  }
+
+  .group-container-row.group-first td:last-child {
+    @apply rounded-tr-md;
+  }
+
+  .group-container-row.group-last {
+    @apply border-b rounded-b-md mb-2;
+  }
+
+  .group-container-row.group-last td:first-child {
+    @apply rounded-bl-md;
+  }
+
+  .group-container-row.group-last td:last-child {
+    @apply rounded-br-md;
+  }
+
+  /* Remove default border-b from grouped rows, use container borders instead */
+  .group-container-row:not(.group-last) {
+    @apply border-b-0;
+  }
 }

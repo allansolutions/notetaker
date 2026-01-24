@@ -44,6 +44,31 @@ The editor uses a block-based architecture where each piece of content is a `Blo
 - Enter - Create new block / enter edit mode when selected
 - Backspace on empty block - Delete block
 
+### Command Palette
+
+The app has a command palette (Cmd+P) that provides quick access to actions. Commands are defined in `src/App.tsx` in the `commandPaletteCommands` useMemo.
+
+**Adding a new command:**
+
+1. Add a command object to the `commandPaletteCommands` array in `src/App.tsx`:
+
+```typescript
+{
+  id: 'unique-command-id',
+  label: 'Category: Action Name',  // e.g., "Filter: Today", "Group: By Date"
+  type: 'command',
+  keywords: ['search', 'terms', 'for', 'matching'],
+  onExecute: () => { /* action */ },
+  shouldShow?: () => boolean,  // Optional: hide command based on context
+}
+```
+
+2. Add any new dependencies to the useMemo dependency array.
+
+**Command naming convention:** Use `Category: Action` format (e.g., "Filter: Today", "Task: New", "Group: By Date").
+
+**Important:** When implementing new features that change the view or take an action that users can trigger via UI, consider whether a command should also be added. Most user-facing actions benefit from having a command palette equivalent for keyboard-driven workflows.
+
 ## Testing Strategy
 
 This project uses a layered testing approach optimized for solo development velocity.

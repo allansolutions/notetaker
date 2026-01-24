@@ -45,6 +45,7 @@ import {
   SpreadsheetView,
   SpreadsheetFilterState,
 } from './components/views/SpreadsheetView';
+import { GroupByMode } from './components/spreadsheet/TaskTable';
 import { AddTaskData } from './components/AddTaskModal';
 import { TaskDetailView } from './components/views/TaskDetailView';
 import { FullDayDetailsView } from './components/views/FullDayDetailsView';
@@ -312,6 +313,7 @@ export function AppContent() {
     useState<SpreadsheetFilterState>(() =>
       routerFiltersToState(initialRouterState.filters)
     );
+  const [groupBy, setGroupBy] = useState<GroupByMode>('none');
 
   // URL Router - manages browser history and URL state
   const handleUrlNavigate = useCallback(
@@ -923,6 +925,20 @@ export function AppContent() {
         keywords: ['wiki', 'page', 'new', 'create', 'add'],
         onExecute: handleCreateWikiPage,
       },
+      {
+        id: 'group-by-date',
+        label: 'Group: By Date',
+        type: 'command',
+        keywords: ['group', 'date', 'organize', 'today', 'week'],
+        onExecute: () => setGroupBy('date'),
+      },
+      {
+        id: 'group-by-none',
+        label: 'Group: None',
+        type: 'command',
+        keywords: ['group', 'none', 'flat', 'list', 'ungroup'],
+        onExecute: () => setGroupBy('none'),
+      },
       ...TASK_TYPE_OPTIONS.map((option) => ({
         id: `task-type-${option.value}`,
         label: `Type: ${option.label}`,
@@ -1275,6 +1291,8 @@ export function AppContent() {
             onDateFilterChange={handleDateFilterChange}
             filters={spreadsheetFilterState.filters}
             onFiltersChange={handleColumnFiltersChange}
+            groupBy={groupBy}
+            onGroupByChange={setGroupBy}
           />
         );
       case 'crm-list':
@@ -1341,6 +1359,8 @@ export function AppContent() {
             initialFilters={initialFilters}
             onFilterStateChange={handleFilterStateChange}
             onVisibleTasksChange={handleVisibleTasksChange}
+            groupBy={groupBy}
+            onGroupByChange={setGroupBy}
           />
         );
       }

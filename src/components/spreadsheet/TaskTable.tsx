@@ -38,6 +38,15 @@ import {
 } from '../../types';
 import { matchesDatePreset } from '../../utils/date-filters';
 import {
+  DateGroup,
+  getDateForGroup,
+  getDateGroup,
+  getGroupLabel,
+  getGroupOrder,
+  getRemainingWeekdayGroups,
+  isWeekdayGroup,
+} from '../../utils/date-groups';
+import {
   matchesMultiselect,
   matchesTextFilter,
   matchesDateFilter,
@@ -51,7 +60,7 @@ import { EstimateCell } from './EstimateCell';
 import { DateCell } from './DateCell';
 import { AssigneeCell } from './AssigneeCell';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
-import { DragHandleIcon, TrashIcon, PlusIcon } from '../icons';
+import { DragHandleIcon, TrashIcon, PlusIcon, GroupIcon } from '../icons';
 import { useTeam } from '@/modules/teams/context/TeamContext';
 import { AddTaskModal, AddTaskData } from '../AddTaskModal';
 import { BlockedReasonModal } from '../BlockedReasonModal';
@@ -124,6 +133,8 @@ function SortIcon({ direction }: { direction: SortDirection | false }) {
   );
 }
 
+export type GroupByMode = 'none' | 'date';
+
 interface TaskTableProps {
   tasks: Task[];
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
@@ -140,6 +151,9 @@ interface TaskTableProps {
   // Optional controlled filter state
   filters?: ColumnFilters;
   onFiltersChange?: (filters: ColumnFilters) => void;
+  // Grouping
+  groupBy?: GroupByMode;
+  onGroupByChange?: (groupBy: GroupByMode) => void;
 }
 
 const columnHelper = createColumnHelper<Task>();
@@ -189,9 +203,16 @@ interface SortableRowProps {
     ReturnType<typeof useReactTable<Task>>['getRowModel']
   >['rows'][number];
   onDelete: () => void;
+  isFirstInGroup?: boolean;
+  isLastInGroup?: boolean;
 }
 
-function SortableRow({ row, onDelete }: SortableRowProps) {
+function SortableRow({
+  row,
+  onDelete,
+  isFirstInGroup,
+  isLastInGroup,
+}: SortableRowProps) {
   const {
     attributes,
     listeners,
@@ -209,12 +230,22 @@ function SortableRow({ row, onDelete }: SortableRowProps) {
   };
 
   const dateClass = getRowDateClass(row.original.dueDate);
+  const isGrouped = isFirstInGroup !== undefined || isLastInGroup !== undefined;
+  const groupClasses = isGrouped
+    ? [
+        'group-container-row',
+        isFirstInGroup && 'group-first',
+        isLastInGroup && 'group-last',
+      ]
+        .filter(Boolean)
+        .join(' ')
+    : 'border-b border-border';
 
   return (
     <tr
       ref={setNodeRef}
       style={style}
-      className={`group hover:bg-hover border-b border-border ${dateClass}`}
+      className={`group hover:bg-hover ${dateClass} ${groupClasses}`}
       data-testid={`task-row-${row.original.id}`}
     >
       <td className="py-1 w-8">
@@ -233,6 +264,35 @@ function SortableRow({ row, onDelete }: SortableRowProps) {
       ))}
       <td className="py-1 w-8">
         <DeleteButton onClick={onDelete} />
+      </td>
+    </tr>
+  );
+}
+
+// Row data types for grouped rendering
+type RowData =
+  | { type: 'header'; group: DateGroup; label: string }
+  | {
+      type: 'task';
+      task: Task;
+      rowIndex: number;
+      isFirstInGroup: boolean;
+      isLastInGroup: boolean;
+    };
+
+function GroupHeaderRow({
+  label,
+  columnCount,
+}: {
+  label: string;
+  columnCount: number;
+}) {
+  return (
+    <tr className="group-header-row">
+      <td colSpan={columnCount + 2} className="pt-4 pb-1 px-2">
+        <span className="text-xs font-semibold text-muted uppercase tracking-wider">
+          {label}
+        </span>
       </td>
     </tr>
   );
@@ -267,6 +327,8 @@ export function TaskTable({
   onVisibleTasksChange,
   filters: controlledFilters,
   onFiltersChange,
+  groupBy = 'none',
+  onGroupByChange,
 }: TaskTableProps) {
   const { members } = useTeam();
   const [internalAddModalOpen, setInternalAddModalOpen] = useState(false);
@@ -369,6 +431,98 @@ export function TaskTable({
       return matchesTextFilter(filters.title, task.title);
     });
   }, [tasksFilteredByOtherColumns, filters.title]);
+
+  // Compute grouped row data for visual grouping
+  const groupedRowData = useMemo((): RowData[] => {
+    const now = new Date();
+    const remainingWeekdays = new Set(getRemainingWeekdayGroups(now));
+
+    // Compute group for each task and sort by group order (preserving original order within groups)
+    const tasksWithGroups = filteredTasks.map((task, originalIndex) => ({
+      task,
+      group: getDateGroup(task.dueDate, now),
+      originalIndex,
+    }));
+
+    // Sort by group order, then by original index to preserve order within groups
+    tasksWithGroups.sort((a, b) => {
+      const groupDiff = getGroupOrder(a.group) - getGroupOrder(b.group);
+      if (groupDiff !== 0) return groupDiff;
+      return a.originalIndex - b.originalIndex;
+    });
+
+    // Build row data with headers
+    const rowData: RowData[] = [];
+    let currentGroup: DateGroup | null = null;
+    let groupStartIndex = 0;
+
+    tasksWithGroups.forEach((item, index) => {
+      const { task, group } = item;
+
+      // Skip weekday groups that are before today
+      const shouldShowGroup =
+        !isWeekdayGroup(group) || remainingWeekdays.has(group);
+
+      if (shouldShowGroup && group !== currentGroup) {
+        // Mark the previous group's last row
+        if (rowData.length > 0) {
+          const lastRow = rowData[rowData.length - 1];
+          if (lastRow.type === 'task') {
+            lastRow.isLastInGroup = true;
+          }
+        }
+
+        // Add header for new group
+        rowData.push({
+          type: 'header',
+          group,
+          label: getGroupLabel(group),
+        });
+        currentGroup = group;
+        groupStartIndex = rowData.length;
+      }
+
+      // Determine if this is first in group
+      const isFirstInGroup =
+        rowData.length === groupStartIndex ||
+        rowData[rowData.length - 1]?.type === 'header';
+
+      rowData.push({
+        type: 'task',
+        task,
+        rowIndex: index,
+        isFirstInGroup,
+        isLastInGroup: false, // Will be updated when next group starts or at end
+      });
+    });
+
+    // Mark the final task as last in group
+    if (rowData.length > 0) {
+      const lastRow = rowData[rowData.length - 1];
+      if (lastRow.type === 'task') {
+        lastRow.isLastInGroup = true;
+      }
+    }
+
+    return rowData;
+  }, [filteredTasks]);
+
+  // Extract sorted task IDs and task-to-group mapping from groupedRowData
+  const { sortedTaskIds, taskGroupMap } = useMemo(() => {
+    const ids: string[] = [];
+    const groupMap = new Map<string, DateGroup>();
+
+    for (const row of groupedRowData) {
+      if (row.type === 'task') {
+        ids.push(row.task.id);
+        // Find the group this task belongs to by looking at previous header
+        const group = getDateGroup(row.task.dueDate, new Date());
+        groupMap.set(row.task.id, group);
+      }
+    }
+
+    return { sortedTaskIds: ids, taskGroupMap: groupMap };
+  }, [groupedRowData]);
 
   const columns = useMemo(
     () => [
@@ -574,11 +728,34 @@ export function TaskTable({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    // When grouping is enabled, handle cross-group drops
+    if (groupBy === 'date') {
+      const activeGroup = taskGroupMap.get(activeId);
+      const overGroup = taskGroupMap.get(overId);
+
+      if (activeGroup && overGroup && activeGroup !== overGroup) {
+        // Get the date for the target group
+        const newDate = getDateForGroup(overGroup);
+
+        if (newDate !== undefined) {
+          // Update the task's dueDate to match the target group
+          onUpdateTask(activeId, { dueDate: newDate });
+        } else {
+          // For past/future/no-date groups, reject the drop entirely
+          // The task stays in its original position
+          return;
+        }
+      }
+    }
+
     // Clear any active sorting so manual ordering takes effect
     setSorting([]);
 
     // Pass IDs directly - the context will find correct indices in the full tasks array
-    onReorder(String(active.id), String(over.id));
+    onReorder(activeId, overId);
   };
 
   const handleAddTask = (data: AddTaskData) => {
@@ -637,6 +814,28 @@ export function TaskTable({
                             }
                           />
                         )}
+                        {header.id === 'dueDate' && onGroupByChange && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onGroupByChange(
+                                groupBy === 'date' ? 'none' : 'date'
+                              )
+                            }
+                            className={`p-0.5 rounded transition-colors ${
+                              groupBy === 'date'
+                                ? 'text-accent'
+                                : 'text-muted opacity-0 group-hover:opacity-50 hover:opacity-100'
+                            }`}
+                            title={
+                              groupBy === 'date'
+                                ? 'Disable grouping'
+                                : 'Group by date'
+                            }
+                          >
+                            <GroupIcon />
+                          </button>
+                        )}
                       </div>
                     </th>
                   );
@@ -646,17 +845,49 @@ export function TaskTable({
             ))}
           </thead>
           <SortableContext
-            items={visibleRows.map((row) => row.id)}
+            items={
+              groupBy === 'date'
+                ? sortedTaskIds
+                : visibleRows.map((row) => row.id)
+            }
             strategy={verticalListSortingStrategy}
           >
             <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <SortableRow
-                  key={row.id}
-                  row={row}
-                  onDelete={() => onDeleteTask(row.original.id)}
-                />
-              ))}
+              {groupBy === 'date'
+                ? groupedRowData.map((rowData) => {
+                    if (rowData.type === 'header') {
+                      return (
+                        <GroupHeaderRow
+                          key={`header-${rowData.group}`}
+                          label={rowData.label}
+                          columnCount={columns.length}
+                        />
+                      );
+                    }
+
+                    // Find the table row for this task
+                    const tableRow = visibleRows.find(
+                      (r) => r.original.id === rowData.task.id
+                    );
+                    if (!tableRow) return null;
+
+                    return (
+                      <SortableRow
+                        key={tableRow.id}
+                        row={tableRow}
+                        onDelete={() => onDeleteTask(tableRow.original.id)}
+                        isFirstInGroup={rowData.isFirstInGroup}
+                        isLastInGroup={rowData.isLastInGroup}
+                      />
+                    );
+                  })
+                : visibleRows.map((row) => (
+                    <SortableRow
+                      key={row.id}
+                      row={row}
+                      onDelete={() => onDeleteTask(row.original.id)}
+                    />
+                  ))}
             </tbody>
           </SortableContext>
         </table>
