@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -205,6 +205,7 @@ interface SortableRowProps {
   onDelete: () => void;
   isFirstInGroup?: boolean;
   isLastInGroup?: boolean;
+  isActive?: boolean;
 }
 
 function SortableRow({
@@ -212,6 +213,7 @@ function SortableRow({
   onDelete,
   isFirstInGroup,
   isLastInGroup,
+  isActive,
 }: SortableRowProps) {
   const {
     attributes,
@@ -240,12 +242,13 @@ function SortableRow({
         .filter(Boolean)
         .join(' ')
     : 'border-b border-border';
+  const activeClass = isActive ? 'ring-2 ring-accent ring-inset' : '';
 
   return (
     <tr
       ref={setNodeRef}
       style={style}
-      className={`group hover:bg-hover ${dateClass} ${groupClasses}`}
+      className={`group hover:bg-hover ${dateClass} ${groupClasses} ${activeClass}`}
       data-testid={`task-row-${row.original.id}`}
     >
       <td className="py-1 w-8">
@@ -339,6 +342,8 @@ export function TaskTable({
     useState<ColumnFilters>(defaultFilters);
   const [blockedReasonModal, setBlockedReasonModal] =
     useState<BlockedReasonModalState>({ isOpen: false, taskId: null });
+  const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   // Use controlled or internal filters
   const isControlled = controlledFilters !== undefined;
@@ -661,6 +666,63 @@ export function TaskTable({
     }
   }, [visibleRows, onVisibleTasksChange]);
 
+  // Get navigable task IDs based on current display order
+  const navigableTaskIds = useMemo(() => {
+    if (groupBy === 'date') {
+      return sortedTaskIds;
+    }
+    return visibleRows.map((row) => row.original.id);
+  }, [groupBy, sortedTaskIds, visibleRows]);
+
+  // Reset active row when visible tasks change
+  useEffect(() => {
+    setActiveRowIndex(null);
+  }, [navigableTaskIds.length, groupBy]);
+
+  // Keyboard navigation - compute next active index for arrow keys
+  const getNextActiveIndex = useCallback(
+    (key: 'ArrowDown' | 'ArrowUp', current: number | null, count: number) => {
+      if (key === 'ArrowDown') {
+        if (current === null) return 0;
+        return current >= count - 1 ? null : current + 1;
+      }
+      // ArrowUp
+      if (current === null) return count - 1;
+      return current <= 0 ? null : current - 1;
+    },
+    []
+  );
+
+  useEffect(() => {
+    const shouldIgnoreKeyEvent = (target: HTMLElement) =>
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable ||
+      target.closest('[role="dialog"]') ||
+      target.closest('[role="listbox"]') ||
+      target.closest('[role="menu"]');
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (shouldIgnoreKeyEvent(e.target as HTMLElement)) return;
+
+      const taskCount = navigableTaskIds.length;
+      if (taskCount === 0) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveRowIndex(getNextActiveIndex(e.key, activeRowIndex, taskCount));
+      } else if (e.key === 'Enter' && activeRowIndex !== null) {
+        e.preventDefault();
+        const taskId = navigableTaskIds[activeRowIndex];
+        if (taskId) onSelectTask(taskId);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [activeRowIndex, navigableTaskIds, onSelectTask, getNextActiveIndex]);
+
   // Build assignee options from team members
   const assigneeOptions = useMemo(() => {
     const options = members.map((member) => ({
@@ -771,7 +833,7 @@ export function TaskTable({
         modifiers={[restrictToVerticalAxis]}
         onDragEnd={handleDragEnd}
       >
-        <table className="w-full text-small table-fixed">
+        <table ref={tableRef} className="w-full text-small table-fixed">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr
@@ -871,6 +933,9 @@ export function TaskTable({
                     );
                     if (!tableRow) return null;
 
+                    // Find the index in navigableTaskIds to check if active
+                    const navIndex = navigableTaskIds.indexOf(rowData.task.id);
+
                     return (
                       <SortableRow
                         key={tableRow.id}
@@ -878,14 +943,16 @@ export function TaskTable({
                         onDelete={() => onDeleteTask(tableRow.original.id)}
                         isFirstInGroup={rowData.isFirstInGroup}
                         isLastInGroup={rowData.isLastInGroup}
+                        isActive={activeRowIndex === navIndex}
                       />
                     );
                   })
-                : visibleRows.map((row) => (
+                : visibleRows.map((row, index) => (
                     <SortableRow
                       key={row.id}
                       row={row}
                       onDelete={() => onDeleteTask(row.original.id)}
+                      isActive={activeRowIndex === index}
                     />
                   ))}
             </tbody>

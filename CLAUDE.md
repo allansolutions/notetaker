@@ -44,6 +44,21 @@ The editor uses a block-based architecture where each piece of content is a `Blo
 - Enter - Create new block / enter edit mode when selected
 - Backspace on empty block - Delete block
 
+### Task List and Archive Views
+
+The main task list (spreadsheet view) and archive view are essentially the same view sharing the `TaskTable` component. They have identical columns, filters, sorting, grouping, and keyboard navigation. The only difference is the data they display:
+
+- **Task List**: Shows tasks with status other than "done"
+- **Archive**: Shows tasks with status "done"
+
+When making UI changes to columns, rows, filters, sorting, or keyboard interactions in either view, those changes automatically apply to both since they share the same underlying component. Keep this in mind when testing—verify changes work correctly in both views.
+
+**Key files:**
+
+- `src/components/spreadsheet/TaskTable.tsx` - Shared table component
+- `src/components/views/SpreadsheetView.tsx` - Main task list wrapper
+- `src/components/views/ArchiveView.tsx` - Archive wrapper
+
 ### Command Palette
 
 The app has a command palette (Cmd+P) that provides quick access to actions. Commands are defined in `src/App.tsx` in the `commandPaletteCommands` useMemo.
