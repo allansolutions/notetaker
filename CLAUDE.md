@@ -6,8 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `bun dev` - Start development server (Vite, runs on port 5173)
 - `bun run build` - Type-check with TypeScript then build for production
-- `bunx playwright test` - Run Playwright e2e tests (requires dev server running)
-- `bunx playwright test tests/visual.spec.ts` - Run a single test file
+- `bun run test` - Run unit tests with Vitest
+- `bunx playwright test` - Run Playwright E2E tests (requires dev server running)
+- `bunx playwright test tests/visual.spec.ts` - Run a single E2E test file
+
+**Important:** Use `bun run test`, NOT `bun test`. The latter invokes Bun's built-in test runner which is incompatible with Vitest APIs.
 
 **Note:** Assume the dev server is always running. Do not start it manually.
 
@@ -28,7 +31,8 @@ The editor uses a block-based architecture where each piece of content is a `Blo
 
 ### Data Flow
 
-- Blocks are persisted to localStorage via `useLocalStorage` hook with 300ms debounce
+- Data is persisted to the database via API calls (`src/api/client.ts`)
+- localStorage is used only for UI preferences (theme, sidebar width) and time tracking session recovery
 - Block type detection happens on input: typing markdown prefixes (like `# `, `- `, `[] `) auto-converts paragraphs
 - List continuation: pressing Enter in a list block creates a new block of the same type; Enter on empty list block converts to paragraph
 
@@ -40,34 +44,47 @@ The editor uses a block-based architecture where each piece of content is a `Blo
 - Enter - Create new block / enter edit mode when selected
 - Backspace on empty block - Delete block
 
-## Testing Requirements
+## Testing Strategy
 
-**This is mandatory, not optional.** The pre-commit hook enforces 80% coverage - code without tests will not commit.
+This project uses a layered testing approach optimized for solo development velocity.
 
-### Unit Tests
+### Layer 1: E2E Tests (High Value)
 
-Every new function, hook, or component MUST have corresponding tests before the code is considered complete. Do not move to the next task until tests exist.
-
-- Tests live alongside source files: `ComponentName.test.tsx` or `hookName.test.ts`
-- Run `bun test` during development to verify tests pass
-- Run `bun run test:coverage` to check coverage before committing
-
-When creating todo items for new features, always include tests as an explicit step:
-
-- "Implement SessionsModal component"
-- "Add tests for SessionsModal component"
-
-### E2E Tests
-
-Update Playwright tests in `tests/*.spec.ts` when making changes to:
+Playwright tests in `tests/*.spec.ts` test real user flows and catch actual user-facing bugs. Update these when making changes to:
 
 - User interactions and keyboard shortcuts
-- DOM structure or CSS class names used as selectors
 - Navigation flows between views
+- Core features (task management, wiki, time tracking)
 
-### Coverage Thresholds
+### Layer 2: Data Integrity Tests (Critical)
 
-The project enforces 80% minimum coverage for statements, branches, functions, and lines. This is checked on every commit. If coverage drops below threshold, add tests before committing.
+Unit tests for code where bugs cause data loss:
+
+- `src/api/client.test.ts` - API client functions
+- `src/hooks/useLocalStorage.test.ts` - localStorage operations
+- `src/hooks/useTimeTracking.test.ts` - Time tracking persistence
+- `src/hooks/useMultiTaskTimeTracking.test.ts` - Multi-task time tracking
+- `src/context/AuthContext.test.tsx` - Authentication
+
+### Layer 3: Pure Utility Tests (Low Maintenance)
+
+Unit tests for pure functions in `src/utils/*.test.ts`. These are stable, fast, and rarely need updating.
+
+### What NOT to Test
+
+Do not add unit tests for:
+
+- UI components (E2E tests cover these better)
+- React context providers (except auth)
+- Hooks that just wire up state (E2E covers behavior)
+- "Renders correctly" assertions
+
+### Running Tests
+
+- `bun run test` - Run unit tests (Vitest)
+- `bunx playwright test` - Run E2E tests (requires dev server)
+
+**Never use `bun test` directly** - it runs Bun's incompatible test runner instead of Vitest.
 
 ## Code Quality
 

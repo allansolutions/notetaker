@@ -17,12 +17,8 @@ interface AreaSwitcherProps {
 }
 
 function getAreaFromView(view: ViewType): Area {
-  if (view === 'crm-list' || view === 'crm-new' || view === 'crm-detail') {
-    return 'crm';
-  }
-  if (view === 'wiki-list' || view === 'wiki-page') {
-    return 'wiki';
-  }
+  if (view.startsWith('crm-')) return 'crm';
+  if (view.startsWith('wiki-')) return 'wiki';
   return 'tasks';
 }
 
@@ -35,12 +31,18 @@ export function AreaSwitcher({
   const currentArea = getAreaFromView(currentView);
 
   const handleValueChange = (value: Area) => {
-    if (value === 'tasks' && currentArea !== 'tasks') {
-      onNavigateToTasks();
-    } else if (value === 'crm' && currentArea !== 'crm') {
-      onNavigateToCrm();
-    } else if (value === 'wiki' && currentArea !== 'wiki') {
-      onNavigateToWiki();
+    if (value === currentArea) return;
+
+    switch (value) {
+      case 'tasks':
+        onNavigateToTasks();
+        break;
+      case 'crm':
+        onNavigateToCrm();
+        break;
+      case 'wiki':
+        onNavigateToWiki();
+        break;
     }
   };
 

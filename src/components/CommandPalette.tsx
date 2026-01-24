@@ -257,26 +257,26 @@ export function CommandPalette({
                   className={`w-full text-left px-4 py-2 text-sm transition-colors ${commandClass}`}
                 >
                   <div className="flex items-center gap-2">
-                    {command.icon ? (
+                    {command.icon && (
                       <span className="text-sm shrink-0">{command.icon}</span>
-                    ) : null}
+                    )}
                     <span className="font-medium text-sm text-primary truncate">
                       {command.label}
                     </span>
-                    {command.meta ? (
+                    {command.meta && (
                       <span className="text-xs text-muted-foreground truncate">
                         {command.meta}
                       </span>
-                    ) : null}
+                    )}
                     <span className="ml-auto text-xs text-muted-foreground border border-border rounded-full px-2 py-0.5">
                       {TYPE_LABELS[command.type ?? 'command']}
                     </span>
                   </div>
-                  {command.snippet ? (
+                  {command.snippet && (
                     <div className="mt-1 text-xs text-muted leading-relaxed">
                       {command.snippet}
                     </div>
-                  ) : null}
+                  )}
                 </button>
               );
             })

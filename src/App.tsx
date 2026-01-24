@@ -44,7 +44,6 @@ import { ArchiveView } from './components/views/ArchiveView';
 import { Sidebar } from './components/Sidebar';
 import { LoginPage } from './components/LoginPage';
 import { AuthGuard } from './components/AuthGuard';
-import { MigrationPrompt } from './components/MigrationPrompt';
 import {
   CommandPalette,
   type CommandPaletteItem,
@@ -1319,7 +1318,6 @@ function AuthenticatedApp() {
           <TasksProvider>
             <CrmProvider>
               <WikiProvider>
-                <MigrationPrompt />
                 <AppContent />
               </WikiProvider>
             </CrmProvider>

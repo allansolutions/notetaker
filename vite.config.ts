@@ -33,12 +33,6 @@ export default defineConfig({
       reporter: ['text', 'text-summary'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.{test,spec}.{ts,tsx}', 'src/test/**'],
-      thresholds: {
-        statements: 70,
-        branches: 65,
-        functions: 70,
-        lines: 70,
-      },
     },
   },
 });

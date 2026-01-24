@@ -247,26 +247,6 @@ export const settingsApi = {
 };
 
 // Migration operations
-export interface MigrationResult {
-  success: boolean;
-  imported: {
-    tasks: number;
-    idMapping: Array<{ localId: string; serverId: string }>;
-  };
-}
-
-export const migrateApi = {
-  async importData(data: {
-    tasks: Task[];
-    settings?: { theme?: string; sidebarWidth?: number };
-  }): Promise<MigrationResult> {
-    return fetchApi<MigrationResult>('/api/migrate', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-};
-
 // Entity link types
 export type EntityType = 'task' | 'contact' | 'company' | 'wiki-page';
 
@@ -420,37 +400,29 @@ export const companyApi = {
 };
 
 // Wiki page operations
+// Helper to parse blocks from JSON string if needed (API may return string or array)
+function parseWikiPageBlocks(page: WikiPage): WikiPage {
+  return {
+    ...page,
+    blocks:
+      typeof page.blocks === 'string' ? JSON.parse(page.blocks) : page.blocks,
+  };
+}
+
 export const wikiApi = {
   async getAll(): Promise<WikiPage[]> {
     const data = await fetchApi<{ pages: WikiPage[] }>('/api/wiki');
-    // Parse blocks from JSON string if needed
-    return data.pages.map((page) => ({
-      ...page,
-      blocks:
-        typeof page.blocks === 'string' ? JSON.parse(page.blocks) : page.blocks,
-    }));
+    return data.pages.map(parseWikiPageBlocks);
   },
 
   async get(id: string): Promise<WikiPage> {
     const data = await fetchApi<{ page: WikiPage }>(`/api/wiki/${id}`);
-    return {
-      ...data.page,
-      blocks:
-        typeof data.page.blocks === 'string'
-          ? JSON.parse(data.page.blocks)
-          : data.page.blocks,
-    };
+    return parseWikiPageBlocks(data.page);
   },
 
   async getBySlug(slug: string): Promise<WikiPage> {
     const data = await fetchApi<{ page: WikiPage }>(`/api/wiki/slug/${slug}`);
-    return {
-      ...data.page,
-      blocks:
-        typeof data.page.blocks === 'string'
-          ? JSON.parse(data.page.blocks)
-          : data.page.blocks,
-    };
+    return parseWikiPageBlocks(data.page);
   },
 
   async getAncestors(id: string): Promise<WikiBreadcrumb[]> {
@@ -470,13 +442,7 @@ export const wikiApi = {
         blocks: JSON.stringify(page.blocks),
       }),
     });
-    return {
-      ...data.page,
-      blocks:
-        typeof data.page.blocks === 'string'
-          ? JSON.parse(data.page.blocks)
-          : data.page.blocks,
-    };
+    return parseWikiPageBlocks(data.page);
   },
 
   async update(
@@ -491,13 +457,7 @@ export const wikiApi = {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
-    return {
-      ...data.page,
-      blocks:
-        typeof data.page.blocks === 'string'
-          ? JSON.parse(data.page.blocks)
-          : data.page.blocks,
-    };
+    return parseWikiPageBlocks(data.page);
   },
 
   async move(
@@ -509,13 +469,7 @@ export const wikiApi = {
       method: 'PUT',
       body: JSON.stringify({ parentId, order }),
     });
-    return {
-      ...data.page,
-      blocks:
-        typeof data.page.blocks === 'string'
-          ? JSON.parse(data.page.blocks)
-          : data.page.blocks,
-    };
+    return parseWikiPageBlocks(data.page);
   },
 
   async delete(id: string): Promise<void> {

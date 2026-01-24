@@ -1,12 +1,6 @@
 /* eslint-disable sonarjs/no-nested-functions */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  taskApi,
-  sessionApi,
-  settingsApi,
-  migrateApi,
-  ApiError,
-} from './client';
+import { taskApi, sessionApi, settingsApi, ApiError } from './client';
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch as typeof fetch;
@@ -281,34 +275,6 @@ describe('API Client', () => {
           expect.objectContaining({
             method: 'PUT',
             body: JSON.stringify({ theme: 'light' }),
-          })
-        );
-      });
-    });
-  });
-
-  describe('migrateApi', () => {
-    describe('importData', () => {
-      it('imports data', async () => {
-        const mockResult = {
-          success: true,
-          imported: { tasks: 5, idMapping: [] },
-        };
-        mockFetch.mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve(mockResult),
-        });
-
-        const result = await migrateApi.importData({
-          tasks: [],
-          settings: { theme: 'dark' },
-        });
-
-        expect(result).toEqual(mockResult);
-        expect(mockFetch).toHaveBeenCalledWith(
-          '/api/migrate',
-          expect.objectContaining({
-            method: 'POST',
           })
         );
       });

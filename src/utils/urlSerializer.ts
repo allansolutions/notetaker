@@ -31,23 +31,29 @@ function serializeDateFilter(
   filters: SpreadsheetFilterState,
   params: URLSearchParams
 ): void {
-  if (filters.dateFilterPreset === 'specific-date' && filters.dateFilterDate) {
-    params.set('date', 'specific');
-    params.set('d', String(filters.dateFilterDate));
-  } else if (
-    filters.dateFilterPreset === 'date-range' &&
-    filters.dateFilterRange
-  ) {
-    params.set('date', 'range');
-    params.set('start', String(filters.dateFilterRange.start));
-    params.set('end', String(filters.dateFilterRange.end));
-  } else if (
-    filters.dateFilterPreset &&
-    filters.dateFilterPreset !== 'all' &&
-    filters.dateFilterPreset !== 'specific-date' &&
-    filters.dateFilterPreset !== 'date-range'
-  ) {
-    params.set('date', filters.dateFilterPreset);
+  const { dateFilterPreset, dateFilterDate, dateFilterRange } = filters;
+
+  switch (dateFilterPreset) {
+    case 'specific-date':
+      if (dateFilterDate) {
+        params.set('date', 'specific');
+        params.set('d', String(dateFilterDate));
+      }
+      break;
+    case 'date-range':
+      if (dateFilterRange) {
+        params.set('date', 'range');
+        params.set('start', String(dateFilterRange.start));
+        params.set('end', String(dateFilterRange.end));
+      }
+      break;
+    case 'today':
+    case 'tomorrow':
+    case 'yesterday':
+    case 'this-week':
+      params.set('date', dateFilterPreset);
+      break;
+    // 'all' and undefined don't need URL params
   }
 }
 
@@ -220,11 +226,7 @@ export function buildUrl(
 
   switch (view) {
     case 'task-detail':
-      if (!taskId) {
-        path = '/';
-      } else {
-        path = `/task/${taskId}`;
-      }
+      path = taskId ? `/task/${taskId}` : '/';
       break;
     case 'full-day-details':
       path = '/details';
@@ -239,21 +241,13 @@ export function buildUrl(
       path = '/crm/new';
       break;
     case 'crm-detail':
-      if (!contactId) {
-        path = '/crm';
-      } else {
-        path = `/crm/contacts/${contactId}`;
-      }
+      path = contactId ? `/crm/contacts/${contactId}` : '/crm';
       break;
     case 'wiki-list':
       path = '/wiki';
       break;
     case 'wiki-page':
-      if (!wikiPageId) {
-        path = '/wiki';
-      } else {
-        path = `/wiki/${wikiPageId}`;
-      }
+      path = wikiPageId ? `/wiki/${wikiPageId}` : '/wiki';
       break;
     case 'spreadsheet':
     default:

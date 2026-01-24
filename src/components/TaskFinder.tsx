@@ -241,7 +241,7 @@ export function TaskFinder({
                     {result.type === 'task' ? 'Task' : 'Wiki'}
                   </span>
                 </div>
-                {result.snippet ? (
+                {result.snippet && (
                   <div className="mt-1 text-xs text-muted leading-relaxed ml-6">
                     {highlightSnippet(
                       result.snippet,
@@ -249,7 +249,7 @@ export function TaskFinder({
                       HIGHLIGHT_CLASS
                     )}
                   </div>
-                ) : null}
+                )}
               </button>
             ))
           )}
