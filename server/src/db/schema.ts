@@ -153,3 +153,19 @@ export const wikiPages = sqliteTable('wiki_pages', {
 
 export type DbWikiPage = typeof wikiPages.$inferSelect;
 export type NewDbWikiPage = typeof wikiPages.$inferInsert;
+
+// Webhook Tokens
+export const webhookTokens = sqliteTable('webhook_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  token: text('token').notNull(),
+  webhookSecret: text('webhook_secret'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export type DbWebhookToken = typeof webhookTokens.$inferSelect;
+export type NewDbWebhookToken = typeof webhookTokens.$inferInsert;

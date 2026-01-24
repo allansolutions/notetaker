@@ -9,6 +9,8 @@ import { migrateRoutes } from './routes/migrate';
 import { contactRoutes } from './routes/contacts';
 import { companyRoutes } from './routes/companies';
 import { wikiRoutes } from './routes/wiki';
+import { webhookRoutes } from './routes/webhooks';
+import { webhookSettingsRoutes } from './routes/webhook-settings';
 import type { Env, Variables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -38,5 +40,7 @@ app.route('/api/migrate', migrateRoutes);
 app.route('/api/contacts', contactRoutes);
 app.route('/api/companies', companyRoutes);
 app.route('/api/wiki', wikiRoutes);
+app.route('/api/webhooks', webhookRoutes);
+app.route('/api/settings', webhookSettingsRoutes);
 
 export default app;

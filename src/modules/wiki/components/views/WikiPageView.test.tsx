@@ -140,4 +140,38 @@ describe('WikiPageView', () => {
     fireEvent.click(screen.getByText('Back to wiki'));
     expect(onNavigateToList).toHaveBeenCalled();
   });
+
+  it('creates default block when page has empty blocks', async () => {
+    const pageWithNoBlocks = { ...mockPage, blocks: [] };
+    mockGetPage.mockResolvedValue(pageWithNoBlocks);
+
+    render(
+      <WikiPageView
+        pageId="page-1"
+        onNavigateToPage={vi.fn()}
+        onNavigateToList={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      // Should show editor with 1 block (the default created one)
+      expect(screen.getByTestId('editor')).toHaveTextContent('Blocks: 1');
+    });
+  });
+
+  it('handles generic error message', async () => {
+    mockGetPage.mockRejectedValue('Unknown error');
+
+    render(
+      <WikiPageView
+        pageId="page-1"
+        onNavigateToPage={vi.fn()}
+        onNavigateToList={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load page')).toBeInTheDocument();
+    });
+  });
 });

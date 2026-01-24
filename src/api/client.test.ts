@@ -314,4 +314,26 @@ describe('API Client', () => {
       });
     });
   });
+
+  describe('fetchApi error handling', () => {
+    it('throws ApiError with message from response', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: 'Bad request' }),
+      });
+
+      await expect(taskApi.getAll()).rejects.toThrow('Bad request');
+    });
+
+    it('throws ApiError with default message when json fails', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.reject(new Error('Invalid JSON')),
+      });
+
+      await expect(taskApi.getAll()).rejects.toThrow('Request failed');
+    });
+  });
 });

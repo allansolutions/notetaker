@@ -42,7 +42,7 @@ describe('TaskFinder', () => {
     );
 
     expect(screen.getByText('Task Finder')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Search tasks...')).toHaveFocus();
+    expect(screen.getByRole('textbox')).toHaveFocus();
     expect(screen.getByText('Alpha Task')).toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe('TaskFinder', () => {
       />
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Search tasks...'), {
+    fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'appl' },
     });
 
@@ -89,7 +89,7 @@ describe('TaskFinder', () => {
       />
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Search tasks...'), {
+    fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'missing' },
     });
 
@@ -116,7 +116,7 @@ describe('TaskFinder', () => {
       />
     );
 
-    fireEvent.keyDown(screen.getByPlaceholderText('Search tasks...'), {
+    fireEvent.keyDown(screen.getByRole('textbox'), {
       key: 'Enter',
     });
 
@@ -156,7 +156,7 @@ describe('TaskFinder', () => {
       />
     );
 
-    const input = screen.getByPlaceholderText('Search tasks...');
+    const input = screen.getByRole('textbox');
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'ArrowUp' });
 
@@ -203,10 +203,10 @@ describe('TaskFinder', () => {
       />
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Search tasks...'), {
+    fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'missing' },
     });
-    fireEvent.keyDown(screen.getByPlaceholderText('Search tasks...'), {
+    fireEvent.keyDown(screen.getByRole('textbox'), {
       key: 'Enter',
     });
 
@@ -225,11 +225,309 @@ describe('TaskFinder', () => {
       />
     );
 
-    const input = screen.getByPlaceholderText('Search tasks...');
+    const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: 'missing' } });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'ArrowUp' });
 
     expect(screen.getByText('No results found.')).toBeInTheDocument();
+  });
+
+  describe('wiki pages', () => {
+    const createMockWikiPage = (id: string, title: string, content = '') => ({
+      id,
+      title,
+      slug: title.toLowerCase().replace(/\s/g, '-'),
+      parentId: null,
+      blocks: content
+        ? [{ id: `b-${id}`, type: 'paragraph' as const, content }]
+        : [],
+      order: 0,
+      icon: null,
+      type: null,
+      category: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    it('shows wiki pages when provided', () => {
+      const wikiPages = [
+        createMockWikiPage('wiki-1', 'Meeting Notes'),
+        createMockWikiPage('wiki-2', 'Project Plan'),
+      ];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText('Meeting Notes')).toBeInTheDocument();
+      expect(screen.getByText('Project Plan')).toBeInTheDocument();
+    });
+
+    it('filters wiki pages by title', () => {
+      const wikiPages = [
+        createMockWikiPage('wiki-1', 'Meeting Notes'),
+        createMockWikiPage('wiki-2', 'Project Plan'),
+      ];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'meeting' },
+      });
+
+      expect(screen.getByText('Meeting Notes')).toBeInTheDocument();
+      expect(screen.queryByText('Project Plan')).not.toBeInTheDocument();
+    });
+
+    it('filters wiki pages by content', () => {
+      const wikiPages = [
+        createMockWikiPage('wiki-1', 'Page One', 'Contains important info'),
+        createMockWikiPage('wiki-2', 'Page Two', 'Has different content'),
+      ];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'important' },
+      });
+
+      expect(screen.getByText('Page One')).toBeInTheDocument();
+      expect(screen.queryByText('Page Two')).not.toBeInTheDocument();
+    });
+
+    it('shows snippet for wiki page content matches', () => {
+      const wikiPages = [
+        createMockWikiPage(
+          'wiki-1',
+          'Long Document',
+          'This is some text before the important part and after it continues with more text'
+        ),
+      ];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'important' },
+      });
+
+      expect(screen.getByText('Long Document')).toBeInTheDocument();
+    });
+
+    it('selects wiki page on click', () => {
+      const onSelectWikiPage = vi.fn();
+      const onClose = vi.fn();
+      const wikiPages = [createMockWikiPage('wiki-1', 'My Wiki Page')];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={onClose}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={onSelectWikiPage}
+        />
+      );
+
+      fireEvent.click(screen.getByText('My Wiki Page'));
+
+      expect(onSelectWikiPage).toHaveBeenCalledWith('wiki-1');
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it('handles wiki page without title', () => {
+      const wikiPages = [createMockWikiPage('wiki-1', '')];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText('Untitled')).toBeInTheDocument();
+    });
+
+    it('shows wiki page icon when available', () => {
+      const wikiPages = [
+        {
+          ...createMockWikiPage('wiki-1', 'Notes'),
+          icon: '📝',
+        },
+      ];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText('📝')).toBeInTheDocument();
+    });
+
+    it('does not call onSelectWikiPage when undefined', () => {
+      const onClose = vi.fn();
+      const wikiPages = [createMockWikiPage('wiki-1', 'My Wiki Page')];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={onClose}
+          onSelectTask={vi.fn()}
+          // onSelectWikiPage is not provided
+        />
+      );
+
+      fireEvent.click(screen.getByText('My Wiki Page'));
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it('resets selection when results shrink below selected index', () => {
+      const wikiPages = [
+        createMockWikiPage('wiki-1', 'Alpha Page'),
+        createMockWikiPage('wiki-2', 'Beta Page'),
+        createMockWikiPage('wiki-3', 'Gamma Page'),
+      ];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      const input = screen.getByRole('textbox');
+      // Move selection down
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+      // Now filter to single result - selection should reset
+      fireEvent.change(input, { target: { value: 'alpha' } });
+
+      const options = screen.getAllByRole('option');
+      expect(options).toHaveLength(1);
+      expect(options[0]).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('shows snippet with ellipsis for long content match at start', () => {
+      const longContent =
+        'This is a very long piece of content that contains the keyword somewhere in the middle of this text which continues for quite a bit longer to test the ellipsis functionality';
+      const wikiPages = [createMockWikiPage('wiki-1', 'Test', longContent)];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'keyword' },
+      });
+
+      expect(screen.getByText('Test')).toBeInTheDocument();
+    });
+
+    it('limits wiki pages to 10 results without query', () => {
+      const manyPages = Array.from({ length: 15 }, (_, i) =>
+        createMockWikiPage(`wiki-${i}`, `Page ${i}`)
+      );
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={manyPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      // Should show max 10 pages
+      const options = screen.getAllByRole('option');
+      expect(options.length).toBeLessThanOrEqual(10);
+    });
+
+    it('searches with multiple query tokens', () => {
+      const wikiPages = [
+        createMockWikiPage('wiki-1', 'Project Alpha'),
+        createMockWikiPage('wiki-2', 'Project Beta'),
+        createMockWikiPage('wiki-3', 'Another Alpha'),
+      ];
+
+      render(
+        <TaskFinder
+          isOpen
+          tasks={[]}
+          wikiPages={wikiPages}
+          onClose={vi.fn()}
+          onSelectTask={vi.fn()}
+          onSelectWikiPage={vi.fn()}
+        />
+      );
+
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'project alpha' },
+      });
+
+      expect(screen.getByText('Project Alpha')).toBeInTheDocument();
+      expect(screen.queryByText('Project Beta')).not.toBeInTheDocument();
+      expect(screen.queryByText('Another Alpha')).not.toBeInTheDocument();
+    });
   });
 });
