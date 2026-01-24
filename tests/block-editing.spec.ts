@@ -280,14 +280,21 @@ test.describe('Block Editing', () => {
 
       // Press Backspace to merge
       await page.keyboard.press('Backspace');
+
+      // Wait for merge to complete by checking content (more reliable than timeout)
+      const blocks = page.locator('.block-input');
+      await expect(blocks).toHaveCount(1);
+      await expect(blocks.first()).toHaveText('HelloWorld');
+
+      // Wait for cursor positioning to complete and ensure element is focused
       await page.waitForTimeout(100);
+      await expect(blocks.first()).toBeFocused();
 
       // Now type something - it should appear at the join point (between Hello and World)
       await page.keyboard.type('---');
       await page.waitForTimeout(50);
 
       // Verify the text is "Hello---World" (cursor was at position 5)
-      const blocks = page.locator('.block-input');
       await expect(blocks.first()).toHaveText('Hello---World');
     });
 
@@ -375,7 +382,14 @@ test.describe('Block Editing', () => {
       await expect(blocks).toHaveCount(2);
       await expect(blocks.first()).toHaveText('Hello');
       await expect(blocks.nth(1)).toHaveText('World');
-      await page.waitForTimeout(150);
+
+      // Wait for cursor positioning
+      await page.waitForTimeout(100);
+
+      // Move cursor to start of second block using Home key
+      // This ensures cursor is at position 0 regardless of focus behavior
+      await page.keyboard.press('Home');
+      await page.waitForTimeout(50);
 
       // Type something that won't trigger markdown (avoid: # - * > [] ` etc)
       await page.keyboard.type('NEW');

@@ -115,9 +115,18 @@ export function BlockInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentional: only set content on initial mount, not on updates
   }, []);
 
+  // Track which cursor offset we've already processed to avoid re-running on content changes
+  const processedCursorOffsetRef = useRef<number | null>(null);
+
   // Sync content and position cursor when merge happens
   useLayoutEffect(() => {
-    if (pendingCursorOffset != null && inputRef.current) {
+    // Only process each pendingCursorOffset value once
+    if (
+      pendingCursorOffset != null &&
+      inputRef.current &&
+      processedCursorOffsetRef.current !== pendingCursorOffset
+    ) {
+      processedCursorOffsetRef.current = pendingCursorOffset;
       const el = inputRef.current;
       // Sync content first
       el.textContent = block.content;
@@ -138,6 +147,10 @@ export function BlockInput({
         sel?.removeAllRanges();
         sel?.addRange(range);
       }, 0);
+    }
+    // Reset when pendingCursorOffset becomes null
+    if (pendingCursorOffset == null) {
+      processedCursorOffsetRef.current = null;
     }
   }, [pendingCursorOffset, block.content]);
 
