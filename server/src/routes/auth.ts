@@ -25,7 +25,7 @@ authRoutes.get('/google', (c) => {
   setCookie(c, 'oauth_state', state, {
     httpOnly: true,
     secure: true,
-    sameSite: 'Lax',
+    sameSite: 'None',
     maxAge: 60 * 10,
     path: '/',
   });
@@ -84,7 +84,7 @@ authRoutes.get('/callback', async (c) => {
     setCookie(c, 'session', sessionId, {
       httpOnly: true,
       secure: true,
-      sameSite: 'Lax',
+      sameSite: 'None',
       maxAge: 60 * 60 * 24 * 30,
       path: '/',
     });
