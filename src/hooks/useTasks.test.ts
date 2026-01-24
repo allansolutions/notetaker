@@ -296,6 +296,9 @@ describe('useTasks', () => {
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
       });
+      await waitFor(() => {
+        expect(result.current.tasks).toHaveLength(2);
+      });
 
       await act(async () => {
         await result.current.removeTask('task-1');

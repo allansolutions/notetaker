@@ -11,20 +11,21 @@ import { ThemeProvider } from './context/ThemeContext';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { TasksProvider } from './context/TasksContext';
-import { CrmProvider, ContactListView, ContactDetailView } from './modules/crm';
+import {
+  CrmProvider,
+  ContactListView,
+  ContactDetailView,
+  useCrm,
+  type Contact,
+} from './modules/crm';
 import {
   WikiProvider,
   WikiListView,
   WikiPageView,
   useWiki,
+  type WikiPage,
 } from './modules/wiki';
-import {
-  ViewType,
-  TaskType,
-  TASK_TYPE_OPTIONS,
-  DateRange,
-  Task,
-} from './types';
+import { ViewType, TaskType, TASK_TYPE_OPTIONS, DateRange } from './types';
 import {
   SpreadsheetView,
   SpreadsheetFilterState,
@@ -37,9 +38,12 @@ import { Sidebar } from './components/Sidebar';
 import { LoginPage } from './components/LoginPage';
 import { AuthGuard } from './components/AuthGuard';
 import { MigrationPrompt } from './components/MigrationPrompt';
-import { CommandPalette } from './components/CommandPalette';
-import { TaskFinder } from './components/TaskFinder';
+import {
+  CommandPalette,
+  type CommandPaletteItem,
+} from './components/CommandPalette';
 import { AreaSwitcher } from './components/AreaSwitcher';
+import { useTaskSearchIndex } from './hooks/useTaskSearchIndex';
 import {
   doesTaskMatchFilters,
   hasActiveFilters,
@@ -51,6 +55,7 @@ import {
   getUserLocale,
 } from './utils/date-query';
 import { getSingleDateFromFilter, startOfDay } from './utils/date-filters';
+import { highlightSnippet, tokenizeQuery } from './utils/task-search';
 
 // Get initial state from URL before first render
 const initialRouterState = getInitialRouterState();
@@ -66,6 +71,24 @@ const DEFAULT_SIDEBAR_WIDTH = 240;
 const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 500;
 const COLLAPSED_SIDEBAR_WIDTH = 48;
+const PALETTE_TASK_LIMIT = 8;
+const PALETTE_WIKI_LIMIT = 6;
+const PALETTE_CONTACT_LIMIT = 6;
+
+const HIGHLIGHT_CLASS =
+  'bg-accent-subtle font-semibold text-primary rounded-sm px-0.5';
+
+function buildContactLabel(contact: { firstName: string; lastName: string }) {
+  return `${contact.firstName} ${contact.lastName}`.trim();
+}
+
+function buildContactMeta(contact: {
+  email?: string;
+  company?: { name?: string } | null;
+}) {
+  const parts = [contact.company?.name, contact.email].filter(Boolean);
+  return parts.length > 0 ? parts.join(' • ') : undefined;
+}
 
 function createEmptyFilterState(): SpreadsheetFilterState {
   return {
@@ -82,6 +105,146 @@ function createEmptyFilterState(): SpreadsheetFilterState {
   };
 }
 
+interface WikiSearchResult {
+  id: string;
+  title: string;
+  snippet: string | undefined;
+  icon: string | null;
+  score: number;
+}
+
+interface ContactSearchResult {
+  id: string;
+  label: string;
+  meta: string | undefined;
+  score: number;
+}
+
+function searchWikiPages(pages: WikiPage[], query: string): WikiSearchResult[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    return [...pages]
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, PALETTE_WIKI_LIMIT)
+      .map((page) => ({
+        id: page.id,
+        title: page.title || 'Untitled',
+        snippet: undefined,
+        icon: page.icon,
+        score: 0,
+      }));
+  }
+
+  const tokens = tokenizeQuery(normalized);
+
+  return pages
+    .map((page) => {
+      const title = page.title || 'Untitled';
+      const titleLower = title.toLowerCase();
+      const content = page.blocks.map((b) => b.content).join(' ');
+      const contentLower = content.toLowerCase();
+
+      const matches = tokens.every(
+        (token) => titleLower.includes(token) || contentLower.includes(token)
+      );
+
+      if (!matches) {
+        return null;
+      }
+
+      let score = 0;
+      for (const token of tokens) {
+        if (titleLower.includes(token)) {
+          score += 2;
+        } else if (contentLower.includes(token)) {
+          score += 1;
+        }
+      }
+
+      let snippet: string | undefined;
+      const firstToken = tokens[0];
+      if (firstToken) {
+        const firstMatchIndex = contentLower.indexOf(firstToken);
+        if (firstMatchIndex >= 0) {
+          const start = Math.max(0, firstMatchIndex - 30);
+          const end = Math.min(content.length, firstMatchIndex + 70);
+          snippet =
+            (start > 0 ? '...' : '') +
+            content.slice(start, end) +
+            (end < content.length ? '...' : '');
+        }
+      }
+
+      return {
+        id: page.id,
+        title,
+        snippet,
+        icon: page.icon,
+        score,
+      };
+    })
+    .filter((result): result is WikiSearchResult => result !== null)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, PALETTE_WIKI_LIMIT);
+}
+
+function searchContacts(
+  contacts: Contact[],
+  query: string
+): ContactSearchResult[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    return [...contacts]
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, PALETTE_CONTACT_LIMIT)
+      .map((contact) => ({
+        id: contact.id,
+        label: buildContactLabel(contact),
+        meta: buildContactMeta(contact),
+        score: 0,
+      }));
+  }
+
+  const tokens = tokenizeQuery(normalized);
+
+  return contacts
+    .map((contact) => {
+      const label = buildContactLabel(contact);
+      const nameLower = label.toLowerCase();
+      const emailLower = contact.email?.toLowerCase() ?? '';
+      const companyLower = contact.company?.name?.toLowerCase() ?? '';
+
+      const matches = tokens.every(
+        (token) =>
+          nameLower.includes(token) ||
+          emailLower.includes(token) ||
+          companyLower.includes(token)
+      );
+
+      if (!matches) {
+        return null;
+      }
+
+      let score = 0;
+      for (const token of tokens) {
+        if (nameLower.startsWith(token)) score += 2;
+        else if (nameLower.includes(token)) score += 1.5;
+        else if (companyLower.includes(token)) score += 1;
+        else if (emailLower.includes(token)) score += 0.5;
+      }
+
+      return {
+        id: contact.id,
+        label,
+        meta: buildContactMeta(contact),
+        score,
+      };
+    })
+    .filter((result): result is ContactSearchResult => result !== null)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, PALETTE_CONTACT_LIMIT);
+}
+
 export function AppContent() {
   const {
     tasks,
@@ -96,6 +259,9 @@ export function AppContent() {
   } = useTasks();
 
   const { events: calendarEvents } = useCalendarEvents();
+  const { pages } = useWiki();
+  const { contacts } = useCrm();
+  const { searchTasks } = useTaskSearchIndex(tasks);
 
   // Initialize view and filter state from URL
   const [currentView, setCurrentView] = useState<ViewType>(
@@ -111,7 +277,6 @@ export function AppContent() {
     initialRouterState.wikiPageId
   );
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isTaskFinderOpen, setIsTaskFinderOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [spreadsheetViewKey, setSpreadsheetViewKey] = useState(0);
   const [visibleTaskIds, setVisibleTaskIds] = useState<string[]>([]);
@@ -466,6 +631,8 @@ export function AppContent() {
           {
             id: 'date-range-invalid',
             label: 'End date must be after start date',
+            type: 'command' as const,
+            rank: 5,
             disabled: true,
             onExecute: () => {},
           },
@@ -481,6 +648,8 @@ export function AppContent() {
           {
             id: `date-single-${parsed.date}`,
             label,
+            type: 'command' as const,
+            rank: 5,
             keywords: ['date', 'filter'],
             onExecute: () => handleCommandSetSpecificDate(parsed.date),
           },
@@ -496,6 +665,8 @@ export function AppContent() {
           {
             id: `date-range-${parsed.range.start}-${parsed.range.end}`,
             label,
+            type: 'command' as const,
+            rank: 5,
             keywords: ['date', 'range', 'filter'],
             onExecute: () => handleCommandSetDateRange(parsed.range),
           },
@@ -552,59 +723,68 @@ export function AppContent() {
     applyFilterState(emptyFilters);
   }, [applyFilterState, spreadsheetFilterState]);
 
-  const commandPaletteCommands = useMemo(
+  const commandPaletteCommands = useMemo<CommandPaletteItem[]>(
     () => [
       {
         id: 'view-all',
         label: 'Filter: All',
+        type: 'command',
         keywords: ['view', 'tasks', 'all', 'filter'],
         onExecute: () => handleCommandSetPreset('all'),
       },
       {
         id: 'filter-clear',
         label: 'Filter: Clear',
+        type: 'command',
         keywords: ['clear', 'filters', 'reset'],
         onExecute: handleCommandClearFilters,
       },
       {
         id: 'view-today',
         label: 'Filter: Today',
+        type: 'command',
         keywords: ['view', 'tasks', 'today', 'filter'],
         onExecute: () => handleCommandSetPreset('today'),
       },
       {
         id: 'view-tomorrow',
         label: 'Filter: Tomorrow',
+        type: 'command',
         keywords: ['view', 'tasks', 'tomorrow', 'filter'],
         onExecute: () => handleCommandSetPreset('tomorrow'),
       },
       {
         id: 'view-yesterday',
         label: 'Filter: Yesterday',
+        type: 'command',
         keywords: ['view', 'tasks', 'yesterday', 'filter'],
         onExecute: () => handleCommandSetPreset('yesterday'),
       },
       {
         id: 'view-this-week',
         label: 'Filter: This Week',
+        type: 'command',
         keywords: ['view', 'tasks', 'week', 'filter'],
         onExecute: () => handleCommandSetPreset('this-week'),
       },
       {
         id: 'view-task-details',
         label: 'Task: Details',
+        type: 'command',
         keywords: ['details', 'full day', 'view'],
         onExecute: handleCommandNavigateToTaskDetails,
       },
       {
         id: 'task-new',
         label: 'Task: New',
+        type: 'command',
         keywords: ['new', 'create', 'add', 'task'],
         onExecute: handleCommandNewTask,
       },
       {
         id: 'task-mark-done',
         label: 'Task: Mark as Done',
+        type: 'command',
         keywords: ['complete', 'finish', 'done', 'mark'],
         shouldShow: () =>
           (currentView === 'task-detail' && selectedTaskId !== null) ||
@@ -614,6 +794,7 @@ export function AppContent() {
       {
         id: 'view-task-list',
         label: 'Task: List',
+        type: 'command',
         keywords: ['list', 'tasks', 'view', 'spreadsheet'],
         onExecute: () => {
           if (currentView !== 'spreadsheet') {
@@ -625,36 +806,42 @@ export function AppContent() {
       {
         id: 'view-archive',
         label: 'Task: Archive',
+        type: 'command',
         keywords: ['archive', 'completed', 'done', 'tasks'],
         onExecute: handleNavigateToArchive,
       },
       {
         id: 'view-crm',
         label: 'CRM: Contacts',
+        type: 'command',
         keywords: ['crm', 'contacts', 'people', 'relationships'],
         onExecute: handleNavigateToCrm,
       },
       {
         id: 'crm-new-contact',
         label: 'CRM: New Contact',
+        type: 'command',
         keywords: ['crm', 'contact', 'new', 'create', 'add'],
         onExecute: handleNavigateToCrmNew,
       },
       {
         id: 'view-wiki',
         label: 'Wiki: Pages',
+        type: 'command',
         keywords: ['wiki', 'pages', 'knowledge', 'docs', 'documentation'],
         onExecute: handleNavigateToWiki,
       },
       {
         id: 'wiki-new-page',
         label: 'Wiki: New Page',
+        type: 'command',
         keywords: ['wiki', 'page', 'new', 'create', 'add'],
         onExecute: handleCreateWikiPage,
       },
       ...TASK_TYPE_OPTIONS.map((option) => ({
         id: `task-type-${option.value}`,
         label: `Type: ${option.label}`,
+        type: 'command' as const,
         keywords: ['task', 'type', option.label.toLowerCase()],
         onExecute: () => handleCommandSetTypeFilter(option.value),
       })),
@@ -675,6 +862,59 @@ export function AppContent() {
       handleCreateWikiPage,
       selectedTaskId,
       focusedDetailsTaskId,
+    ]
+  );
+
+  const getPaletteDynamicItems = useCallback(
+    (query: string, queryTokens: string[]) => {
+      const shouldShowSnippets = queryTokens.length > 0;
+      const dateCommands = getDateFilterCommand(query);
+
+      const taskItems = searchTasks(query)
+        .slice(0, PALETTE_TASK_LIMIT)
+        .map((result) => ({
+          id: `task-${result.id}`,
+          label: result.title || 'Untitled',
+          type: 'task' as const,
+          rank: result.score,
+          snippet: shouldShowSnippets
+            ? highlightSnippet(result.snippet, queryTokens, HIGHLIGHT_CLASS)
+            : undefined,
+          onExecute: () => handleSelectTask(result.id),
+        }));
+
+      const wikiItems = searchWikiPages(pages, query).map((result) => ({
+        id: `wiki-${result.id}`,
+        label: result.title || 'Untitled',
+        type: 'page' as const,
+        icon: result.icon ?? undefined,
+        rank: result.score,
+        snippet:
+          shouldShowSnippets && result.snippet
+            ? highlightSnippet(result.snippet, queryTokens, HIGHLIGHT_CLASS)
+            : undefined,
+        onExecute: () => handleSelectWikiPage(result.id),
+      }));
+
+      const contactItems = searchContacts(contacts, query).map((result) => ({
+        id: `contact-${result.id}`,
+        label: result.label,
+        type: 'contact' as const,
+        meta: result.meta,
+        rank: result.score,
+        onExecute: () => handleSelectContact(result.id),
+      }));
+
+      return [...dateCommands, ...taskItems, ...wikiItems, ...contactItems];
+    },
+    [
+      contacts,
+      getDateFilterCommand,
+      handleSelectContact,
+      handleSelectTask,
+      handleSelectWikiPage,
+      pages,
+      searchTasks,
     ]
   );
 
@@ -829,32 +1069,7 @@ export function AppContent() {
       const isMetaK = event.metaKey && event.key.toLowerCase() === 'k';
       if (!isMetaK) return;
       event.preventDefault();
-      setIsCommandPaletteOpen((open) => {
-        const next = !open;
-        if (next) {
-          setIsTaskFinderOpen(false);
-        }
-        return next;
-      });
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isMetaP = event.metaKey && event.key.toLowerCase() === 'p';
-      if (!isMetaP) return;
-      if (isTypingTarget(event.target)) return;
-      event.preventDefault();
-      setIsTaskFinderOpen((open) => {
-        const next = !open;
-        if (next) {
-          setIsCommandPaletteOpen(false);
-        }
-        return next;
-      });
+      setIsCommandPaletteOpen((open) => !open);
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -1034,15 +1249,8 @@ export function AppContent() {
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         commands={commandPaletteCommands}
-        getDynamicCommands={getDateFilterCommand}
+        getDynamicCommands={getPaletteDynamicItems}
         onClose={() => setIsCommandPaletteOpen(false)}
-      />
-      <TaskFinderWithWiki
-        isOpen={isTaskFinderOpen}
-        tasks={tasks}
-        onClose={() => setIsTaskFinderOpen(false)}
-        onSelectTask={handleSelectTask}
-        onSelectWikiPage={handleSelectWikiPage}
       />
       <div
         data-testid="sidebar"
@@ -1173,33 +1381,6 @@ function WikiPageViewWrapper({
       pageId={pageId}
       onNavigateToPage={onNavigateToPage}
       onNavigateToList={onNavigateToList}
-    />
-  );
-}
-
-function TaskFinderWithWiki({
-  isOpen,
-  tasks,
-  onClose,
-  onSelectTask,
-  onSelectWikiPage,
-}: {
-  isOpen: boolean;
-  tasks: Task[];
-  onClose: () => void;
-  onSelectTask: (taskId: string) => void;
-  onSelectWikiPage: (pageId: string) => void;
-}) {
-  const { pages } = useWiki();
-
-  return (
-    <TaskFinder
-      isOpen={isOpen}
-      tasks={tasks}
-      wikiPages={pages}
-      onClose={onClose}
-      onSelectTask={onSelectTask}
-      onSelectWikiPage={onSelectWikiPage}
     />
   );
 }

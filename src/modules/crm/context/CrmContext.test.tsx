@@ -162,6 +162,9 @@ describe('CrmContext', () => {
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
       });
+      await waitFor(() => {
+        expect(apiClient.contactApi.getAll).toHaveBeenCalled();
+      });
 
       const createdContact = await act(async () => {
         return result.current.addContact({

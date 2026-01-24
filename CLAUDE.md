@@ -65,8 +65,6 @@ Update Playwright tests in `tests/*.spec.ts` when making changes to:
 - DOM structure or CSS class names used as selectors
 - Navigation flows between views
 
-Note: After creating a task, the EstimateGate modal appears. E2E tests must dismiss it by clicking a preset button (e.g., `page.getByRole('button', { name: '15m' }).click()`) before interacting with the task detail view.
-
 ### Coverage Thresholds
 
 The project enforces 80% minimum coverage for statements, branches, functions, and lines. This is checked on every commit. If coverage drops below threshold, add tests before committing.

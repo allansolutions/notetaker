@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 
-export interface CommandPaletteCommand {
+export type CommandPaletteItemType = 'command' | 'task' | 'page' | 'contact';
+
+export interface CommandPaletteItem {
   id: string;
   label: string;
   keywords?: string[];
@@ -9,6 +11,11 @@ export interface CommandPaletteCommand {
   /** Return false to hide this command from the palette. Checked before filtering. */
   shouldShow?: () => boolean;
   onExecute: () => void;
+  type?: CommandPaletteItemType;
+  icon?: ReactNode;
+  meta?: string;
+  snippet?: ReactNode;
+  rank?: number;
 }
 
 const getNormalizedQuery = (input: string) => {
@@ -17,7 +24,7 @@ const getNormalizedQuery = (input: string) => {
   return colonIndex >= 0 ? normalized.slice(colonIndex + 1).trim() : normalized;
 };
 
-const getSearchTokens = (command: CommandPaletteCommand) => {
+const getSearchTokens = (command: CommandPaletteItem) => {
   const labelLower = command.label.toLowerCase();
   const labelColonIndex = labelLower.indexOf(':');
   const labelAfterColon =
@@ -31,22 +38,45 @@ const getSearchTokens = (command: CommandPaletteCommand) => {
     .filter(Boolean);
 };
 
-const matchesQuery = (
-  command: CommandPaletteCommand,
-  queryTokens: string[]
-) => {
+const matchesQuery = (command: CommandPaletteItem, queryTokens: string[]) => {
   const searchTokens = getSearchTokens(command);
   return queryTokens.every((queryToken) =>
     searchTokens.some((token) => token.startsWith(queryToken))
   );
 };
 
+const scoreMatch = (command: CommandPaletteItem, queryTokens: string[]) => {
+  if (queryTokens.length === 0) return 0;
+  const searchTokens = getSearchTokens(command);
+  let score = 0;
+  for (const queryToken of queryTokens) {
+    const match = searchTokens.find((token) => token.startsWith(queryToken));
+    if (!match) continue;
+    score += 1;
+    if (match === queryToken) score += 0.5;
+  }
+  return score;
+};
+
 interface CommandPaletteProps {
   isOpen: boolean;
-  commands: CommandPaletteCommand[];
-  getDynamicCommands?: (query: string) => CommandPaletteCommand[];
+  commands: CommandPaletteItem[];
+  getDynamicCommands?: (
+    query: string,
+    queryTokens: string[]
+  ) => CommandPaletteItem[];
   onClose: () => void;
 }
+
+const TYPE_LABELS: Record<CommandPaletteItemType, string> = {
+  command: 'Command',
+  task: 'Task',
+  page: 'Page',
+  contact: 'Contact',
+};
+
+const getTypePriority = (type?: CommandPaletteItemType) =>
+  type === 'command' ? 0 : 1;
 
 export function CommandPalette({
   isOpen,
@@ -58,32 +88,56 @@ export function CommandPalette({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const normalizedQuery = useMemo(() => getNormalizedQuery(query), [query]);
+  const queryTokens = useMemo(
+    () => normalizedQuery.split(/\s+/).filter(Boolean),
+    [normalizedQuery]
+  );
+
   const filteredCommands = useMemo(() => {
     // First filter out commands that shouldn't show based on context
     const availableCommands = commands.filter(
       (command) => command.shouldShow?.() ?? true
     );
 
-    const normalizedQuery = getNormalizedQuery(query);
-
     if (!normalizedQuery) return availableCommands;
-    const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
 
     return availableCommands.filter((command) =>
       matchesQuery(command, queryTokens)
     );
-  }, [commands, query]);
+  }, [commands, normalizedQuery, queryTokens]);
 
   const dynamicCommands = useMemo(() => {
     if (!getDynamicCommands) return [];
-    const normalizedQuery = getNormalizedQuery(query);
-    return getDynamicCommands(normalizedQuery);
-  }, [getDynamicCommands, query]);
+    return getDynamicCommands(normalizedQuery, queryTokens);
+  }, [getDynamicCommands, normalizedQuery, queryTokens]);
 
-  const visibleCommands = useMemo(
-    () => [...dynamicCommands, ...filteredCommands],
-    [dynamicCommands, filteredCommands]
-  );
+  const visibleCommands = useMemo(() => {
+    const scoredCommands = filteredCommands.map((command) => ({
+      ...command,
+      rank:
+        command.rank ??
+        (queryTokens.length > 0 ? scoreMatch(command, queryTokens) : 0),
+    }));
+
+    const combined = [...scoredCommands, ...dynamicCommands];
+
+    return combined
+      .map((command, order) => ({
+        command: { ...command, rank: command.rank ?? 0 },
+        order,
+      }))
+      .sort((a, b) => {
+        const typeDelta =
+          getTypePriority(a.command.type) - getTypePriority(b.command.type);
+        if (typeDelta !== 0) return typeDelta;
+        if (queryTokens.length > 0 && b.command.rank !== a.command.rank) {
+          return b.command.rank - a.command.rank;
+        }
+        return a.order - b.order;
+      })
+      .map(({ command }) => command);
+  }, [dynamicCommands, filteredCommands, queryTokens]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -110,7 +164,7 @@ export function CommandPalette({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const handleExecute = (command: CommandPaletteCommand | undefined) => {
+  const handleExecute = (command: CommandPaletteItem | undefined) => {
     if (!command || command.disabled) return;
     command.onExecute();
     onClose();
@@ -160,7 +214,7 @@ export function CommandPalette({
             id="command-palette-title"
             className="text-sm text-muted font-medium"
           >
-            Command Palette
+            Command Center
           </h2>
         </div>
         <div className="px-4 pb-4">
@@ -169,18 +223,18 @@ export function CommandPalette({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleInputKeyDown}
-            placeholder="Type a command..."
+            placeholder="Search commands, tasks, pages, contacts..."
             className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div
           role="listbox"
-          aria-label="Commands"
+          aria-label="Results"
           className="max-h-72 overflow-y-auto pb-2"
         >
           {visibleCommands.length === 0 ? (
             <div className="px-4 py-3 text-sm text-muted">
-              No commands found.
+              No results found.
             </div>
           ) : (
             visibleCommands.map((command, index) => {
@@ -202,7 +256,27 @@ export function CommandPalette({
                   onClick={() => handleExecute(command)}
                   className={`w-full text-left px-4 py-2 text-sm transition-colors ${commandClass}`}
                 >
-                  {command.label}
+                  <div className="flex items-center gap-2">
+                    {command.icon ? (
+                      <span className="text-sm shrink-0">{command.icon}</span>
+                    ) : null}
+                    <span className="font-medium text-sm text-primary truncate">
+                      {command.label}
+                    </span>
+                    {command.meta ? (
+                      <span className="text-xs text-muted-foreground truncate">
+                        {command.meta}
+                      </span>
+                    ) : null}
+                    <span className="ml-auto text-xs text-muted-foreground border border-border rounded-full px-2 py-0.5">
+                      {TYPE_LABELS[command.type ?? 'command']}
+                    </span>
+                  </div>
+                  {command.snippet ? (
+                    <div className="mt-1 text-xs text-muted leading-relaxed">
+                      {command.snippet}
+                    </div>
+                  ) : null}
                 </button>
               );
             })

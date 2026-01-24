@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { CommandPalette, CommandPaletteCommand } from './CommandPalette';
+import { CommandPalette, CommandPaletteItem } from './CommandPalette';
 
-const createCommands = (onExecute: () => void): CommandPaletteCommand[] => [
+const createCommands = (onExecute: () => void): CommandPaletteItem[] => [
   { id: 'all', label: 'All', keywords: ['view', 'tasks'], onExecute },
   { id: 'today', label: 'Today', keywords: ['view', 'tasks'], onExecute },
   { id: 'tomorrow', label: 'Tomorrow', keywords: ['view', 'tasks'], onExecute },
@@ -12,7 +12,7 @@ describe('CommandPalette', () => {
   it('does not render when closed', () => {
     render(<CommandPalette isOpen={false} commands={[]} onClose={vi.fn()} />);
 
-    expect(screen.queryByText('Command Palette')).not.toBeInTheDocument();
+    expect(screen.queryByText('Command Center')).not.toBeInTheDocument();
   });
 
   it('renders commands and focuses input when open', () => {
@@ -25,8 +25,10 @@ describe('CommandPalette', () => {
       />
     );
 
-    expect(screen.getByText('Command Palette')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Type a command...')).toHaveFocus();
+    expect(screen.getByText('Command Center')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Search commands, tasks, pages, contacts...')
+    ).toHaveFocus();
     expect(screen.getByText('All')).toBeInTheDocument();
     expect(screen.getByText('Today')).toBeInTheDocument();
   });
@@ -41,9 +43,12 @@ describe('CommandPalette', () => {
       />
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Type a command...'), {
-      target: { value: 'tom' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Search commands, tasks, pages, contacts...'),
+      {
+        target: { value: 'tom' },
+      }
+    );
 
     expect(screen.getByText('Tomorrow')).toBeInTheDocument();
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
@@ -59,9 +64,12 @@ describe('CommandPalette', () => {
       />
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Type a command...'), {
-      target: { value: 'filter: tod' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Search commands, tasks, pages, contacts...'),
+      {
+        target: { value: 'filter: tod' },
+      }
+    );
 
     expect(screen.getByText('Today')).toBeInTheDocument();
     expect(screen.queryByText('All')).not.toBeInTheDocument();
@@ -77,23 +85,29 @@ describe('CommandPalette', () => {
       />
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Type a command...'), {
-      target: { value: 'zzz' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Search commands, tasks, pages, contacts...'),
+      {
+        target: { value: 'zzz' },
+      }
+    );
 
-    expect(screen.getByText('No commands found.')).toBeInTheDocument();
+    expect(screen.getByText('No results found.')).toBeInTheDocument();
   });
 
   it('matches label text after a colon in the command label', () => {
     const onExecute = vi.fn();
-    const commands: CommandPaletteCommand[] = [
+    const commands: CommandPaletteItem[] = [
       { id: 'filter-today', label: 'Filter: Today', onExecute },
     ];
     render(<CommandPalette isOpen commands={commands} onClose={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Type a command...'), {
-      target: { value: 'today' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Search commands, tasks, pages, contacts...'),
+      {
+        target: { value: 'today' },
+      }
+    );
 
     expect(screen.getByText('Filter: Today')).toBeInTheDocument();
   });
@@ -109,7 +123,9 @@ describe('CommandPalette', () => {
       />
     );
 
-    const input = screen.getByPlaceholderText('Type a command...');
+    const input = screen.getByPlaceholderText(
+      'Search commands, tasks, pages, contacts...'
+    );
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -133,7 +149,9 @@ describe('CommandPalette', () => {
       />
     );
 
-    const input = screen.getByPlaceholderText('Type a command...');
+    const input = screen.getByPlaceholderText(
+      'Search commands, tasks, pages, contacts...'
+    );
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -174,7 +192,7 @@ describe('CommandPalette', () => {
 
   describe('shouldShow filtering', () => {
     it('hides commands where shouldShow returns false', () => {
-      const commands: CommandPaletteCommand[] = [
+      const commands: CommandPaletteItem[] = [
         { id: 'visible', label: 'Visible', onExecute: vi.fn() },
         {
           id: 'hidden',
@@ -190,7 +208,7 @@ describe('CommandPalette', () => {
     });
 
     it('shows commands where shouldShow returns true', () => {
-      const commands: CommandPaletteCommand[] = [
+      const commands: CommandPaletteItem[] = [
         {
           id: 'conditional',
           label: 'Conditional',
@@ -204,7 +222,7 @@ describe('CommandPalette', () => {
     });
 
     it('shows commands without shouldShow (defaults to visible)', () => {
-      const commands: CommandPaletteCommand[] = [
+      const commands: CommandPaletteItem[] = [
         { id: 'default', label: 'Default Visible', onExecute: vi.fn() },
       ];
       render(<CommandPalette isOpen commands={commands} onClose={vi.fn()} />);
@@ -213,7 +231,7 @@ describe('CommandPalette', () => {
     });
 
     it('re-evaluates shouldShow when command array changes', () => {
-      const hiddenCommands: CommandPaletteCommand[] = [
+      const hiddenCommands: CommandPaletteItem[] = [
         {
           id: 'conditional',
           label: 'Context Command',
@@ -221,7 +239,7 @@ describe('CommandPalette', () => {
           onExecute: vi.fn(),
         },
       ];
-      const visibleCommands: CommandPaletteCommand[] = [
+      const visibleCommands: CommandPaletteItem[] = [
         {
           id: 'conditional',
           label: 'Context Command',
