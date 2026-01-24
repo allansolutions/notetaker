@@ -1,8 +1,9 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import type { Database } from '../db';
 import {
   timeSessions,
   tasks,
+  teamMembers,
   type DbTimeSession,
   type NewDbTimeSession,
 } from '../db/schema';
@@ -81,19 +82,57 @@ export async function deleteTimeSession(
     );
 }
 
-// Verify that task belongs to user before allowing session operations
+// Verify that user has access to task before allowing session operations
+// Access is granted if user is: task creator, assignee, or team member
 export async function verifyTaskOwnership(
   db: Database,
   taskId: string,
   userId: string
 ): Promise<boolean> {
-  const result = await db
-    .select({ id: tasks.id })
+  // First, get the task to check ownership, assignee, and team
+  const taskResult = await db
+    .select({
+      id: tasks.id,
+      userId: tasks.userId,
+      assigneeId: tasks.assigneeId,
+      teamId: tasks.teamId,
+    })
     .from(tasks)
-    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
+    .where(eq(tasks.id, taskId))
     .limit(1);
 
-  return result.length > 0;
+  if (taskResult.length === 0) {
+    return false;
+  }
+
+  const task = taskResult[0];
+
+  // Check if user is the task creator
+  if (task.userId === userId) {
+    return true;
+  }
+
+  // Check if user is the assignee
+  if (task.assigneeId === userId) {
+    return true;
+  }
+
+  // Check if user is a member of the task's team
+  if (task.teamId) {
+    const memberResult = await db
+      .select({ userId: teamMembers.userId })
+      .from(teamMembers)
+      .where(
+        and(eq(teamMembers.teamId, task.teamId), eq(teamMembers.userId, userId))
+      )
+      .limit(1);
+
+    if (memberResult.length > 0) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // Batch create sessions (useful for migration)

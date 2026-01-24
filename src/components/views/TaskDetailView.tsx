@@ -5,6 +5,7 @@ import { BackButton } from '../BackButton';
 import { TimeDisplay } from '../TimeDisplay';
 import { SessionsModal } from '../SessionsModal';
 import { useTimeTracking } from '../../hooks/useTimeTracking';
+import { useAuth } from '../../context/AuthContext';
 
 interface TaskDetailViewProps {
   task: Task;
@@ -27,12 +28,26 @@ export function TaskDetailView({
   onDeleteSession,
   onBack,
 }: TaskDetailViewProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState(task.title);
   const [showSessionsModal, setShowSessionsModal] = useState(false);
   const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(
     new Set()
   );
   const titleRef = useRef<HTMLTextAreaElement>(null);
+
+  // Determine if current user should auto-track time
+  // - Team tasks: only the assignee auto-tracks
+  // - Personal tasks (no team): only the creator (assigner) auto-tracks
+  const shouldAutoTrack = useMemo(() => {
+    if (!user) return false;
+    if (task.teamId) {
+      // Team task: only assignee auto-tracks
+      return task.assigneeId === user.id;
+    }
+    // Personal task: only creator auto-tracks
+    return task.assigner?.id === user.id;
+  }, [user, task.teamId, task.assigneeId, task.assigner?.id]);
 
   // Auto-resize title textarea
   useLayoutEffect(() => {
@@ -68,7 +83,7 @@ export function TaskDetailView({
   const { elapsedMs, totalCompletedMs, isActive } = useTimeTracking({
     taskId: task.id,
     sessions: task.sessions ?? [],
-    hasEstimate: true, // Always track time
+    hasEstimate: shouldAutoTrack, // Only auto-track if user is assignee/owner
     onSessionComplete: handleSessionComplete,
   });
 
