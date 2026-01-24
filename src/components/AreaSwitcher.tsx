@@ -7,17 +7,21 @@ import {
 } from '@/components/ui/select';
 import { ViewType } from '@/types';
 
-type Area = 'tasks' | 'crm';
+type Area = 'tasks' | 'crm' | 'wiki';
 
 interface AreaSwitcherProps {
   currentView: ViewType;
   onNavigateToTasks: () => void;
   onNavigateToCrm: () => void;
+  onNavigateToWiki: () => void;
 }
 
 function getAreaFromView(view: ViewType): Area {
   if (view === 'crm-list' || view === 'crm-new' || view === 'crm-detail') {
     return 'crm';
+  }
+  if (view === 'wiki-list' || view === 'wiki-page') {
+    return 'wiki';
   }
   return 'tasks';
 }
@@ -26,6 +30,7 @@ export function AreaSwitcher({
   currentView,
   onNavigateToTasks,
   onNavigateToCrm,
+  onNavigateToWiki,
 }: AreaSwitcherProps) {
   const currentArea = getAreaFromView(currentView);
 
@@ -34,6 +39,8 @@ export function AreaSwitcher({
       onNavigateToTasks();
     } else if (value === 'crm' && currentArea !== 'crm') {
       onNavigateToCrm();
+    } else if (value === 'wiki' && currentArea !== 'wiki') {
+      onNavigateToWiki();
     }
   };
 
@@ -49,6 +56,7 @@ export function AreaSwitcher({
       <SelectContent>
         <SelectItem value="tasks">Task Manager</SelectItem>
         <SelectItem value="crm">CRM</SelectItem>
+        <SelectItem value="wiki">Wiki</SelectItem>
       </SelectContent>
     </Select>
   );

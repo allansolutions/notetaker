@@ -5,6 +5,7 @@ export interface RouterState {
   view: ViewType;
   taskId: string | null;
   contactId: string | null;
+  wikiPageId: string | null;
   filters: Partial<SpreadsheetFilterState>;
 }
 
@@ -212,7 +213,8 @@ export function buildUrl(
   view: ViewType,
   taskId?: string | null,
   filters?: SpreadsheetFilterState,
-  contactId?: string | null
+  contactId?: string | null,
+  wikiPageId?: string | null
 ): string {
   let path: string;
 
@@ -243,6 +245,16 @@ export function buildUrl(
         path = `/crm/contacts/${contactId}`;
       }
       break;
+    case 'wiki-list':
+      path = '/wiki';
+      break;
+    case 'wiki-page':
+      if (!wikiPageId) {
+        path = '/wiki';
+      } else {
+        path = `/wiki/${wikiPageId}`;
+      }
+      break;
     case 'spreadsheet':
     default:
       path = '/';
@@ -269,6 +281,7 @@ export function parseUrl(pathname: string, search: string): RouterState {
     view: 'spreadsheet',
     taskId: null,
     contactId: null,
+    wikiPageId: null,
     filters: {},
   };
 
@@ -292,6 +305,14 @@ export function parseUrl(pathname: string, search: string): RouterState {
     if (contactId) {
       result.view = 'crm-detail';
       result.contactId = contactId;
+    }
+  } else if (pathname === '/wiki') {
+    result.view = 'wiki-list';
+  } else if (pathname.startsWith('/wiki/')) {
+    const wikiPageId = pathname.slice(6); // Remove '/wiki/'
+    if (wikiPageId) {
+      result.view = 'wiki-page';
+      result.wikiPageId = wikiPageId;
     }
   }
   // Default: spreadsheet (for '/' or any unmatched path)

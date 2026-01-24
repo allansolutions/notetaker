@@ -80,7 +80,12 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenCalledWith(
-        { view: 'task-detail', taskId: 'task-456', contactId: null },
+        {
+          view: 'task-detail',
+          taskId: 'task-456',
+          contactId: null,
+          wikiPageId: null,
+        },
         '',
         '/task/task-456'
       );
@@ -98,7 +103,12 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenCalledWith(
-        { view: 'spreadsheet', taskId: null, contactId: null },
+        {
+          view: 'spreadsheet',
+          taskId: null,
+          contactId: null,
+          wikiPageId: null,
+        },
         '',
         '/'
       );
@@ -113,7 +123,12 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenCalledWith(
-        { view: 'full-day-details', taskId: null, contactId: null },
+        {
+          view: 'full-day-details',
+          taskId: null,
+          contactId: null,
+          wikiPageId: null,
+        },
         '',
         '/details'
       );
@@ -128,7 +143,7 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenCalledWith(
-        { view: 'archive', taskId: null, contactId: null },
+        { view: 'archive', taskId: null, contactId: null, wikiPageId: null },
         '',
         '/archive'
       );
@@ -160,7 +175,12 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockPushState).toHaveBeenLastCalledWith(
-        { view: 'spreadsheet', taskId: null, contactId: null },
+        {
+          view: 'spreadsheet',
+          taskId: null,
+          contactId: null,
+          wikiPageId: null,
+        },
         '',
         '/?date=today&type=admin'
       );
@@ -215,7 +235,12 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockReplaceState).toHaveBeenCalledWith(
-        { view: 'spreadsheet', taskId: null, contactId: null },
+        {
+          view: 'spreadsheet',
+          taskId: null,
+          contactId: null,
+          wikiPageId: null,
+        },
         '',
         '/?date=this-week&type=admin&title=search'
       );
@@ -269,7 +294,12 @@ describe('useUrlRouter', () => {
       });
 
       expect(mockReplaceState).toHaveBeenCalledWith(
-        { view: 'full-day-details', taskId: null, contactId: null },
+        {
+          view: 'full-day-details',
+          taskId: null,
+          contactId: null,
+          wikiPageId: null,
+        },
         '',
         '/details?date=today'
       );
@@ -291,6 +321,7 @@ describe('useUrlRouter', () => {
         view: 'task-detail',
         taskId: 'task-789',
         contactId: null,
+        wikiPageId: null,
         filters: {},
       });
     });

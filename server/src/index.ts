@@ -8,6 +8,7 @@ import { settingsRoutes } from './routes/settings';
 import { migrateRoutes } from './routes/migrate';
 import { contactRoutes } from './routes/contacts';
 import { companyRoutes } from './routes/companies';
+import { wikiRoutes } from './routes/wiki';
 import type { Env, Variables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -36,5 +37,6 @@ app.route('/api/settings', settingsRoutes);
 app.route('/api/migrate', migrateRoutes);
 app.route('/api/contacts', contactRoutes);
 app.route('/api/companies', companyRoutes);
+app.route('/api/wiki', wikiRoutes);
 
 export default app;

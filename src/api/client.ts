@@ -1,5 +1,6 @@
 import type { Task, TimeSession, Block } from '../types';
 import type { Contact, Company } from '../modules/crm/types';
+import type { WikiPage, WikiBreadcrumb } from '../modules/wiki/types';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -372,6 +373,112 @@ export const companyApi = {
 
   async delete(id: string): Promise<void> {
     await fetchApi<{ success: boolean }>(`/api/companies/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Wiki page operations
+export const wikiApi = {
+  async getAll(): Promise<WikiPage[]> {
+    const data = await fetchApi<{ pages: WikiPage[] }>('/api/wiki');
+    // Parse blocks from JSON string if needed
+    return data.pages.map((page) => ({
+      ...page,
+      blocks:
+        typeof page.blocks === 'string' ? JSON.parse(page.blocks) : page.blocks,
+    }));
+  },
+
+  async get(id: string): Promise<WikiPage> {
+    const data = await fetchApi<{ page: WikiPage }>(`/api/wiki/${id}`);
+    return {
+      ...data.page,
+      blocks:
+        typeof data.page.blocks === 'string'
+          ? JSON.parse(data.page.blocks)
+          : data.page.blocks,
+    };
+  },
+
+  async getBySlug(slug: string): Promise<WikiPage> {
+    const data = await fetchApi<{ page: WikiPage }>(`/api/wiki/slug/${slug}`);
+    return {
+      ...data.page,
+      blocks:
+        typeof data.page.blocks === 'string'
+          ? JSON.parse(data.page.blocks)
+          : data.page.blocks,
+    };
+  },
+
+  async getAncestors(id: string): Promise<WikiBreadcrumb[]> {
+    const data = await fetchApi<{ ancestors: WikiBreadcrumb[] }>(
+      `/api/wiki/${id}/ancestors`
+    );
+    return data.ancestors;
+  },
+
+  async create(
+    page: Omit<WikiPage, 'id' | 'slug' | 'createdAt' | 'updatedAt'>
+  ): Promise<WikiPage> {
+    const data = await fetchApi<{ page: WikiPage }>('/api/wiki', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...page,
+        blocks: JSON.stringify(page.blocks),
+      }),
+    });
+    return {
+      ...data.page,
+      blocks:
+        typeof data.page.blocks === 'string'
+          ? JSON.parse(data.page.blocks)
+          : data.page.blocks,
+    };
+  },
+
+  async update(
+    id: string,
+    updates: Partial<Omit<WikiPage, 'id' | 'slug' | 'createdAt'>>
+  ): Promise<WikiPage> {
+    const payload: Record<string, unknown> = { ...updates };
+    if (updates.blocks) {
+      payload.blocks = JSON.stringify(updates.blocks);
+    }
+    const data = await fetchApi<{ page: WikiPage }>(`/api/wiki/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    return {
+      ...data.page,
+      blocks:
+        typeof data.page.blocks === 'string'
+          ? JSON.parse(data.page.blocks)
+          : data.page.blocks,
+    };
+  },
+
+  async move(
+    id: string,
+    parentId: string | null,
+    order: number
+  ): Promise<WikiPage> {
+    const data = await fetchApi<{ page: WikiPage }>(`/api/wiki/${id}/move`, {
+      method: 'PUT',
+      body: JSON.stringify({ parentId, order }),
+    });
+    return {
+      ...data.page,
+      blocks:
+        typeof data.page.blocks === 'string'
+          ? JSON.parse(data.page.blocks)
+          : data.page.blocks,
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    await fetchApi<{ success: boolean }>(`/api/wiki/${id}`, {
       method: 'DELETE',
     });
   },

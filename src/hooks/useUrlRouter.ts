@@ -15,7 +15,7 @@ export interface UseUrlRouterOptions {
 export interface UseUrlRouterResult {
   navigate: (
     view: ViewType,
-    params?: { taskId?: string; contactId?: string }
+    params?: { taskId?: string; contactId?: string; wikiPageId?: string }
   ) => void;
   updateFilters: (filters: SpreadsheetFilterState) => void;
   currentState: RouterState;
@@ -44,22 +44,31 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
 
   // Navigate to a new view (pushState)
   const navigate = useCallback(
-    (view: ViewType, params?: { taskId?: string; contactId?: string }) => {
+    (
+      view: ViewType,
+      params?: { taskId?: string; contactId?: string; wikiPageId?: string }
+    ) => {
       const taskId = params?.taskId ?? null;
       const contactId = params?.contactId ?? null;
+      const wikiPageId = params?.wikiPageId ?? null;
 
       // Build URL - include current filters for views that use them
       const filters = filtersRef.current ?? undefined;
-      const url = buildUrl(view, taskId, filters, contactId);
+      const url = buildUrl(view, taskId, filters, contactId, wikiPageId);
 
       // Update browser history
-      window.history.pushState({ view, taskId, contactId }, '', url);
+      window.history.pushState(
+        { view, taskId, contactId, wikiPageId },
+        '',
+        url
+      );
 
       // Update internal state
       const newState: RouterState = {
         view,
         taskId,
         contactId,
+        wikiPageId,
         filters: filters ? { ...filters } : {},
       };
       setCurrentState(newState);
@@ -88,6 +97,7 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
             view: currentState.view,
             taskId: currentState.taskId,
             contactId: currentState.contactId,
+            wikiPageId: currentState.wikiPageId,
           },
           '',
           url
@@ -100,7 +110,12 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
         }));
       }
     },
-    [currentState.view, currentState.taskId, currentState.contactId]
+    [
+      currentState.view,
+      currentState.taskId,
+      currentState.contactId,
+      currentState.wikiPageId,
+    ]
   );
 
   // Listen to popstate events (browser back/forward)

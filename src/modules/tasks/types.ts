@@ -64,7 +64,9 @@ export type ViewType =
   | 'archive'
   | 'crm-list'
   | 'crm-new'
-  | 'crm-detail';
+  | 'crm-detail'
+  | 'wiki-list'
+  | 'wiki-page';
 
 export interface Task {
   id: string;

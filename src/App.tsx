@@ -12,7 +12,19 @@ import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { TasksProvider } from './context/TasksContext';
 import { CrmProvider, ContactListView, ContactDetailView } from './modules/crm';
-import { ViewType, TaskType, TASK_TYPE_OPTIONS, DateRange } from './types';
+import {
+  WikiProvider,
+  WikiListView,
+  WikiPageView,
+  useWiki,
+} from './modules/wiki';
+import {
+  ViewType,
+  TaskType,
+  TASK_TYPE_OPTIONS,
+  DateRange,
+  Task,
+} from './types';
 import {
   SpreadsheetView,
   SpreadsheetFilterState,
@@ -95,6 +107,9 @@ export function AppContent() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(
     initialRouterState.contactId
   );
+  const [selectedWikiPageId, setSelectedWikiPageId] = useState<string | null>(
+    initialRouterState.wikiPageId
+  );
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isTaskFinderOpen, setIsTaskFinderOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
@@ -122,11 +137,13 @@ export function AppContent() {
       view: ViewType;
       taskId: string | null;
       contactId: string | null;
+      wikiPageId: string | null;
       filters: Partial<SpreadsheetFilterState>;
     }) => {
       setCurrentView(state.view);
       setSelectedTaskId(state.taskId);
       setSelectedContactId(state.contactId);
+      setSelectedWikiPageId(state.wikiPageId);
       if (Object.keys(state.filters).length > 0) {
         const newFilterState = routerFiltersToState(state.filters);
         setSpreadsheetFilterState(newFilterState);
@@ -266,6 +283,40 @@ export function AppContent() {
   const handleContactSaved = useCallback(() => {
     handleNavigateToCrm();
   }, [handleNavigateToCrm]);
+
+  // Wiki Navigation Handlers
+  const handleNavigateToWiki = useCallback(() => {
+    setCurrentView('wiki-list');
+    setSelectedWikiPageId(null);
+    router.navigate('wiki-list');
+  }, [router]);
+
+  const handleSelectWikiPage = useCallback(
+    (pageId: string) => {
+      setSelectedWikiPageId(pageId);
+      setCurrentView('wiki-page');
+      router.navigate('wiki-page', { wikiPageId: pageId });
+    },
+    [router]
+  );
+
+  // Store a ref to the create page function that will be set by WikiListViewWrapper
+  const createWikiPageRef = useRef<((parentId: string | null) => void) | null>(
+    null
+  );
+
+  const handleCreateWikiPage = useCallback(() => {
+    // Navigate to wiki first
+    setCurrentView('wiki-list');
+    setSelectedWikiPageId(null);
+    router.navigate('wiki-list');
+    // Trigger page creation after a short delay to ensure context is available
+    setTimeout(() => {
+      if (createWikiPageRef.current) {
+        createWikiPageRef.current(null);
+      }
+    }, 100);
+  }, [router]);
 
   // Split tasks into active and archived
   const activeTasks = useMemo(
@@ -589,6 +640,18 @@ export function AppContent() {
         keywords: ['crm', 'contact', 'new', 'create', 'add'],
         onExecute: handleNavigateToCrmNew,
       },
+      {
+        id: 'view-wiki',
+        label: 'Wiki: Pages',
+        keywords: ['wiki', 'pages', 'knowledge', 'docs', 'documentation'],
+        onExecute: handleNavigateToWiki,
+      },
+      {
+        id: 'wiki-new-page',
+        label: 'Wiki: New Page',
+        keywords: ['wiki', 'page', 'new', 'create', 'add'],
+        onExecute: handleCreateWikiPage,
+      },
       ...TASK_TYPE_OPTIONS.map((option) => ({
         id: `task-type-${option.value}`,
         label: `Type: ${option.label}`,
@@ -608,6 +671,8 @@ export function AppContent() {
       handleNavigateToArchive,
       handleNavigateToCrm,
       handleNavigateToCrmNew,
+      handleNavigateToWiki,
+      handleCreateWikiPage,
       selectedTaskId,
       focusedDetailsTaskId,
     ]
@@ -896,6 +961,21 @@ export function AppContent() {
             onSaved={handleContactSaved}
           />
         );
+      case 'wiki-list':
+        return (
+          <WikiListViewWrapper
+            onSelectPage={handleSelectWikiPage}
+            createPageRef={createWikiPageRef}
+          />
+        );
+      case 'wiki-page':
+        return selectedWikiPageId ? (
+          <WikiPageViewWrapper
+            pageId={selectedWikiPageId}
+            onNavigateToPage={handleSelectWikiPage}
+            onNavigateToList={handleNavigateToWiki}
+          />
+        ) : null;
       case 'spreadsheet':
       default: {
         // Use returnFilters if set (navigating back from task details),
@@ -935,7 +1015,8 @@ export function AppContent() {
         className={`flex-1 mx-auto py-20 px-24 relative ${
           currentView === 'spreadsheet' ||
           currentView === 'archive' ||
-          currentView === 'crm-list'
+          currentView === 'crm-list' ||
+          currentView === 'wiki-list'
             ? 'max-w-[var(--width-content-wide)]'
             : 'max-w-[var(--width-content)]'
         }`}
@@ -945,6 +1026,7 @@ export function AppContent() {
             currentView={currentView}
             onNavigateToTasks={handleBackToSpreadsheet}
             onNavigateToCrm={handleNavigateToCrm}
+            onNavigateToWiki={handleNavigateToWiki}
           />
         </div>
         {renderView()}
@@ -955,11 +1037,12 @@ export function AppContent() {
         getDynamicCommands={getDateFilterCommand}
         onClose={() => setIsCommandPaletteOpen(false)}
       />
-      <TaskFinder
+      <TaskFinderWithWiki
         isOpen={isTaskFinderOpen}
         tasks={tasks}
         onClose={() => setIsTaskFinderOpen(false)}
         onSelectTask={handleSelectTask}
+        onSelectWikiPage={handleSelectWikiPage}
       />
       <div
         data-testid="sidebar"
@@ -1012,8 +1095,10 @@ function AuthenticatedApp() {
       <GoogleAuthProvider>
         <TasksProvider>
           <CrmProvider>
-            <MigrationPrompt />
-            <AppContent />
+            <WikiProvider>
+              <MigrationPrompt />
+              <AppContent />
+            </WikiProvider>
           </CrmProvider>
         </TasksProvider>
       </GoogleAuthProvider>
@@ -1028,6 +1113,94 @@ function App() {
         <AuthenticatedApp />
       </AuthGuard>
     </AuthProvider>
+  );
+}
+
+// Wiki view wrappers that use the wiki context
+function WikiListViewWrapper({
+  onSelectPage,
+  createPageRef,
+}: {
+  onSelectPage: (id: string) => void;
+  createPageRef: React.MutableRefObject<
+    ((parentId: string | null) => void) | null
+  >;
+}) {
+  const { addPage } = useWiki();
+
+  const handleCreatePage = useCallback(
+    async (parentId: string | null) => {
+      const page = await addPage({
+        title: '',
+        parentId,
+        blocks: [],
+        order: 0,
+        icon: null,
+        type: null,
+        category: null,
+      });
+      if (page) {
+        onSelectPage(page.id);
+      }
+    },
+    [addPage, onSelectPage]
+  );
+
+  // Set the ref so command palette can call this
+  useEffect(() => {
+    createPageRef.current = handleCreatePage;
+    return () => {
+      createPageRef.current = null;
+    };
+  }, [createPageRef, handleCreatePage]);
+
+  return (
+    <WikiListView onSelectPage={onSelectPage} onCreatePage={handleCreatePage} />
+  );
+}
+
+function WikiPageViewWrapper({
+  pageId,
+  onNavigateToPage,
+  onNavigateToList,
+}: {
+  pageId: string;
+  onNavigateToPage: (id: string) => void;
+  onNavigateToList: () => void;
+}) {
+  return (
+    <WikiPageView
+      pageId={pageId}
+      onNavigateToPage={onNavigateToPage}
+      onNavigateToList={onNavigateToList}
+    />
+  );
+}
+
+function TaskFinderWithWiki({
+  isOpen,
+  tasks,
+  onClose,
+  onSelectTask,
+  onSelectWikiPage,
+}: {
+  isOpen: boolean;
+  tasks: Task[];
+  onClose: () => void;
+  onSelectTask: (taskId: string) => void;
+  onSelectWikiPage: (pageId: string) => void;
+}) {
+  const { pages } = useWiki();
+
+  return (
+    <TaskFinder
+      isOpen={isOpen}
+      tasks={tasks}
+      wikiPages={pages}
+      onClose={onClose}
+      onSelectTask={onSelectTask}
+      onSelectWikiPage={onSelectWikiPage}
+    />
   );
 }
 

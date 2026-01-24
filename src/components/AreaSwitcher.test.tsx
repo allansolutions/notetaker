@@ -9,6 +9,7 @@ describe('AreaSwitcher', () => {
         currentView="spreadsheet"
         onNavigateToTasks={vi.fn()}
         onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={vi.fn()}
       />
     );
 
@@ -23,6 +24,7 @@ describe('AreaSwitcher', () => {
         currentView="task-detail"
         onNavigateToTasks={vi.fn()}
         onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={vi.fn()}
       />
     );
 
@@ -37,6 +39,7 @@ describe('AreaSwitcher', () => {
         currentView="archive"
         onNavigateToTasks={vi.fn()}
         onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={vi.fn()}
       />
     );
 
@@ -51,6 +54,7 @@ describe('AreaSwitcher', () => {
         currentView="crm-list"
         onNavigateToTasks={vi.fn()}
         onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={vi.fn()}
       />
     );
 
@@ -63,6 +67,7 @@ describe('AreaSwitcher', () => {
         currentView="crm-detail"
         onNavigateToTasks={vi.fn()}
         onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={vi.fn()}
       />
     );
 
@@ -75,10 +80,37 @@ describe('AreaSwitcher', () => {
         currentView="crm-new"
         onNavigateToTasks={vi.fn()}
         onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={vi.fn()}
       />
     );
 
     expect(screen.getByTestId('area-switcher')).toHaveTextContent('CRM');
+  });
+
+  it('shows Wiki when on wiki-list view', () => {
+    render(
+      <AreaSwitcher
+        currentView="wiki-list"
+        onNavigateToTasks={vi.fn()}
+        onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('area-switcher')).toHaveTextContent('Wiki');
+  });
+
+  it('shows Wiki when on wiki-page view', () => {
+    render(
+      <AreaSwitcher
+        currentView="wiki-page"
+        onNavigateToTasks={vi.fn()}
+        onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('area-switcher')).toHaveTextContent('Wiki');
   });
 
   it('calls onNavigateToCrm when switching from tasks to CRM', async () => {
@@ -88,6 +120,7 @@ describe('AreaSwitcher', () => {
         currentView="spreadsheet"
         onNavigateToTasks={vi.fn()}
         onNavigateToCrm={onNavigateToCrm}
+        onNavigateToWiki={vi.fn()}
       />
     );
 
@@ -107,6 +140,7 @@ describe('AreaSwitcher', () => {
         currentView="crm-list"
         onNavigateToTasks={onNavigateToTasks}
         onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={vi.fn()}
       />
     );
 
@@ -119,14 +153,36 @@ describe('AreaSwitcher', () => {
     expect(onNavigateToTasks).toHaveBeenCalledTimes(1);
   });
 
+  it('calls onNavigateToWiki when switching from tasks to Wiki', async () => {
+    const onNavigateToWiki = vi.fn();
+    render(
+      <AreaSwitcher
+        currentView="spreadsheet"
+        onNavigateToTasks={vi.fn()}
+        onNavigateToCrm={vi.fn()}
+        onNavigateToWiki={onNavigateToWiki}
+      />
+    );
+
+    // Open the select
+    fireEvent.click(screen.getByTestId('area-switcher'));
+
+    // Click on Wiki option
+    fireEvent.click(screen.getByText('Wiki'));
+
+    expect(onNavigateToWiki).toHaveBeenCalledTimes(1);
+  });
+
   it('does not navigate when selecting the current area', async () => {
     const onNavigateToTasks = vi.fn();
     const onNavigateToCrm = vi.fn();
+    const onNavigateToWiki = vi.fn();
     render(
       <AreaSwitcher
         currentView="spreadsheet"
         onNavigateToTasks={onNavigateToTasks}
         onNavigateToCrm={onNavigateToCrm}
+        onNavigateToWiki={onNavigateToWiki}
       />
     );
 
@@ -140,5 +196,6 @@ describe('AreaSwitcher', () => {
 
     expect(onNavigateToTasks).not.toHaveBeenCalled();
     expect(onNavigateToCrm).not.toHaveBeenCalled();
+    expect(onNavigateToWiki).not.toHaveBeenCalled();
   });
 });

@@ -2,9 +2,18 @@
  * Wiki Module
  *
  * Knowledge base and documentation functionality.
- * This module will be implemented after CRM.
  */
 
 export * from './types';
+export { WikiProvider, useWiki, buildTree } from './context/WikiContext';
 
-// Context, hooks, and components will be added during implementation
+// Components
+export { WikiTree } from './components/WikiTree';
+export { WikiTreeItem } from './components/WikiTreeItem';
+export { WikiBreadcrumbs } from './components/WikiBreadcrumbs';
+export { WikiIconPicker } from './components/WikiIconPicker';
+export { WikiPageHeader } from './components/WikiPageHeader';
+
+// Views
+export { WikiPageView } from './components/views/WikiPageView';
+export { WikiListView } from './components/views/WikiListView';

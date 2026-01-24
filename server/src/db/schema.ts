@@ -132,3 +132,24 @@ export const contacts = sqliteTable('contacts', {
 
 export type DbContact = typeof contacts.$inferSelect;
 export type NewDbContact = typeof contacts.$inferInsert;
+
+// Wiki - Pages
+export const wikiPages = sqliteTable('wiki_pages', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull().default(''),
+  slug: text('slug').notNull(),
+  parentId: text('parent_id'),
+  order: integer('order').notNull().default(0),
+  icon: text('icon'),
+  type: text('type'),
+  category: text('category'),
+  blocks: text('blocks').notNull().default('[]'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export type DbWikiPage = typeof wikiPages.$inferSelect;
+export type NewDbWikiPage = typeof wikiPages.$inferInsert;

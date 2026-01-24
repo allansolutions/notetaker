@@ -93,7 +93,7 @@ describe('TaskFinder', () => {
       target: { value: 'missing' },
     });
 
-    expect(screen.getByText('No tasks found.')).toBeInTheDocument();
+    expect(screen.getByText('No results found.')).toBeInTheDocument();
   });
 
   it('executes selection on Enter', () => {
@@ -230,6 +230,6 @@ describe('TaskFinder', () => {
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'ArrowUp' });
 
-    expect(screen.getByText('No tasks found.')).toBeInTheDocument();
+    expect(screen.getByText('No results found.')).toBeInTheDocument();
   });
 });

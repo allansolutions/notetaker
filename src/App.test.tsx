@@ -52,6 +52,26 @@ vi.mock('./components/Sidebar', () => ({
   Sidebar: () => <div data-testid="sidebar" />,
 }));
 
+vi.mock('./modules/wiki', () => ({
+  WikiProvider: ({ children }: { children: React.ReactNode }) => children,
+  WikiListView: () => <div data-testid="wiki-list-view" />,
+  WikiPageView: () => <div data-testid="wiki-page-view" />,
+  useWiki: () => ({
+    pages: [],
+    tree: [],
+    isLoading: false,
+    error: null,
+    addPage: vi.fn(),
+    updatePage: vi.fn(),
+    removePage: vi.fn(),
+    getPage: vi.fn(),
+    getPageBySlug: vi.fn(),
+    getAncestors: vi.fn(),
+    movePage: vi.fn(),
+    refreshPages: vi.fn(),
+  }),
+}));
+
 type SpreadsheetViewMockProps = {
   tasks: Task[];
   onNavigateToFullDayDetails: (
