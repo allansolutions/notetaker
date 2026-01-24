@@ -1,15 +1,17 @@
-import { test, expect } from './fixtures';
+import { test as customTest, expect } from './fixtures';
+import { test as baseTest } from '@playwright/test';
+import {
+  mockUnauthenticated,
+  mockAuthenticated,
+  mockTasksApi,
+} from './helpers/auth';
+
+// Use custom test with console error checking for most tests
+const test = customTest;
 
 test.describe('Authentication', () => {
   test('shows login page when not authenticated', async ({ page }) => {
-    // Mock unauthenticated state
-    await page.route('**/auth/me', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ user: null }),
-      });
-    });
+    await mockUnauthenticated(page);
 
     await page.goto('/');
 
@@ -21,15 +23,9 @@ test.describe('Authentication', () => {
     ).toBeVisible();
   });
 
-  test('login button initiates Google OAuth flow', async ({ page }) => {
-    // Mock unauthenticated state
-    await page.route('**/auth/me', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ user: null }),
-      });
-    });
+  // Use base test to avoid console error checking - this test expects 500 when navigating to /auth/google
+  baseTest('login button initiates Google OAuth flow', async ({ page }) => {
+    await mockUnauthenticated(page);
 
     await page.goto('/');
 
@@ -37,7 +33,7 @@ test.describe('Authentication', () => {
     const loginButton = page.getByRole('button', {
       name: /continue with google/i,
     });
-    await expect(loginButton).toBeEnabled();
+    await baseTest.expect(loginButton).toBeEnabled();
 
     // Click and wait for navigation to start (will go to Google OAuth or /auth/google)
     const navigationPromise = page.waitForURL(
@@ -52,21 +48,16 @@ test.describe('Authentication', () => {
 
     // Verify we navigated to Google OAuth (either our endpoint or Google directly)
     const currentUrl = page.url();
-    expect(
-      currentUrl.includes('/auth/google') ||
-        currentUrl.includes('accounts.google.com')
-    ).toBe(true);
+    baseTest
+      .expect(
+        currentUrl.includes('/auth/google') ||
+          currentUrl.includes('accounts.google.com')
+      )
+      .toBe(true);
   });
 
   test('shows error message from URL params', async ({ page }) => {
-    // Mock unauthenticated state
-    await page.route('**/auth/me', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ user: null }),
-      });
-    });
+    await mockUnauthenticated(page);
 
     await page.goto('/?auth_error=access_denied');
 
@@ -80,34 +71,8 @@ test.describe('Authentication', () => {
   });
 
   test('shows app content when authenticated', async ({ page }) => {
-    // Mock authenticated state
-    await page.route('**/auth/me', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          user: {
-            id: 'test-user-1',
-            email: 'test@example.com',
-            name: 'Test User',
-          },
-          settings: null,
-        }),
-      });
-    });
-
-    // Mock empty tasks
-    await page.route('**/api/tasks', async (route) => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([]),
-        });
-      } else {
-        await route.continue();
-      }
-    });
+    await mockAuthenticated(page);
+    await mockTasksApi(page);
 
     await page.goto('/');
 

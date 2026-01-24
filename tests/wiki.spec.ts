@@ -216,9 +216,16 @@ test.describe('Wiki Module', () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
+
+    // Need to set up mocks fresh for this test to include the wiki page
+    await mockAuthenticated(page);
+    await mockTasksApi(page);
     await mockWikiApi(page, [initialPage]);
 
     await page.goto('http://localhost:5173');
+
+    // Wait for app to fully load
+    await page.waitForSelector('[data-testid="sidebar"]');
 
     // Open search with Cmd+P
     await page.keyboard.press('Meta+p');

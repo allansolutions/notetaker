@@ -22,6 +22,18 @@ export async function mockAuthenticated(page: Page): Promise<void> {
       }),
     });
   });
+
+  // Mock Google auth status endpoint
+  await page.route('**/auth/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isConnected: false,
+        user: null,
+      }),
+    });
+  });
 }
 
 /**
@@ -36,6 +48,107 @@ export async function mockUnauthenticated(page: Page): Promise<void> {
       body: JSON.stringify({ user: null }),
     });
   });
+
+  // Mock Google auth status endpoint
+  await page.route('**/auth/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isConnected: false,
+        user: null,
+      }),
+    });
+  });
+}
+
+/**
+ * Sets up route handlers to mock all ancillary APIs (CRM, wiki, settings, contacts).
+ * This prevents 500 errors from unmocked endpoints.
+ */
+export async function mockAncillaryApis(page: Page): Promise<void> {
+  // Mock CRM companies API
+  await page.route('**/api/companies**', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ companies: [] }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // Mock contacts API
+  await page.route('**/api/contacts**', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ contacts: [] }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // Mock wiki API
+  await page.route('**/api/wiki**', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ pages: [] }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // Mock links API
+  await page.route('**/api/links**', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ links: [] }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // Mock settings API
+  await page.route('**/api/settings', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ settings: null }),
+      });
+    } else if (method === 'POST' || method === 'PUT') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ settings: {} }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+}
+
+/**
+ * @deprecated Use mockAncillaryApis instead - it mocks all APIs
+ */
+export async function mockCompaniesApi(page: Page): Promise<void> {
+  await mockAncillaryApis(page);
 }
 
 /**
@@ -184,6 +297,9 @@ export async function mockTasksApi(
       await route.continue();
     }
   });
+
+  // Mock CRM companies API to prevent 500 errors
+  await mockCompaniesApi(page);
 }
 
 const TYPE_LABELS: Record<string, string> = {
