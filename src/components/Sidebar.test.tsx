@@ -17,6 +17,10 @@ vi.mock('./GoogleConnectButton', () => ({
   ),
 }));
 
+vi.mock('./SettingsMenu', () => ({
+  SettingsMenu: () => <div data-testid="settings-menu">Settings Menu</div>,
+}));
+
 describe('Sidebar', () => {
   const defaultProps = {
     tasks: [],

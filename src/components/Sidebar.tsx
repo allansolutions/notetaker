@@ -1,6 +1,7 @@
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Task, CalendarEvent } from '../types';
 import { ThemeToggle } from './ThemeToggle';
+import { SettingsMenu } from './SettingsMenu';
 import { Agenda } from './Agenda';
 import { GoogleConnectButton } from './GoogleConnectButton';
 
@@ -46,7 +47,10 @@ export function Sidebar({
         <div className="text-xs font-semibold text-muted uppercase tracking-wider">
           Schedule
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <SettingsMenu />
+        </div>
       </div>
 
       <Agenda

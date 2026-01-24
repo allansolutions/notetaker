@@ -13,6 +13,7 @@ import {
 } from './icons';
 import { ThemeProvider } from '../context/ThemeContext';
 import { GoogleAuthProvider } from '../context/GoogleAuthContext';
+import { AuthProvider } from '../context/AuthContext';
 import { Task } from '../types';
 
 describe('BackButton', () => {
@@ -108,14 +109,30 @@ describe('Sidebar', () => {
   });
 
   const renderWithProviders = (ui: React.ReactElement) => {
-    // Mock fetch for GoogleAuthProvider
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ isConnected: false }),
-    } as Response);
+    // Mock fetch for GoogleAuthProvider and AuthProvider
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url) => {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      if (urlStr.includes('/auth/me')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              user: { id: 'test-user', email: 'test@example.com' },
+              settings: null,
+            }),
+        } as Response);
+      }
+      // Default for GoogleAuthProvider
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ isConnected: false }),
+      } as Response);
+    });
     return render(
       <ThemeProvider>
-        <GoogleAuthProvider>{ui}</GoogleAuthProvider>
+        <AuthProvider>
+          <GoogleAuthProvider>{ui}</GoogleAuthProvider>
+        </AuthProvider>
       </ThemeProvider>
     );
   };
