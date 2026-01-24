@@ -52,6 +52,11 @@ export function Editor({
     blockId: string;
     offset: number;
   } | null>(null);
+  const [pendingCursorX, setPendingCursorX] = useState<{
+    blockId: string;
+    x: number;
+    fromTop: boolean;
+  } | null>(null);
 
   // Apply pending focus after blocks update
   useEffect(() => {
@@ -68,6 +73,14 @@ export function Editor({
       return () => clearTimeout(timer);
     }
   }, [pendingCursorOffset]);
+
+  // Clear pending cursor X after it's been consumed
+  useEffect(() => {
+    if (pendingCursorX) {
+      const timer = setTimeout(() => setPendingCursorX(null), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingCursorX]);
 
   // Compute visible blocks for navigation and rendering
   const shownBlocks = useMemo(
@@ -156,20 +169,30 @@ export function Editor({
   );
 
   const focusPreviousBlock = useCallback(
-    (id: string) => {
+    (id: string, cursorX?: number) => {
       const index = visibleBlocks.findIndex((b) => b.id === id);
       if (index > 0) {
-        setFocusedId(visibleBlocks[index - 1].id);
+        const targetId = visibleBlocks[index - 1].id;
+        setFocusedId(targetId);
+        if (cursorX !== undefined) {
+          // Coming from below, position cursor on the last line
+          setPendingCursorX({ blockId: targetId, x: cursorX, fromTop: false });
+        }
       }
     },
     [visibleBlocks]
   );
 
   const focusNextBlock = useCallback(
-    (id: string) => {
+    (id: string, cursorX?: number) => {
       const index = visibleBlocks.findIndex((b) => b.id === id);
       if (index < visibleBlocks.length - 1) {
-        setFocusedId(visibleBlocks[index + 1].id);
+        const targetId = visibleBlocks[index + 1].id;
+        setFocusedId(targetId);
+        if (cursorX !== undefined) {
+          // Coming from above, position cursor on the first line
+          setPendingCursorX({ blockId: targetId, x: cursorX, fromTop: true });
+        }
       }
     },
     [visibleBlocks]
@@ -242,6 +265,11 @@ export function Editor({
             pendingCursorOffset={
               pendingCursorOffset?.blockId === block.id
                 ? pendingCursorOffset.offset
+                : null
+            }
+            pendingCursorX={
+              pendingCursorX?.blockId === block.id
+                ? { x: pendingCursorX.x, fromTop: pendingCursorX.fromTop }
                 : null
             }
             onIndent={handleIndent}

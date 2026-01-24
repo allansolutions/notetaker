@@ -13,8 +13,8 @@ interface BlockInputProps {
   onBackspace: (id: string) => void;
   onMerge: (id: string) => void;
   onFocus: (id: string) => void;
-  onArrowUp: (id: string) => void;
-  onArrowDown: (id: string) => void;
+  onArrowUp: (id: string, cursorX?: number) => void;
+  onArrowDown: (id: string, cursorX?: number) => void;
   isFocused: boolean;
   isSelected: boolean;
   onSelect: (id: string) => void;
@@ -26,6 +26,8 @@ interface BlockInputProps {
   onToggleCollapse?: (id: string) => void;
   /** Cursor offset to use when focusing this block (for merge operations) */
   pendingCursorOffset?: number | null;
+  /** Target X coordinate and direction for cursor positioning when focusing via arrow keys */
+  pendingCursorX?: { x: number; fromTop: boolean } | null;
   /** True if this is the last block of its task (enables $ task creation) */
   isLastBlock?: boolean;
   /** Callback when user types $ prefix and presses Enter in last block */
@@ -60,6 +62,107 @@ function getCursorPosition(
   return preCaretRange.toString().length;
 }
 
+// Helper to get the bounding rect of the cursor position
+function getCursorRect(el: HTMLDivElement): DOMRect | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+
+  const range = sel.getRangeAt(0);
+  const rangeRect = range.getBoundingClientRect();
+
+  // If range rect has no dimensions (collapsed cursor), insert a temporary span
+  if (rangeRect.height === 0) {
+    const span = document.createElement('span');
+    span.textContent = '\u200b'; // zero-width space
+    range.insertNode(span);
+    const spanRect = span.getBoundingClientRect();
+    span.remove();
+    el.normalize();
+    return spanRect;
+  }
+
+  return rangeRect;
+}
+
+// Helper to check if cursor is on the first line of a contentEditable element
+function isOnFirstLine(el: HTMLDivElement): boolean {
+  const cursorRect = getCursorRect(el);
+  if (!cursorRect) return true;
+
+  const elRect = el.getBoundingClientRect();
+  // Use line-height as threshold (~24px for 1.5em at 16px base)
+  // Cursor is on first line if its top is within one line-height of element top
+  const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 24;
+  return cursorRect.top - elRect.top < lineHeight;
+}
+
+// Helper to check if cursor is on the last line of a contentEditable element
+function isOnLastLine(el: HTMLDivElement): boolean {
+  const cursorRect = getCursorRect(el);
+  if (!cursorRect) return true;
+
+  const elRect = el.getBoundingClientRect();
+  // Cursor is on last line if its bottom is within one line-height of element bottom
+  const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 24;
+  return elRect.bottom - cursorRect.bottom < lineHeight;
+}
+
+// Helper to position cursor at a target X coordinate on a specific line
+function positionCursorAtX(
+  el: HTMLDivElement,
+  targetX: number,
+  fromTop: boolean
+): void {
+  const text = el.textContent || '';
+  if (!text || !el.firstChild) {
+    // Empty block, just focus
+    el.focus();
+    return;
+  }
+
+  el.focus();
+  const range = document.createRange();
+  const sel = window.getSelection();
+
+  // Find the character position closest to targetX on the target line
+  let bestOffset = 0;
+  let bestDistance = Infinity;
+  const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 24;
+  const elRect = el.getBoundingClientRect();
+
+  for (let i = 0; i <= text.length; i++) {
+    range.setStart(el.firstChild, i);
+    range.collapse(true);
+
+    // Insert temporary span to get position
+    const span = document.createElement('span');
+    span.textContent = '\u200b';
+    range.insertNode(span);
+    const spanRect = span.getBoundingClientRect();
+    span.remove();
+    el.normalize();
+
+    // Check if this position is on the target line
+    const isOnTargetLine = fromTop
+      ? spanRect.top - elRect.top < lineHeight
+      : elRect.bottom - spanRect.bottom < lineHeight;
+
+    if (isOnTargetLine) {
+      const distance = Math.abs(spanRect.left - targetX);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestOffset = i;
+      }
+    }
+  }
+
+  // Position cursor at the best offset found
+  range.setStart(el.firstChild, bestOffset);
+  range.collapse(true);
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
 export function BlockInput({
   block,
   onUpdate,
@@ -79,6 +182,7 @@ export function BlockInput({
   isCollapsed,
   onToggleCollapse,
   pendingCursorOffset,
+  pendingCursorX,
   isLastBlock,
   onTaskCreate,
   onIndent,
@@ -154,9 +258,34 @@ export function BlockInput({
     }
   }, [pendingCursorOffset, block.content]);
 
+  // Track which cursor X we've already processed
+  const processedCursorXRef = useRef<{ x: number; fromTop: boolean } | null>(
+    null
+  );
+
+  // Position cursor at target X when navigating between blocks with arrow keys
+  useLayoutEffect(() => {
+    if (
+      pendingCursorX != null &&
+      inputRef.current &&
+      (processedCursorXRef.current?.x !== pendingCursorX.x ||
+        processedCursorXRef.current?.fromTop !== pendingCursorX.fromTop)
+    ) {
+      processedCursorXRef.current = pendingCursorX;
+      cursorPositionedRef.current = true;
+      const el = inputRef.current;
+      setTimeout(() => {
+        positionCursorAtX(el, pendingCursorX.x, pendingCursorX.fromTop);
+      }, 0);
+    }
+    if (pendingCursorX == null) {
+      processedCursorXRef.current = null;
+    }
+  }, [pendingCursorX]);
+
   // Handle focus changes (default behavior - cursor to end)
   useLayoutEffect(() => {
-    // Skip if cursor was already positioned (by merge effect or previous focus)
+    // Skip if cursor was already positioned (by merge effect, cursorX effect, or previous focus)
     if (cursorPositionedRef.current) return;
 
     if (isFocused && inputRef.current && block.type !== 'divider') {
@@ -179,7 +308,7 @@ export function BlockInput({
         sel?.addRange(range);
       }, 0);
     }
-  }, [isFocused, block.id, block.type, pendingCursorOffset]);
+  }, [isFocused, block.id, block.type, pendingCursorOffset, pendingCursorX]);
 
   const handleInput = () => {
     const text = inputRef.current?.textContent || '';
@@ -303,6 +432,22 @@ export function BlockInput({
     return true;
   };
 
+  // Handle ArrowUp - move to previous block if on first line
+  const handleArrowUp = (e: KeyboardEvent<HTMLDivElement>): void => {
+    if (!inputRef.current || !isOnFirstLine(inputRef.current)) return;
+    e.preventDefault();
+    const cursorRect = getCursorRect(inputRef.current);
+    onArrowUp(block.id, cursorRect?.left);
+  };
+
+  // Handle ArrowDown - move to next block if on last line
+  const handleArrowDown = (e: KeyboardEvent<HTMLDivElement>): void => {
+    if (!inputRef.current || !isOnLastLine(inputRef.current)) return;
+    e.preventDefault();
+    const cursorRect = getCursorRect(inputRef.current);
+    onArrowDown(block.id, cursorRect?.left);
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (handleMetaShortcut(e)) return;
     if (e.key === 'Tab' && handleTabKey(e)) return;
@@ -321,12 +466,10 @@ export function BlockInput({
         handleEnterKey(text, sel);
         break;
       case 'ArrowUp':
-        e.preventDefault();
-        onArrowUp(block.id);
+        handleArrowUp(e);
         break;
       case 'ArrowDown':
-        e.preventDefault();
-        onArrowDown(block.id);
+        handleArrowDown(e);
         break;
       case 'Backspace':
         if (isAtStart) {
