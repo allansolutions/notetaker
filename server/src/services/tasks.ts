@@ -1,6 +1,6 @@
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, or, inArray } from 'drizzle-orm';
 import type { Database } from '../db';
-import { tasks, type DbTask, type NewDbTask } from '../db/schema';
+import { tasks, users, type DbTask, type NewDbTask } from '../db/schema';
 
 export function generateTaskId(): string {
   const timestamp = Date.now().toString(36);
@@ -103,6 +103,285 @@ export async function getMaxOrderIndex(
     .select()
     .from(tasks)
     .where(eq(tasks.userId, userId))
+    .orderBy(asc(tasks.orderIndex));
+
+  if (result.length === 0) {
+    return -1;
+  }
+
+  return Math.max(...result.map((t) => t.orderIndex));
+}
+
+// Team-aware task queries
+
+export interface TaskWithUsers extends DbTask {
+  assigner: {
+    id: string;
+    name: string | null;
+    email: string;
+    avatarUrl: string | null;
+  } | null;
+  assignee: {
+    id: string;
+    name: string | null;
+    email: string;
+    avatarUrl: string | null;
+  } | null;
+}
+
+export interface TeamTaskFilters {
+  teamId: string;
+  assigneeIds?: string[];
+  assignerIds?: string[];
+}
+
+/**
+ * Get tasks for a team with visibility rules:
+ * - Admin: sees ALL tasks in the team
+ * - Member: sees tasks they created OR tasks assigned to them
+ */
+export async function getTasksByTeam(
+  db: Database,
+  userId: string,
+  userRole: 'admin' | 'member',
+  filters: TeamTaskFilters
+): Promise<TaskWithUsers[]> {
+  const { teamId, assigneeIds, assignerIds } = filters;
+
+  // Build base conditions
+  const conditions = [eq(tasks.teamId, teamId)];
+
+  // Visibility rules
+  if (userRole === 'member') {
+    // Member sees tasks they created or tasks assigned to them
+    conditions.push(
+      or(eq(tasks.userId, userId), eq(tasks.assigneeId, userId))!
+    );
+  }
+
+  // Apply filters
+  if (assigneeIds && assigneeIds.length > 0) {
+    conditions.push(inArray(tasks.assigneeId, assigneeIds));
+  }
+  if (assignerIds && assignerIds.length > 0) {
+    conditions.push(inArray(tasks.userId, assignerIds));
+  }
+
+  // Create aliases for assigner and assignee joins
+  const assignerAlias = db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(users)
+    .as('assigner');
+
+  const assigneeAlias = db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(users)
+    .as('assignee');
+
+  const result = await db
+    .select({
+      id: tasks.id,
+      userId: tasks.userId,
+      teamId: tasks.teamId,
+      assigneeId: tasks.assigneeId,
+      type: tasks.type,
+      title: tasks.title,
+      status: tasks.status,
+      importance: tasks.importance,
+      blocks: tasks.blocks,
+      scheduled: tasks.scheduled,
+      startTime: tasks.startTime,
+      duration: tasks.duration,
+      estimate: tasks.estimate,
+      dueDate: tasks.dueDate,
+      orderIndex: tasks.orderIndex,
+      createdAt: tasks.createdAt,
+      updatedAt: tasks.updatedAt,
+      assigner: {
+        id: assignerAlias.id,
+        name: assignerAlias.name,
+        email: assignerAlias.email,
+        avatarUrl: assignerAlias.avatarUrl,
+      },
+      assignee: {
+        id: assigneeAlias.id,
+        name: assigneeAlias.name,
+        email: assigneeAlias.email,
+        avatarUrl: assigneeAlias.avatarUrl,
+      },
+    })
+    .from(tasks)
+    .leftJoin(assignerAlias, eq(tasks.userId, assignerAlias.id))
+    .leftJoin(assigneeAlias, eq(tasks.assigneeId, assigneeAlias.id))
+    .where(and(...conditions))
+    .orderBy(asc(tasks.orderIndex));
+
+  return result as TaskWithUsers[];
+}
+
+/**
+ * Get a single task by ID with team visibility rules
+ */
+export async function getTaskByIdWithTeam(
+  db: Database,
+  taskId: string,
+  userId: string,
+  userRole: 'admin' | 'member',
+  teamId: string
+): Promise<TaskWithUsers | undefined> {
+  const conditions = [eq(tasks.id, taskId), eq(tasks.teamId, teamId)];
+
+  // Visibility rules for members
+  if (userRole === 'member') {
+    conditions.push(
+      or(eq(tasks.userId, userId), eq(tasks.assigneeId, userId))!
+    );
+  }
+
+  const assignerAlias = db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(users)
+    .as('assigner');
+
+  const assigneeAlias = db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(users)
+    .as('assignee');
+
+  const result = await db
+    .select({
+      id: tasks.id,
+      userId: tasks.userId,
+      teamId: tasks.teamId,
+      assigneeId: tasks.assigneeId,
+      type: tasks.type,
+      title: tasks.title,
+      status: tasks.status,
+      importance: tasks.importance,
+      blocks: tasks.blocks,
+      scheduled: tasks.scheduled,
+      startTime: tasks.startTime,
+      duration: tasks.duration,
+      estimate: tasks.estimate,
+      dueDate: tasks.dueDate,
+      orderIndex: tasks.orderIndex,
+      createdAt: tasks.createdAt,
+      updatedAt: tasks.updatedAt,
+      assigner: {
+        id: assignerAlias.id,
+        name: assignerAlias.name,
+        email: assignerAlias.email,
+        avatarUrl: assignerAlias.avatarUrl,
+      },
+      assignee: {
+        id: assigneeAlias.id,
+        name: assigneeAlias.name,
+        email: assigneeAlias.email,
+        avatarUrl: assigneeAlias.avatarUrl,
+      },
+    })
+    .from(tasks)
+    .leftJoin(assignerAlias, eq(tasks.userId, assignerAlias.id))
+    .leftJoin(assigneeAlias, eq(tasks.assigneeId, assigneeAlias.id))
+    .where(and(...conditions))
+    .limit(1);
+
+  return result[0] as TaskWithUsers | undefined;
+}
+
+/**
+ * Check if user can access a task (either as creator or assignee, or admin in team)
+ */
+export async function canAccessTask(
+  db: Database,
+  taskId: string,
+  userId: string,
+  userRole: 'admin' | 'member',
+  teamId: string
+): Promise<boolean> {
+  const task = await getTaskByIdWithTeam(db, taskId, userId, userRole, teamId);
+  return task !== undefined;
+}
+
+/**
+ * Update a task with team context
+ */
+export async function updateTaskWithTeam(
+  db: Database,
+  taskId: string,
+  userId: string,
+  userRole: 'admin' | 'member',
+  teamId: string,
+  data: Partial<Omit<DbTask, 'id' | 'userId' | 'createdAt'>>
+): Promise<boolean> {
+  // First check access
+  const canAccess = await canAccessTask(db, taskId, userId, userRole, teamId);
+  if (!canAccess) {
+    return false;
+  }
+
+  await db
+    .update(tasks)
+    .set({
+      ...data,
+      updatedAt: Date.now(),
+    })
+    .where(and(eq(tasks.id, taskId), eq(tasks.teamId, teamId)));
+
+  return true;
+}
+
+/**
+ * Delete a task with team context
+ */
+export async function deleteTaskWithTeam(
+  db: Database,
+  taskId: string,
+  userId: string,
+  userRole: 'admin' | 'member',
+  teamId: string
+): Promise<boolean> {
+  // First check access
+  const canAccess = await canAccessTask(db, taskId, userId, userRole, teamId);
+  if (!canAccess) {
+    return false;
+  }
+
+  await db
+    .delete(tasks)
+    .where(and(eq(tasks.id, taskId), eq(tasks.teamId, teamId)));
+
+  return true;
+}
+
+export async function getMaxOrderIndexForTeam(
+  db: Database,
+  teamId: string
+): Promise<number> {
+  const result = await db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.teamId, teamId))
     .orderBy(asc(tasks.orderIndex));
 
   if (result.length === 0) {

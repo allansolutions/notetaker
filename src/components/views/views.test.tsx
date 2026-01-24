@@ -6,6 +6,35 @@ import { FullDayDetailsView } from './FullDayDetailsView';
 import { ArchiveView } from './ArchiveView';
 import { Task, Block, TASK_TYPE_COLORS, TaskType } from '../../types';
 
+// Mock useAuth
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'test-user-1', email: 'test@example.com', name: 'Test User' },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
+// Mock useTeam
+vi.mock('@/modules/teams/context/TeamContext', () => ({
+  useTeam: () => ({
+    teams: [],
+    activeTeam: null,
+    members: [],
+    userRole: null,
+    isLoading: false,
+    error: null,
+    setActiveTeam: vi.fn(),
+    createTeam: vi.fn(),
+    updateTeam: vi.fn(),
+    deleteTeam: vi.fn(),
+    inviteMember: vi.fn(),
+    removeMember: vi.fn(),
+    refreshTeams: vi.fn(),
+    refreshMembers: vi.fn(),
+  }),
+}));
+
 const createMockTask = (overrides: Partial<Task> = {}): Task => ({
   id: `task-${Date.now()}-${Math.random()}`,
   type: 'admin',

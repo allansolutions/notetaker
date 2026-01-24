@@ -13,6 +13,8 @@ import { KeyboardSelect } from './KeyboardSelect';
 import { parseTimeInput } from '../utils/time-parsing';
 import { formatMinutes } from '../utils/task-operations';
 import { CalendarIcon } from './icons';
+import { useTeam } from '@/modules/teams/context/TeamContext';
+import { useAuth } from '@/context/AuthContext';
 
 export interface AddTaskData {
   title: string;
@@ -21,6 +23,7 @@ export interface AddTaskData {
   importance: TaskImportance;
   estimate: number;
   dueDate?: number;
+  assigneeId?: string;
 }
 
 interface AddTaskModalProps {
@@ -35,6 +38,8 @@ function getTodayNoon(): number {
 }
 
 export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
+  const { user } = useAuth();
+  const { members, activeTeam } = useTeam();
   const [type, setType] = useState<TaskType | ''>('');
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
@@ -43,6 +48,7 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
   const [estimate, setEstimate] = useState<number | null>(null);
   const [dueDate, setDueDate] = useState<number | undefined>(getTodayNoon());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [assigneeId, setAssigneeId] = useState<string>(user?.id || '');
 
   // Refs for focus management
   const typeRef = useRef<HTMLButtonElement>(null!);
@@ -51,6 +57,7 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
   const importanceRef = useRef<HTMLButtonElement>(null!);
   const estimateRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLButtonElement>(null);
+  const assigneeRef = useRef<HTMLSelectElement>(null);
 
   // Filter out 'blocked' status - it only makes sense for existing tasks
   const addTaskStatusOptions = useMemo(
@@ -73,6 +80,7 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
       importance: importance as TaskImportance,
       estimate: estimate as number,
       dueDate,
+      assigneeId: assigneeId || undefined,
     });
   };
 
@@ -98,6 +106,18 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
   };
 
   const handleDateKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // If assignee field is shown, focus it; otherwise submit
+      if (activeTeam && members.length > 0) {
+        assigneeRef.current?.focus();
+      } else if (isValid) {
+        handleSubmit();
+      }
+    }
+  };
+
+  const handleAssigneeKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && isValid) {
       e.preventDefault();
       handleSubmit();
@@ -295,6 +315,47 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
               </span>
             </button>
           </div>
+
+          {/* Assignee - only show if team is active */}
+          {activeTeam && members.length > 0 && (
+            <div className="flex items-center gap-4">
+              <span
+                id="add-task-assignee-label"
+                className="text-sm text-muted w-24 shrink-0"
+              >
+                Assignee
+              </span>
+              <div className="flex-1 relative">
+                <select
+                  ref={assigneeRef}
+                  id="add-task-assignee"
+                  aria-labelledby="add-task-assignee-label"
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  onKeyDown={handleAssigneeKeyDown}
+                  className="w-full px-3 py-2 text-sm rounded bg-surface border border-border text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                >
+                  {members.map((member) => (
+                    <option key={member.userId} value={member.userId}>
+                      {member.user.name || member.user.email}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M2 4l4 4 4-4" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 p-4 border-t border-border">

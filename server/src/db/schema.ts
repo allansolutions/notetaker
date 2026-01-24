@@ -27,11 +27,61 @@ export const sessions = sqliteTable('sessions', {
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 
+// Teams
+export const teams = sqliteTable('teams', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export type DbTeam = typeof teams.$inferSelect;
+export type NewDbTeam = typeof teams.$inferInsert;
+
+// Team Members
+export const teamMembers = sqliteTable('team_members', {
+  id: text('id').primaryKey(),
+  teamId: text('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role').notNull().default('member'), // 'admin' | 'member'
+  createdAt: integer('created_at').notNull(),
+});
+
+export type DbTeamMember = typeof teamMembers.$inferSelect;
+export type NewDbTeamMember = typeof teamMembers.$inferInsert;
+
+// Team Invites
+export const teamInvites = sqliteTable('team_invites', {
+  id: text('id').primaryKey(),
+  teamId: text('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  token: text('token').notNull().unique(),
+  invitedBy: text('invited_by')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  expiresAt: integer('expires_at').notNull(),
+  acceptedAt: integer('accepted_at'),
+  createdAt: integer('created_at').notNull(),
+});
+
+export type DbTeamInvite = typeof teamInvites.$inferSelect;
+export type NewDbTeamInvite = typeof teamInvites.$inferInsert;
+
 export const tasks = sqliteTable('tasks', {
   id: text('id').primaryKey(),
   userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  teamId: text('team_id').references(() => teams.id, { onDelete: 'cascade' }),
+  assigneeId: text('assignee_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
   type: text('type').notNull().default('admin'),
   title: text('title').notNull().default(''),
   status: text('status').notNull().default('todo'),
@@ -69,6 +119,9 @@ export const userSettings = sqliteTable('user_settings', {
     .references(() => users.id, { onDelete: 'cascade' }),
   theme: text('theme').default('system'),
   sidebarWidth: integer('sidebar_width').default(320),
+  activeTeamId: text('active_team_id').references(() => teams.id, {
+    onDelete: 'set null',
+  }),
   updatedAt: integer('updated_at').notNull(),
 });
 

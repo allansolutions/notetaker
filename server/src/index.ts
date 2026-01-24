@@ -12,6 +12,7 @@ import { wikiRoutes } from './routes/wiki';
 import { webhookRoutes } from './routes/webhooks';
 import { webhookSettingsRoutes } from './routes/webhook-settings';
 import { exportRoutes } from './routes/export';
+import { teamRoutes } from './routes/teams';
 import type { Env, Variables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -44,5 +45,6 @@ app.route('/api/wiki', wikiRoutes);
 app.route('/api/webhooks', webhookRoutes);
 app.route('/api/settings', webhookSettingsRoutes);
 app.route('/api/export', exportRoutes);
+app.route('/api/teams', teamRoutes);
 
 export default app;

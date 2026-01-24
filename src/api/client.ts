@@ -1,4 +1,5 @@
 import type { Task, TimeSession, Block } from '../types';
+import type { Team, TeamMember, TeamInvite } from '@/modules/teams/types';
 import type { Contact, Company } from '../modules/crm/types';
 import type { WikiPage, WikiBreadcrumb } from '../modules/wiki/types';
 
@@ -36,6 +37,13 @@ async function fetchApi<T>(
 }
 
 // Task API types
+export interface ApiTaskUser {
+  id: string;
+  name: string | null;
+  email: string;
+  avatarUrl: string | null;
+}
+
 export interface ApiTask {
   id: string;
   userId: string;
@@ -50,6 +58,10 @@ export interface ApiTask {
   estimate?: number;
   dueDate?: number;
   blockedReason?: string;
+  teamId?: string | null;
+  assigneeId?: string | null;
+  assigner?: ApiTaskUser | null;
+  assignee?: ApiTaskUser | null;
   orderIndex: number;
   createdAt: number;
   updatedAt: number;
@@ -81,6 +93,10 @@ export function apiTaskToTask(
     estimate: apiTask.estimate,
     dueDate: apiTask.dueDate,
     blockedReason: apiTask.blockedReason,
+    teamId: apiTask.teamId,
+    assigneeId: apiTask.assigneeId,
+    assigner: apiTask.assigner,
+    assignee: apiTask.assignee,
     sessions,
     createdAt: apiTask.createdAt,
     updatedAt: apiTask.updatedAt,
@@ -88,14 +104,33 @@ export function apiTaskToTask(
 }
 
 // Task operations
+export interface TaskQueryFilters {
+  teamId?: string;
+  assigneeIds?: string[];
+  assignerIds?: string[];
+}
+
 export const taskApi = {
-  async getAll(): Promise<ApiTask[]> {
-    const data = await fetchApi<{ tasks: ApiTask[] }>('/api/tasks');
+  async getAll(filters?: TaskQueryFilters): Promise<ApiTask[]> {
+    const params = new URLSearchParams();
+    if (filters?.teamId) {
+      params.set('teamId', filters.teamId);
+    }
+    if (filters?.assigneeIds?.length) {
+      filters.assigneeIds.forEach((id) => params.append('assigneeId', id));
+    }
+    if (filters?.assignerIds?.length) {
+      filters.assignerIds.forEach((id) => params.append('assignerId', id));
+    }
+    const query = params.toString();
+    const endpoint = query ? `/api/tasks?${query}` : '/api/tasks';
+    const data = await fetchApi<{ tasks: ApiTask[] }>(endpoint);
     return data.tasks;
   },
 
-  async get(id: string): Promise<ApiTask> {
-    const data = await fetchApi<{ task: ApiTask }>(`/api/tasks/${id}`);
+  async get(id: string, teamId?: string): Promise<ApiTask> {
+    const params = teamId ? `?teamId=${teamId}` : '';
+    const data = await fetchApi<{ task: ApiTask }>(`/api/tasks/${id}${params}`);
     return data.task;
   },
 
@@ -111,17 +146,23 @@ export const taskApi = {
 
   async update(
     id: string,
-    updates: Partial<Omit<Task, 'id' | 'createdAt' | 'sessions'>>
+    updates: Partial<Omit<Task, 'id' | 'createdAt' | 'sessions'>>,
+    teamId?: string
   ): Promise<ApiTask> {
-    const data = await fetchApi<{ task: ApiTask }>(`/api/tasks/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
+    const params = teamId ? `?teamId=${teamId}` : '';
+    const data = await fetchApi<{ task: ApiTask }>(
+      `/api/tasks/${id}${params}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      }
+    );
     return data.task;
   },
 
-  async delete(id: string): Promise<void> {
-    await fetchApi<{ success: boolean }>(`/api/tasks/${id}`, {
+  async delete(id: string, teamId?: string): Promise<void> {
+    const params = teamId ? `?teamId=${teamId}` : '';
+    await fetchApi<{ success: boolean }>(`/api/tasks/${id}${params}`, {
       method: 'DELETE',
     });
   },
@@ -481,5 +522,99 @@ export const wikiApi = {
     await fetchApi<{ success: boolean }>(`/api/wiki/${id}`, {
       method: 'DELETE',
     });
+  },
+};
+
+// Team operations
+export const teamApi = {
+  async getAll(): Promise<Team[]> {
+    const data = await fetchApi<{ teams: Team[] }>('/api/teams');
+    return data.teams;
+  },
+
+  async get(id: string): Promise<{ team: Team; members: TeamMember[] }> {
+    const data = await fetchApi<{ team: Team; members: TeamMember[] }>(
+      `/api/teams/${id}`
+    );
+    return data;
+  },
+
+  async create(name: string): Promise<Team> {
+    const data = await fetchApi<{ team: Team }>('/api/teams', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    return data.team;
+  },
+
+  async update(id: string, name: string): Promise<Team> {
+    const data = await fetchApi<{ team: Team }>(`/api/teams/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    });
+    return data.team;
+  },
+
+  async delete(id: string): Promise<void> {
+    await fetchApi<{ success: boolean }>(`/api/teams/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async getMembers(teamId: string): Promise<TeamMember[]> {
+    const data = await fetchApi<{ members: TeamMember[] }>(
+      `/api/teams/${teamId}/members`
+    );
+    return data.members;
+  },
+
+  async removeMember(teamId: string, userId: string): Promise<void> {
+    await fetchApi<{ success: boolean }>(
+      `/api/teams/${teamId}/members/${userId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+  },
+
+  async createInvite(teamId: string, email: string): Promise<TeamInvite> {
+    const data = await fetchApi<{ invite: TeamInvite }>(
+      `/api/teams/${teamId}/invites`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }
+    );
+    return data.invite;
+  },
+
+  async getInvites(teamId: string): Promise<TeamInvite[]> {
+    const data = await fetchApi<{ invites: TeamInvite[] }>(
+      `/api/teams/${teamId}/invites`
+    );
+    return data.invites;
+  },
+
+  async cancelInvite(inviteId: string): Promise<void> {
+    await fetchApi<{ success: boolean }>(`/api/teams/invites/${inviteId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async getInviteByToken(token: string): Promise<{
+    invite: { id: string; email: string; expiresAt: number };
+    team: { id: string; name: string } | null;
+  }> {
+    return fetchApi(`/api/teams/invites/token/${token}`);
+  },
+
+  async acceptInvite(token: string): Promise<Team> {
+    const data = await fetchApi<{ team: Team }>(
+      `/api/teams/invites/token/${token}/accept`,
+      {
+        method: 'POST',
+      }
+    );
+    return data.team;
   },
 };

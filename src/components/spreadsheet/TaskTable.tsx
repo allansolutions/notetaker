@@ -49,6 +49,7 @@ import { ImportanceCell } from './ImportanceCell';
 import { TitleCell } from './TitleCell';
 import { EstimateCell } from './EstimateCell';
 import { DateCell } from './DateCell';
+import { AssigneeCell } from './AssigneeCell';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
 import { DragHandleIcon, TrashIcon, PlusIcon } from '../icons';
 import { AddTaskModal, AddTaskData } from '../AddTaskModal';
@@ -376,6 +377,26 @@ export function TaskTable({
         size: 120,
         sortingFn: 'alphanumeric',
       }),
+      columnHelper.accessor('assigneeId', {
+        header: 'Assignee',
+        cell: ({ row }) => (
+          <AssigneeCell
+            value={row.original.assigneeId}
+            assignee={row.original.assignee}
+            onChange={(userId) =>
+              onUpdateTask(row.original.id, { assigneeId: userId })
+            }
+          />
+        ),
+        size: 140,
+        sortingFn: (rowA, rowB) => {
+          const a =
+            rowA.original.assignee?.name || rowA.original.assignee?.email || '';
+          const b =
+            rowB.original.assignee?.name || rowB.original.assignee?.email || '';
+          return a.localeCompare(b);
+        },
+      }),
       columnHelper.accessor('title', {
         header: 'Task',
         cell: ({ row, getValue }) => (
@@ -384,7 +405,7 @@ export function TaskTable({
             onClick={() => onSelectTask(row.original.id)}
           />
         ),
-        size: 500,
+        size: 400,
         sortingFn: 'alphanumeric',
       }),
       columnHelper.accessor('status', {

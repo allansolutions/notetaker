@@ -100,6 +100,30 @@ vi.mock('./modules/crm', () => ({
   }),
 }));
 
+vi.mock('./modules/teams/context/TeamContext', () => ({
+  TeamProvider: ({ children }: { children: React.ReactNode }) => children,
+  useTeam: () => ({
+    teams: [],
+    activeTeam: null,
+    members: [],
+    userRole: null,
+    isLoading: false,
+    error: null,
+    setActiveTeam: vi.fn(),
+    createTeam: vi.fn(),
+    updateTeam: vi.fn(),
+    deleteTeam: vi.fn(),
+    inviteMember: vi.fn(),
+    removeMember: vi.fn(),
+    refreshTeams: vi.fn(),
+    refreshMembers: vi.fn(),
+  }),
+}));
+
+vi.mock('./modules/teams/components/TeamSwitcher', () => ({
+  TeamSwitcher: () => <div data-testid="team-switcher" />,
+}));
+
 type SpreadsheetViewMockProps = {
   tasks: Task[];
   onNavigateToFullDayDetails: (

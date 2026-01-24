@@ -25,6 +25,13 @@ import {
   useWiki,
   type WikiPage,
 } from './modules/wiki';
+import { TeamProvider } from './modules/teams/context/TeamContext';
+import { TeamSwitcher } from './modules/teams/components/TeamSwitcher';
+import { TeamSettingsModal } from './modules/teams/components/TeamSettingsModal';
+import {
+  AcceptInvitePage,
+  getInviteTokenFromUrl,
+} from './modules/teams/components/AcceptInvitePage';
 import { ViewType, TaskType, TASK_TYPE_OPTIONS, DateRange } from './types';
 import {
   SpreadsheetView,
@@ -278,6 +285,7 @@ export function AppContent() {
   );
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [isTeamSettingsOpen, setIsTeamSettingsOpen] = useState(false);
   const [spreadsheetViewKey, setSpreadsheetViewKey] = useState(0);
   const [visibleTaskIds, setVisibleTaskIds] = useState<string[]>([]);
   // Tracks which task is focused in the task-details view (for context-aware commands)
@@ -929,7 +937,9 @@ export function AppContent() {
         data.status,
         data.importance,
         data.estimate,
-        dueDate
+        dueDate,
+        undefined, // insertAtIndex
+        data.assigneeId
       );
     },
     [addTask, spreadsheetFilterState]
@@ -1236,7 +1246,8 @@ export function AppContent() {
             : 'max-w-[var(--width-content)]'
         }`}
       >
-        <div className="absolute top-6 right-6">
+        <div className="absolute top-6 right-6 flex items-center gap-2">
+          <TeamSwitcher onOpenSettings={() => setIsTeamSettingsOpen(true)} />
           <AreaSwitcher
             currentView={currentView}
             onNavigateToTasks={handleBackToSpreadsheet}
@@ -1252,6 +1263,9 @@ export function AppContent() {
         getDynamicCommands={getPaletteDynamicItems}
         onClose={() => setIsCommandPaletteOpen(false)}
       />
+      {isTeamSettingsOpen && (
+        <TeamSettingsModal onClose={() => setIsTeamSettingsOpen(false)} />
+      )}
       <div
         data-testid="sidebar"
         className="shrink-0 bg-surface-alt sticky top-0 h-screen overflow-y-auto flex"
@@ -1301,20 +1315,41 @@ function AuthenticatedApp() {
   return (
     <ThemeProvider>
       <GoogleAuthProvider>
-        <TasksProvider>
-          <CrmProvider>
-            <WikiProvider>
-              <MigrationPrompt />
-              <AppContent />
-            </WikiProvider>
-          </CrmProvider>
-        </TasksProvider>
+        <TeamProvider>
+          <TasksProvider>
+            <CrmProvider>
+              <WikiProvider>
+                <MigrationPrompt />
+                <AppContent />
+              </WikiProvider>
+            </CrmProvider>
+          </TasksProvider>
+        </TeamProvider>
       </GoogleAuthProvider>
     </ThemeProvider>
   );
 }
 
 function App() {
+  // Check if this is an invite URL
+  const inviteToken = getInviteTokenFromUrl();
+
+  const handleInviteAccepted = () => {
+    // Redirect to home after accepting invite
+    window.location.href = '/';
+  };
+
+  if (inviteToken) {
+    return (
+      <AuthProvider>
+        <AcceptInvitePage
+          token={inviteToken}
+          onAccepted={handleInviteAccepted}
+        />
+      </AuthProvider>
+    );
+  }
+
   return (
     <AuthProvider>
       <AuthGuard fallback={<LoginPage />}>

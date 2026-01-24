@@ -10,6 +10,35 @@ import { TaskTable } from './TaskTable';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
 import { Task, TaskType, TASK_TYPE_COLORS } from '../../types';
 
+// Mock useAuth
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'test-user-1', email: 'test@example.com', name: 'Test User' },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
+// Mock useTeam
+vi.mock('@/modules/teams/context/TeamContext', () => ({
+  useTeam: () => ({
+    teams: [],
+    activeTeam: null,
+    members: [],
+    userRole: null,
+    isLoading: false,
+    error: null,
+    setActiveTeam: vi.fn(),
+    createTeam: vi.fn(),
+    updateTeam: vi.fn(),
+    deleteTeam: vi.fn(),
+    inviteMember: vi.fn(),
+    removeMember: vi.fn(),
+    refreshTeams: vi.fn(),
+    refreshMembers: vi.fn(),
+  }),
+}));
+
 describe('SelectCell', () => {
   const options = [
     { value: 'a', label: 'Option A' },
@@ -190,7 +219,8 @@ describe('TaskTable', () => {
   const getRowTitles = () => {
     const rows = screen.queryAllByTestId(/^task-row-/);
     return rows.map((row) => {
-      const titleButton = row.querySelector('button');
+      // Find the title cell specifically - it's the button with hover:underline (TitleCell)
+      const titleButton = row.querySelector('button.hover\\:underline');
       return titleButton?.textContent || '';
     });
   };
@@ -275,6 +305,7 @@ describe('TaskTable', () => {
       importance: 'mid',
       estimate: 15,
       dueDate: expect.any(Number), // Defaults to today
+      assigneeId: 'test-user-1', // Current user
     });
   });
 

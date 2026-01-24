@@ -3,6 +3,35 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AddTaskModal } from './AddTaskModal';
 
+// Mock useAuth
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'test-user-1', email: 'test@example.com', name: 'Test User' },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
+// Mock useTeam
+vi.mock('@/modules/teams/context/TeamContext', () => ({
+  useTeam: () => ({
+    teams: [],
+    activeTeam: null,
+    members: [],
+    userRole: null,
+    isLoading: false,
+    error: null,
+    setActiveTeam: vi.fn(),
+    createTeam: vi.fn(),
+    updateTeam: vi.fn(),
+    deleteTeam: vi.fn(),
+    inviteMember: vi.fn(),
+    removeMember: vi.fn(),
+    refreshTeams: vi.fn(),
+    refreshMembers: vi.fn(),
+  }),
+}));
+
 describe('AddTaskModal', () => {
   const mockOnSubmit = vi.fn();
   const mockOnClose = vi.fn();
@@ -444,6 +473,7 @@ describe('AddTaskModal', () => {
         importance: 'mid',
         estimate: 30,
         dueDate: expect.any(Number), // Today's date
+        assigneeId: 'test-user-1', // Current user
       });
     });
 
@@ -537,6 +567,9 @@ describe('AddTaskModal', () => {
     it('calls onClose when backdrop clicked', async () => {
       const user = userEvent.setup();
       render(<AddTaskModal {...defaultProps} />);
+
+      // Close the auto-opened dropdown first
+      await closeTypeDropdown(user);
 
       await user.click(screen.getByLabelText('Close modal'));
       expect(mockOnClose).toHaveBeenCalled();

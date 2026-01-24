@@ -9,7 +9,13 @@ import {
   deleteTask,
   reorderTasks,
   getMaxOrderIndex,
+  getTasksByTeam,
+  getTaskByIdWithTeam,
+  updateTaskWithTeam,
+  deleteTaskWithTeam,
+  getMaxOrderIndexForTeam,
 } from '../services/tasks';
+import { isTeamMember, getUserRole } from '../services/teams';
 import {
   getSessionsByTaskId,
   getSessionById,
@@ -26,7 +32,7 @@ export const taskRoutes = new Hono<{
 
 taskRoutes.use('*', requireAuth);
 
-// Get all tasks for user
+// Get all tasks for user (with optional team filtering)
 taskRoutes.get('/', async (c) => {
   const userId = c.get('userId');
   if (!userId) {
@@ -34,6 +40,41 @@ taskRoutes.get('/', async (c) => {
   }
 
   const db = c.get('db');
+
+  // Check for team filter
+  const teamId = c.req.query('teamId');
+  const assigneeIds = c.req.queries('assigneeId');
+  const assignerIds = c.req.queries('assignerId');
+
+  if (teamId) {
+    // Team-based query with visibility rules
+    const isMember = await isTeamMember(db, teamId, userId);
+    if (!isMember) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+
+    const userRole = await getUserRole(db, teamId, userId);
+    if (!userRole) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+
+    const teamTasks = await getTasksByTeam(db, userId, userRole, {
+      teamId,
+      assigneeIds: assigneeIds?.length ? assigneeIds : undefined,
+      assignerIds: assignerIds?.length ? assignerIds : undefined,
+    });
+
+    // Transform DB tasks to frontend format
+    const transformed = teamTasks.map((task) => ({
+      ...task,
+      blocks: JSON.parse(task.blocks),
+      scheduled: task.scheduled ?? false,
+    }));
+
+    return c.json({ tasks: transformed });
+  }
+
+  // Legacy: personal tasks (no team)
   const tasks = await getTasksByUserId(db, userId);
 
   // Transform DB tasks to frontend format
@@ -73,7 +114,42 @@ taskRoutes.get('/:id', async (c) => {
   }
 
   const taskId = c.req.param('id');
+  const teamId = c.req.query('teamId');
   const db = c.get('db');
+
+  if (teamId) {
+    // Team-based query with visibility rules
+    const isMember = await isTeamMember(db, teamId, userId);
+    if (!isMember) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+
+    const userRole = await getUserRole(db, teamId, userId);
+    if (!userRole) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+
+    const task = await getTaskByIdWithTeam(
+      db,
+      taskId,
+      userId,
+      userRole,
+      teamId
+    );
+    if (!task) {
+      return c.json({ error: 'Task not found' }, 404);
+    }
+
+    return c.json({
+      task: {
+        ...task,
+        blocks: JSON.parse(task.blocks),
+        scheduled: task.scheduled ?? false,
+      },
+    });
+  }
+
+  // Legacy: personal task
   const task = await getTaskById(db, taskId, userId);
 
   if (!task) {
@@ -99,8 +175,30 @@ taskRoutes.post('/', async (c) => {
   const body = await c.req.json();
   const db = c.get('db');
 
-  // Get next order index
-  const maxOrder = await getMaxOrderIndex(db, userId);
+  // If teamId is provided, verify membership and get order index for team
+  let maxOrder: number;
+  if (body.teamId) {
+    const isMember = await isTeamMember(db, body.teamId, userId);
+    if (!isMember) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+
+    // If assigneeId is provided, verify they are a team member
+    if (body.assigneeId) {
+      const isAssigneeMember = await isTeamMember(
+        db,
+        body.teamId,
+        body.assigneeId
+      );
+      if (!isAssigneeMember) {
+        return c.json({ error: 'Assignee is not a team member' }, 400);
+      }
+    }
+
+    maxOrder = await getMaxOrderIndexForTeam(db, body.teamId);
+  } else {
+    maxOrder = await getMaxOrderIndex(db, userId);
+  }
 
   const task = await createTask(db, userId, {
     type: body.type ?? 'admin',
@@ -114,6 +212,8 @@ taskRoutes.post('/', async (c) => {
     estimate: body.estimate,
     dueDate: body.dueDate,
     orderIndex: body.orderIndex ?? maxOrder + 1,
+    teamId: body.teamId ?? null,
+    assigneeId: body.assigneeId ?? null,
   });
 
   return c.json(
@@ -136,13 +236,9 @@ taskRoutes.put('/:id', async (c) => {
   }
 
   const taskId = c.req.param('id');
+  const teamId = c.req.query('teamId');
   const body = await c.req.json();
   const db = c.get('db');
-
-  const existingTask = await getTaskById(db, taskId, userId);
-  if (!existingTask) {
-    return c.json({ error: 'Task not found' }, 404);
-  }
 
   const updateData: Record<string, unknown> = {};
 
@@ -158,6 +254,65 @@ taskRoutes.put('/:id', async (c) => {
   if (body.estimate !== undefined) updateData.estimate = body.estimate;
   if (body.dueDate !== undefined) updateData.dueDate = body.dueDate;
   if (body.orderIndex !== undefined) updateData.orderIndex = body.orderIndex;
+  if (body.assigneeId !== undefined) updateData.assigneeId = body.assigneeId;
+
+  if (teamId) {
+    // Team-based update with visibility rules
+    const isMember = await isTeamMember(db, teamId, userId);
+    if (!isMember) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+
+    const userRole = await getUserRole(db, teamId, userId);
+    if (!userRole) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+
+    // If updating assigneeId, verify they are a team member
+    if (body.assigneeId) {
+      const isAssigneeMember = await isTeamMember(db, teamId, body.assigneeId);
+      if (!isAssigneeMember) {
+        return c.json({ error: 'Assignee is not a team member' }, 400);
+      }
+    }
+
+    const success = await updateTaskWithTeam(
+      db,
+      taskId,
+      userId,
+      userRole,
+      teamId,
+      updateData
+    );
+
+    if (!success) {
+      return c.json({ error: 'Task not found' }, 404);
+    }
+
+    const updatedTask = await getTaskByIdWithTeam(
+      db,
+      taskId,
+      userId,
+      userRole,
+      teamId
+    );
+
+    return c.json({
+      task: updatedTask
+        ? {
+            ...updatedTask,
+            blocks: JSON.parse(updatedTask.blocks),
+            scheduled: updatedTask.scheduled ?? false,
+          }
+        : null,
+    });
+  }
+
+  // Legacy: personal task
+  const existingTask = await getTaskById(db, taskId, userId);
+  if (!existingTask) {
+    return c.json({ error: 'Task not found' }, 404);
+  }
 
   await updateTask(db, taskId, userId, updateData);
 
@@ -182,8 +337,37 @@ taskRoutes.delete('/:id', async (c) => {
   }
 
   const taskId = c.req.param('id');
+  const teamId = c.req.query('teamId');
   const db = c.get('db');
 
+  if (teamId) {
+    // Team-based delete with visibility rules
+    const isMember = await isTeamMember(db, teamId, userId);
+    if (!isMember) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+
+    const userRole = await getUserRole(db, teamId, userId);
+    if (!userRole) {
+      return c.json({ error: 'Team not found' }, 404);
+    }
+
+    const success = await deleteTaskWithTeam(
+      db,
+      taskId,
+      userId,
+      userRole,
+      teamId
+    );
+
+    if (!success) {
+      return c.json({ error: 'Task not found' }, 404);
+    }
+
+    return c.json({ success: true });
+  }
+
+  // Legacy: personal task
   const existingTask = await getTaskById(db, taskId, userId);
   if (!existingTask) {
     return c.json({ error: 'Task not found' }, 404);

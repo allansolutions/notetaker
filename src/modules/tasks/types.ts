@@ -68,6 +68,13 @@ export type ViewType =
   | 'wiki-list'
   | 'wiki-page';
 
+export interface TaskUser {
+  id: string;
+  name: string | null;
+  email: string;
+  avatarUrl: string | null;
+}
+
 export interface Task {
   id: string;
   type: TaskType;
@@ -82,6 +89,10 @@ export interface Task {
   sessions?: TimeSession[]; // Log of all work sessions
   dueDate?: number; // Unix timestamp (ms) - optional due date
   blockedReason?: string; // Reason why task is blocked (required when status is 'blocked')
+  teamId?: string | null; // Team this task belongs to
+  assigneeId?: string | null; // User assigned to this task
+  assigner?: TaskUser | null; // User who created/assigned the task
+  assignee?: TaskUser | null; // User the task is assigned to
   createdAt: number;
   updatedAt: number;
 }

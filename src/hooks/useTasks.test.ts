@@ -23,6 +23,26 @@ vi.mock('../api/client', () => ({
   },
 }));
 
+// Mock the TeamContext
+vi.mock('../modules/teams/context/TeamContext', () => ({
+  useTeam: () => ({
+    teams: [],
+    activeTeam: null,
+    members: [],
+    userRole: null,
+    isLoading: false,
+    error: null,
+    setActiveTeam: vi.fn(),
+    createTeam: vi.fn(),
+    updateTeam: vi.fn(),
+    deleteTeam: vi.fn(),
+    inviteMember: vi.fn(),
+    removeMember: vi.fn(),
+    refreshTeams: vi.fn(),
+    refreshMembers: vi.fn(),
+  }),
+}));
+
 // Mock fetch for AuthContext
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch as typeof fetch;

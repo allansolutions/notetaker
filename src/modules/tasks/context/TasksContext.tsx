@@ -20,6 +20,7 @@ import {
 } from '../types';
 import { taskApi, sessionApi, ApiTask, ApiTimeSession } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
+import { useTeam } from '@/modules/teams/context/TeamContext';
 
 function getNextTimeSlot(): number {
   const now = new Date();
@@ -41,6 +42,10 @@ function toTask(apiTask: ApiTask, sessions: TimeSession[] = []): Task {
     duration: apiTask.duration,
     estimate: apiTask.estimate,
     dueDate: apiTask.dueDate,
+    teamId: apiTask.teamId,
+    assigneeId: apiTask.assigneeId,
+    assigner: apiTask.assigner,
+    assignee: apiTask.assignee,
     sessions,
     createdAt: apiTask.createdAt,
     updatedAt: apiTask.updatedAt,
@@ -67,7 +72,8 @@ interface TasksContextType {
     importance?: TaskImportance,
     estimate?: number,
     dueDate?: number,
-    insertAtIndex?: number
+    insertAtIndex?: number,
+    assigneeId?: string
   ) => Promise<Task | null>;
   updateTaskById: (id: string, updates: Partial<Task>) => Promise<void>;
   removeTask: (id: string) => Promise<void>;
@@ -89,6 +95,7 @@ const TasksContext = createContext<TasksContextType | null>(null);
 
 export function TasksProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
+  const { activeTeam, isLoading: isTeamLoading } = useTeam();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,11 +108,19 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Wait for team loading to complete
+    if (isTeamLoading) {
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
 
-      const apiTasks = await taskApi.getAll();
+      // Fetch tasks with team filter if active team exists
+      const apiTasks = await taskApi.getAll(
+        activeTeam ? { teamId: activeTeam.id } : undefined
+      );
 
       // Fetch sessions for all tasks in parallel
       const tasksWithSessions = await Promise.all(
@@ -125,7 +140,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, activeTeam, isTeamLoading]);
 
   useEffect(() => {
     fetchTasks();
@@ -139,7 +154,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       importance: TaskImportance = 'mid',
       estimate?: number,
       dueDate?: number,
-      insertAtIndex?: number
+      insertAtIndex?: number,
+      assigneeId?: string
     ): Promise<Task | null> => {
       try {
         const apiTask = await taskApi.create({
@@ -153,6 +169,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           duration: DEFAULT_DURATION,
           estimate,
           dueDate,
+          teamId: activeTeam?.id ?? null,
+          assigneeId: assigneeId ?? null,
         });
 
         const newTask = toTask(apiTask, []);
@@ -176,7 +194,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         return null;
       }
     },
-    []
+    [activeTeam]
   );
 
   const updateTaskById = useCallback(
@@ -191,17 +209,17 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           )
         );
 
-        // Don't send sessions to the task update endpoint
+        // Don't send sessions, assigner, or assignee objects to the task update endpoint
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { sessions, ...taskUpdates } = updates;
-        await taskApi.update(id, taskUpdates);
+        const { sessions, assigner, assignee, ...taskUpdates } = updates;
+        await taskApi.update(id, taskUpdates, activeTeam?.id);
       } catch (err) {
         // Revert on error, then set error (fetchTasks clears error)
         await fetchTasks();
         setError(err instanceof Error ? err.message : 'Failed to update task');
       }
     },
-    [fetchTasks]
+    [fetchTasks, activeTeam]
   );
 
   const removeTask = useCallback(
@@ -210,14 +228,14 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         // Optimistic update
         setTasks((prev) => prev.filter((task) => task.id !== id));
 
-        await taskApi.delete(id);
+        await taskApi.delete(id, activeTeam?.id);
       } catch (err) {
         // Revert on error, then set error (fetchTasks clears error)
         await fetchTasks();
         setError(err instanceof Error ? err.message : 'Failed to delete task');
       }
     },
-    [fetchTasks]
+    [fetchTasks, activeTeam]
   );
 
   const reorder = useCallback(
@@ -271,7 +289,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           )
         );
 
-        await taskApi.update(taskId, { blocks });
+        await taskApi.update(taskId, { blocks }, activeTeam?.id);
       } catch (err) {
         // Revert on error, then set error (fetchTasks clears error)
         await fetchTasks();
@@ -280,7 +298,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    [fetchTasks]
+    [fetchTasks, activeTeam]
   );
 
   const toggleScheduled = useCallback(
