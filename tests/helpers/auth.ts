@@ -298,6 +298,34 @@ export async function mockTasksApi(
     }
   });
 
+  // Mock reorder endpoint
+  await page.route('**/api/tasks/reorder', async (route) => {
+    if (route.request().method() === 'PUT') {
+      const body = JSON.parse(route.request().postData() ?? '{}');
+      const taskOrders: Array<{ id: string; orderIndex: number }> =
+        body.taskOrders ?? [];
+
+      // Update orderIndex for each task
+      for (const order of taskOrders) {
+        const taskIndex = tasks.findIndex((t) => t.id === order.id);
+        if (taskIndex !== -1) {
+          tasks[taskIndex].orderIndex = order.orderIndex;
+        }
+      }
+
+      // Sort tasks by orderIndex
+      tasks.sort((a, b) => a.orderIndex - b.orderIndex);
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
   // Mock sessions endpoints
   await page.route('**/api/tasks/*/sessions', async (route) => {
     if (route.request().method() === 'GET') {

@@ -26,9 +26,32 @@ export interface AddTaskData {
   assigneeId?: string;
 }
 
+export interface EditTaskData {
+  id: string;
+  title: string;
+  type: TaskType;
+  status: TaskStatus;
+  importance: TaskImportance;
+  estimate: number;
+  dueDate?: number;
+  assigneeId?: string;
+}
+
 interface AddTaskModalProps {
   onSubmit: (data: AddTaskData) => void;
   onClose: () => void;
+  /** When provided, the modal operates in edit mode with pre-populated fields */
+  editTask?: {
+    id: string;
+    type: TaskType;
+    title: string;
+    status: TaskStatus;
+    importance?: TaskImportance;
+    estimate?: number;
+    dueDate?: number;
+    assigneeId?: string | null;
+  };
+  onEditSubmit?: (data: EditTaskData) => void;
 }
 
 function getTodayNoon(): number {
@@ -37,18 +60,35 @@ function getTodayNoon(): number {
   return today.getTime();
 }
 
-export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
+export function AddTaskModal({
+  onSubmit,
+  onClose,
+  editTask,
+  onEditSubmit,
+}: AddTaskModalProps) {
   const { user } = useAuth();
   const { members, activeTeam } = useTeam();
-  const [type, setType] = useState<TaskType | ''>('');
-  const [title, setTitle] = useState('');
-  const [status, setStatus] = useState<TaskStatus>('todo');
-  const [importance, setImportance] = useState<TaskImportance | ''>('');
-  const [estimateInput, setEstimateInput] = useState('');
-  const [estimate, setEstimate] = useState<number | null>(null);
-  const [dueDate, setDueDate] = useState<number | undefined>(getTodayNoon());
+  const isEditMode = !!editTask;
+
+  const [type, setType] = useState<TaskType | ''>(editTask?.type ?? '');
+  const [title, setTitle] = useState(editTask?.title ?? '');
+  const [status, setStatus] = useState<TaskStatus>(editTask?.status ?? 'todo');
+  const [importance, setImportance] = useState<TaskImportance | ''>(
+    editTask?.importance ?? ''
+  );
+  const [estimateInput, setEstimateInput] = useState(
+    editTask?.estimate ? formatMinutes(editTask.estimate) : ''
+  );
+  const [estimate, setEstimate] = useState<number | null>(
+    editTask?.estimate ?? null
+  );
+  const [dueDate, setDueDate] = useState<number | undefined>(
+    editTask?.dueDate ?? getTodayNoon()
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [assigneeId, setAssigneeId] = useState<string>(user?.id || '');
+  const [assigneeId, setAssigneeId] = useState<string>(
+    editTask?.assigneeId ?? user?.id ?? ''
+  );
 
   // Refs for focus management
   const typeRef = useRef<HTMLButtonElement>(null!);
@@ -59,10 +99,13 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
   const dateRef = useRef<HTMLButtonElement>(null);
   const assigneeRef = useRef<HTMLSelectElement>(null);
 
-  // Filter out 'blocked' status - it only makes sense for existing tasks
-  const addTaskStatusOptions = useMemo(
-    () => TASK_STATUS_OPTIONS.filter((opt) => opt.value !== 'blocked'),
-    []
+  // Filter out 'blocked' status in add mode - it only makes sense for existing tasks
+  const statusOptions = useMemo(
+    () =>
+      isEditMode
+        ? TASK_STATUS_OPTIONS
+        : TASK_STATUS_OPTIONS.filter((opt) => opt.value !== 'blocked'),
+    [isEditMode]
   );
 
   const isValid =
@@ -73,15 +116,28 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
 
   const handleSubmit = () => {
     if (!isValid) return;
-    onSubmit({
-      title: title.trim(),
-      type: type as TaskType,
-      status,
-      importance: importance as TaskImportance,
-      estimate: estimate as number,
-      dueDate,
-      assigneeId: assigneeId || undefined,
-    });
+    if (isEditMode && editTask && onEditSubmit) {
+      onEditSubmit({
+        id: editTask.id,
+        title: title.trim(),
+        type: type as TaskType,
+        status,
+        importance: importance as TaskImportance,
+        estimate: estimate as number,
+        dueDate,
+        assigneeId: assigneeId || undefined,
+      });
+    } else {
+      onSubmit({
+        title: title.trim(),
+        type: type as TaskType,
+        status,
+        importance: importance as TaskImportance,
+        estimate: estimate as number,
+        dueDate,
+        assigneeId: assigneeId || undefined,
+      });
+    }
   };
 
   const handleEstimateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,7 +218,7 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
             id="add-task-modal-title"
             className="text-lg font-semibold text-primary"
           >
-            Add Task
+            {isEditMode ? 'Edit Task' : 'Add Task'}
           </h2>
           <button
             type="button"
@@ -197,7 +253,7 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
               onAdvance={() => titleRef.current?.focus()}
               options={TASK_TYPE_OPTIONS}
               placeholder="Select type..."
-              autoOpen
+              autoOpen={!isEditMode}
               triggerRef={typeRef}
               id="add-task-type"
               aria-labelledby="add-task-type-label"
@@ -236,7 +292,7 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
               value={status}
               onChange={setStatus}
               onAdvance={() => importanceRef.current?.focus()}
-              options={addTaskStatusOptions}
+              options={statusOptions}
               placeholder="Select status..."
               triggerRef={statusRef}
               id="add-task-status"
@@ -372,7 +428,7 @@ export function AddTaskModal({ onSubmit, onClose }: AddTaskModalProps) {
             disabled={!isValid}
             className="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Create
+            {isEditMode ? 'Save' : 'Create'}
           </button>
         </div>
       </div>

@@ -5,9 +5,9 @@ test.describe('Keyboard Row Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await mockAuthenticated(page);
     await mockTasksApi(page, [
-      { id: 'task-1', title: 'First Task' },
-      { id: 'task-2', title: 'Second Task' },
-      { id: 'task-3', title: 'Third Task' },
+      { id: 'task-1', title: 'First Task', estimate: 30 },
+      { id: 'task-2', title: 'Second Task', estimate: 60 },
+      { id: 'task-3', title: 'Third Task', estimate: 45 },
     ]);
   });
 
@@ -189,5 +189,217 @@ test.describe('Keyboard Row Navigation', () => {
 
     // Should still be on task detail (not navigated away)
     await expect(page.locator('.block-input')).toBeVisible();
+  });
+
+  test('Shift+Down moves the active row down', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
+    await page.waitForSelector('table');
+
+    await page.click('body');
+
+    // Activate first row
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('[data-testid="task-row-task-1"]')).toHaveClass(
+      /ring-2/
+    );
+
+    // Get the initial order of rows
+    const rowsBefore = await page.locator('tbody tr').allTextContents();
+    expect(rowsBefore[0]).toContain('First Task');
+    expect(rowsBefore[1]).toContain('Second Task');
+
+    // Press Shift+Down to move the row down
+    await page.keyboard.press('Shift+ArrowDown');
+
+    // The row should have moved down - check the new order
+    const rowsAfter = await page.locator('tbody tr').allTextContents();
+    expect(rowsAfter[0]).toContain('Second Task');
+    expect(rowsAfter[1]).toContain('First Task');
+
+    // Active row should still be the moved row (now at index 1)
+    await expect(page.locator('[data-testid="task-row-task-1"]')).toHaveClass(
+      /ring-2/
+    );
+  });
+
+  test('Shift+Up moves the active row up', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
+    await page.waitForSelector('table');
+
+    await page.click('body');
+
+    // Activate second row
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('[data-testid="task-row-task-2"]')).toHaveClass(
+      /ring-2/
+    );
+
+    // Get the initial order of rows
+    const rowsBefore = await page.locator('tbody tr').allTextContents();
+    expect(rowsBefore[0]).toContain('First Task');
+    expect(rowsBefore[1]).toContain('Second Task');
+
+    // Press Shift+Up to move the row up
+    await page.keyboard.press('Shift+ArrowUp');
+
+    // The row should have moved up - check the new order
+    const rowsAfter = await page.locator('tbody tr').allTextContents();
+    expect(rowsAfter[0]).toContain('Second Task');
+    expect(rowsAfter[1]).toContain('First Task');
+
+    // Active row should still be the moved row (now at index 0)
+    await expect(page.locator('[data-testid="task-row-task-2"]')).toHaveClass(
+      /ring-2/
+    );
+  });
+
+  test('Shift+Down on last row does nothing', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
+    await page.waitForSelector('table');
+
+    await page.click('body');
+
+    // Activate last row
+    await page.keyboard.press('ArrowUp');
+    await expect(page.locator('[data-testid="task-row-task-3"]')).toHaveClass(
+      /ring-2/
+    );
+
+    // Get the initial order
+    const rowsBefore = await page.locator('tbody tr').allTextContents();
+
+    // Press Shift+Down - should do nothing since we're at the bottom
+    await page.keyboard.press('Shift+ArrowDown');
+
+    // Order should remain the same
+    const rowsAfter = await page.locator('tbody tr').allTextContents();
+    expect(rowsAfter).toEqual(rowsBefore);
+
+    // Active row should still be the last row
+    await expect(page.locator('[data-testid="task-row-task-3"]')).toHaveClass(
+      /ring-2/
+    );
+  });
+
+  test('Shift+Up on first row does nothing', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
+    await page.waitForSelector('table');
+
+    await page.click('body');
+
+    // Activate first row
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('[data-testid="task-row-task-1"]')).toHaveClass(
+      /ring-2/
+    );
+
+    // Get the initial order
+    const rowsBefore = await page.locator('tbody tr').allTextContents();
+
+    // Press Shift+Up - should do nothing since we're at the top
+    await page.keyboard.press('Shift+ArrowUp');
+
+    // Order should remain the same
+    const rowsAfter = await page.locator('tbody tr').allTextContents();
+    expect(rowsAfter).toEqual(rowsBefore);
+
+    // Active row should still be the first row
+    await expect(page.locator('[data-testid="task-row-task-1"]')).toHaveClass(
+      /ring-2/
+    );
+  });
+
+  test('Shift+Enter opens edit modal for active row', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
+    await page.waitForSelector('table');
+
+    await page.click('body');
+
+    // Activate first row
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('[data-testid="task-row-task-1"]')).toHaveClass(
+      /ring-2/
+    );
+
+    // Press Shift+Enter to open edit modal
+    await page.keyboard.press('Shift+Enter');
+
+    // Verify the edit modal appears
+    const modal = page.locator('[role="dialog"]');
+    await expect(modal).toBeVisible();
+
+    // Verify it's the edit modal (title should be "Edit Task")
+    await expect(modal.locator('h2')).toHaveText('Edit Task');
+
+    // Verify the task data is pre-populated (title field should have the task title)
+    const titleInput = modal.locator('input[id="add-task-title"]');
+    await expect(titleInput).toHaveValue('First Task');
+
+    // Close modal by clicking Cancel button
+    await modal.getByRole('button', { name: 'Cancel' }).click();
+    await expect(modal).not.toBeVisible();
+  });
+
+  test('Shift+Enter edit modal shows Save button instead of Create', async ({
+    page,
+  }) => {
+    await page.goto('http://localhost:5173/');
+    await page.waitForSelector('table');
+
+    await page.click('body');
+
+    // Activate first row and open edit modal
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Shift+Enter');
+
+    const modal = page.locator('[role="dialog"]');
+    await expect(modal).toBeVisible();
+
+    // Verify the submit button says "Save" not "Create"
+    await expect(modal.getByRole('button', { name: 'Save' })).toBeVisible();
+    await expect(
+      modal.getByRole('button', { name: 'Create' })
+    ).not.toBeVisible();
+
+    // Close modal by clicking Cancel button
+    await modal.getByRole('button', { name: 'Cancel' }).click();
+  });
+
+  test('Shift+Enter edit modal saves changes when Save is clicked', async ({
+    page,
+  }) => {
+    await page.goto('http://localhost:5173/');
+    await page.waitForSelector('table');
+
+    await page.click('body');
+
+    // Activate first row and open edit modal
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Shift+Enter');
+
+    const modal = page.locator('[role="dialog"]');
+    await expect(modal).toBeVisible();
+
+    // Change the title
+    const titleInput = modal.locator('input[id="add-task-title"]');
+    await titleInput.clear();
+    await titleInput.fill('Updated Task Title');
+
+    // Click Save
+    await modal.getByRole('button', { name: 'Save' }).click();
+
+    // Modal should close
+    await expect(modal).not.toBeVisible();
+
+    // Verify the task title was updated in the table
+    await expect(
+      page
+        .locator('[data-testid="task-row-task-1"]')
+        .getByText('Updated Task Title')
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="task-row-task-1"]').getByText('First Task')
+    ).not.toBeVisible();
   });
 });

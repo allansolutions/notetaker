@@ -62,7 +62,7 @@ import { AssigneeCell } from './AssigneeCell';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
 import { DragHandleIcon, TrashIcon, PlusIcon, GroupIcon } from '../icons';
 import { useTeam } from '@/modules/teams/context/TeamContext';
-import { AddTaskModal, AddTaskData } from '../AddTaskModal';
+import { AddTaskModal, AddTaskData, EditTaskData } from '../AddTaskModal';
 import { BlockedReasonModal } from '../BlockedReasonModal';
 
 // Sort order maps for custom sorting
@@ -337,6 +337,7 @@ export function TaskTable({
   const [internalAddModalOpen, setInternalAddModalOpen] = useState(false);
   const showAddModal = isAddTaskModalOpen ?? internalAddModalOpen;
   const setShowAddModal = onAddTaskModalOpenChange ?? setInternalAddModalOpen;
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [internalFilters, setInternalFilters] =
     useState<ColumnFilters>(defaultFilters);
@@ -693,6 +694,68 @@ export function TaskTable({
     []
   );
 
+  const handleMoveRow = useCallback(
+    (direction: 'up' | 'down') => {
+      if (activeRowIndex === null) return false;
+
+      const taskCount = navigableTaskIds.length;
+      const activeTaskId = navigableTaskIds[activeRowIndex];
+      if (!activeTaskId) return false;
+
+      const targetIndex =
+        direction === 'down' ? activeRowIndex + 1 : activeRowIndex - 1;
+      if (targetIndex < 0 || targetIndex >= taskCount) return false;
+
+      const targetTaskId = navigableTaskIds[targetIndex];
+      if (!targetTaskId) return false;
+
+      // When grouping by date, handle cross-group moves
+      if (groupBy === 'date') {
+        const activeGroup = taskGroupMap.get(activeTaskId);
+        const targetGroup = taskGroupMap.get(targetTaskId);
+
+        if (activeGroup && targetGroup && activeGroup !== targetGroup) {
+          const newDate = getDateForGroup(targetGroup);
+          if (newDate !== undefined) {
+            onUpdateTask(activeTaskId, { dueDate: newDate });
+          } else {
+            return false;
+          }
+        }
+      }
+
+      setSorting([]);
+      onReorder(activeTaskId, targetTaskId);
+      setActiveRowIndex(targetIndex);
+      return true;
+    },
+    [
+      activeRowIndex,
+      navigableTaskIds,
+      groupBy,
+      taskGroupMap,
+      onUpdateTask,
+      onReorder,
+    ]
+  );
+
+  const handleEnterKey = useCallback(
+    (shiftKey: boolean) => {
+      if (activeRowIndex === null) return;
+
+      const taskId = navigableTaskIds[activeRowIndex];
+      if (!taskId) return;
+
+      if (shiftKey) {
+        const task = tasks.find((t) => t.id === taskId);
+        if (task) setEditingTask(task);
+      } else {
+        onSelectTask(taskId);
+      }
+    },
+    [activeRowIndex, navigableTaskIds, tasks, onSelectTask]
+  );
+
   useEffect(() => {
     const shouldIgnoreKeyEvent = (target: HTMLElement) =>
       target.tagName === 'INPUT' ||
@@ -709,13 +772,18 @@ export function TaskTable({
       const taskCount = navigableTaskIds.length;
       if (taskCount === 0) return;
 
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (e.shiftKey && e.key === 'ArrowDown' && activeRowIndex !== null) {
+        e.preventDefault();
+        handleMoveRow('down');
+      } else if (e.shiftKey && e.key === 'ArrowUp' && activeRowIndex !== null) {
+        e.preventDefault();
+        handleMoveRow('up');
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         setActiveRowIndex(getNextActiveIndex(e.key, activeRowIndex, taskCount));
       } else if (e.key === 'Enter' && activeRowIndex !== null) {
         e.preventDefault();
-        const taskId = navigableTaskIds[activeRowIndex];
-        if (taskId) onSelectTask(taskId);
+        handleEnterKey(e.shiftKey);
       } else if (e.key === 'Escape' && activeRowIndex !== null) {
         e.preventDefault();
         setActiveRowIndex(null);
@@ -724,7 +792,13 @@ export function TaskTable({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [activeRowIndex, navigableTaskIds, onSelectTask, getNextActiveIndex]);
+  }, [
+    activeRowIndex,
+    navigableTaskIds,
+    getNextActiveIndex,
+    handleMoveRow,
+    handleEnterKey,
+  ]);
 
   // Build assignee options from team members
   const assigneeOptions = useMemo(() => {
@@ -826,6 +900,19 @@ export function TaskTable({
   const handleAddTask = (data: AddTaskData) => {
     onAddTask(data);
     setShowAddModal(false);
+  };
+
+  const handleEditTask = (data: EditTaskData) => {
+    onUpdateTask(data.id, {
+      type: data.type,
+      title: data.title,
+      status: data.status,
+      importance: data.importance,
+      estimate: data.estimate,
+      dueDate: data.dueDate,
+      assigneeId: data.assigneeId,
+    });
+    setEditingTask(null);
   };
 
   return (
@@ -979,6 +1066,15 @@ export function TaskTable({
         <AddTaskModal
           onSubmit={handleAddTask}
           onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {editingTask && (
+        <AddTaskModal
+          onSubmit={handleAddTask}
+          onClose={() => setEditingTask(null)}
+          editTask={editingTask}
+          onEditSubmit={handleEditTask}
         />
       )}
 
