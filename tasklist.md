@@ -73,3 +73,18 @@ Another good use of automated Slack messages is when the assignee changes the st
 Every category should have an accompanying definition. So, if this were a category in the playbook, or in the wiki, and the category were playbook, then you could describe that this is where we have information about standard operating procedures that need to be followed within the company and a common template, even of key fields that are found within such a document.
 
 ---
+
+## 9. Add type and category fields for wiki pages
+
+**Status:** pending | **Added:** 2026-01-23
+
+Once we have the wiki created, consider having both type and category for wiki pages. Looking at the current task management, the word "type" is used to describe things like business dev, admin, etc.—this would be better named as "category."
+
+For the wiki, pages would have both concepts:
+
+- **Category**: admin, business dev, etc. (same classification used for tasks)
+- **Type**: the kind of document—call notes, SOPs (standard operating procedures), etc.
+
+For example, call notes could have the category of "admin" because the call was largely about admin topics, while the type would be "call notes."
+
+---
