@@ -48,6 +48,7 @@ webhookRoutes.post('/fathom/:userId/:token', async (c) => {
     eventName: payload.event_name,
     title: payload.title,
     hasTranscript: !!payload.transcript,
+    allKeys: Object.keys(payload),
   });
 
   // Verify signature if webhook secret is configured
@@ -87,12 +88,14 @@ webhookRoutes.post('/fathom/:userId/:token', async (c) => {
     console.log('[Fathom Webhook] Signature verified');
   }
 
-  // Only process new-meeting-content-ready events
-  if (payload.event_name !== 'new-meeting-content-ready') {
-    console.log('[Fathom Webhook] Ignoring event', {
-      eventName: payload.event_name,
+  // Process webhook if it has meeting content (title or transcript)
+  // Fathom sends meeting data directly without a specific event_name field
+  if (!payload.title && !payload.transcript) {
+    console.log('[Fathom Webhook] Ignoring - no meeting content', {
+      hasTitle: !!payload.title,
+      hasTranscript: !!payload.transcript,
     });
-    return c.json({ message: 'Event ignored' }, 200);
+    return c.json({ message: 'No meeting content' }, 200);
   }
 
   // Transform transcript to wiki blocks

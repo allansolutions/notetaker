@@ -61,12 +61,26 @@ export async function verifyWebhookSignature(
   body: string,
   signature: string
 ): Promise<boolean> {
+  // Svix-style secrets have format: whsec_<base64-encoded-key>
+  // Strip the prefix and decode the key
+  let secretKey: Uint8Array;
+  if (secret.startsWith('whsec_')) {
+    const base64Key = secret.slice(6); // Remove 'whsec_' prefix
+    // Decode base64 to bytes
+    const binaryString = atob(base64Key);
+    secretKey = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      secretKey[i] = binaryString.charCodeAt(i);
+    }
+  } else {
+    secretKey = new TextEncoder().encode(secret);
+  }
+
   const signedPayload = `${webhookId}.${timestamp}.${body}`;
 
-  const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(secret),
+    secretKey,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
@@ -75,12 +89,19 @@ export async function verifyWebhookSignature(
   const signatureBuffer = await crypto.subtle.sign(
     'HMAC',
     key,
-    encoder.encode(signedPayload)
+    new TextEncoder().encode(signedPayload)
   );
 
-  const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  // Svix uses base64 encoded signatures
+  const expectedSignature = btoa(
+    String.fromCharCode(...new Uint8Array(signatureBuffer))
+  );
+
+  console.log('[Signature Debug]', {
+    expectedPrefix: expectedSignature.slice(0, 20),
+    receivedPrefix: signature.slice(0, 20),
+    match: expectedSignature === signature,
+  });
 
   return expectedSignature === signature;
 }
