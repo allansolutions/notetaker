@@ -95,7 +95,7 @@ const TasksContext = createContext<TasksContextType | null>(null);
 
 export function TasksProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  const { activeTeam, isLoading: isTeamLoading } = useTeam();
+  const { activeTeam, isLoading: isTeamLoading, members } = useTeam();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -200,11 +200,29 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const updateTaskById = useCallback(
     async (id: string, updates: Partial<Task>) => {
       try {
+        // If assigneeId is being updated, also update the assignee object for optimistic UI
+        const optimisticUpdates: Partial<Task> = { ...updates };
+        if ('assigneeId' in updates) {
+          if (updates.assigneeId === null) {
+            optimisticUpdates.assignee = null;
+          } else {
+            const member = members.find((m) => m.userId === updates.assigneeId);
+            if (member) {
+              optimisticUpdates.assignee = {
+                id: member.user.id,
+                name: member.user.name,
+                email: member.user.email,
+                avatarUrl: member.user.avatarUrl,
+              };
+            }
+          }
+        }
+
         // Optimistic update
         setTasks((prev) =>
           prev.map((task) =>
             task.id === id
-              ? { ...task, ...updates, updatedAt: Date.now() }
+              ? { ...task, ...optimisticUpdates, updatedAt: Date.now() }
               : task
           )
         );
@@ -219,7 +237,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         setError(err instanceof Error ? err.message : 'Failed to update task');
       }
     },
-    [fetchTasks, activeTeam]
+    [fetchTasks, activeTeam, members]
   );
 
   const removeTask = useCallback(
