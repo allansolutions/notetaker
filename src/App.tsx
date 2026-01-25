@@ -865,6 +865,20 @@ export function AppContent() {
         onExecute: () => handleCommandSetPreset('this-week'),
       },
       {
+        id: 'view-past',
+        label: 'Filter: Past',
+        type: 'command',
+        keywords: ['view', 'tasks', 'past', 'filter', 'overdue', 'before'],
+        onExecute: () => handleCommandSetPreset('past'),
+      },
+      {
+        id: 'view-future',
+        label: 'Filter: Future',
+        type: 'command',
+        keywords: ['view', 'tasks', 'future', 'filter', 'upcoming', 'later'],
+        onExecute: () => handleCommandSetPreset('future'),
+      },
+      {
         id: 'view-task-details',
         label: 'Task: Details',
         type: 'command',

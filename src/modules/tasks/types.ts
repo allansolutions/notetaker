@@ -192,6 +192,8 @@ export type DateFilterPreset =
   | 'tomorrow'
   | 'yesterday'
   | 'this-week'
+  | 'past'
+  | 'future'
   | 'specific-date'
   | 'date-range';
 
@@ -203,4 +205,6 @@ export const DATE_FILTER_PRESET_OPTIONS: {
   { value: 'today', label: 'Today' },
   { value: 'tomorrow', label: 'Tomorrow' },
   { value: 'this-week', label: 'This Week' },
+  { value: 'past', label: 'Past' },
+  { value: 'future', label: 'Future' },
 ];

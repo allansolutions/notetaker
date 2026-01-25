@@ -401,6 +401,80 @@ describe('matchesDatePreset', () => {
     });
   });
 
+  describe('past preset', () => {
+    it('returns true for task due yesterday', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 14, 10, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'past', now)).toBe(true);
+    });
+
+    it('returns true for task due many days ago', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 4, 1, 10, 0).getTime(); // May 1
+      expect(matchesDatePreset(dueDate, 'past', now)).toBe(true);
+    });
+
+    it('returns false for task due today', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 15, 10, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'past', now)).toBe(false);
+    });
+
+    it('returns false for task due tomorrow', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 16, 10, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'past', now)).toBe(false);
+    });
+
+    it('returns false for tasks without dueDate', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      expect(matchesDatePreset(undefined, 'past', now)).toBe(false);
+    });
+
+    it('includes end of yesterday', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 14, 23, 59, 59, 999).getTime();
+      expect(matchesDatePreset(dueDate, 'past', now)).toBe(true);
+    });
+  });
+
+  describe('future preset', () => {
+    it('returns true for task due tomorrow', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 16, 10, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'future', now)).toBe(true);
+    });
+
+    it('returns true for task due many days ahead', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 7, 1, 10, 0).getTime(); // August 1
+      expect(matchesDatePreset(dueDate, 'future', now)).toBe(true);
+    });
+
+    it('returns false for task due today', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 15, 10, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'future', now)).toBe(false);
+    });
+
+    it('returns false for task due yesterday', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 14, 10, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'future', now)).toBe(false);
+    });
+
+    it('returns false for tasks without dueDate', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      expect(matchesDatePreset(undefined, 'future', now)).toBe(false);
+    });
+
+    it('includes start of tomorrow', () => {
+      const now = new Date(2024, 5, 15, 14, 0);
+      const dueDate = new Date(2024, 5, 16, 0, 0, 0, 0).getTime();
+      expect(matchesDatePreset(dueDate, 'future', now)).toBe(true);
+    });
+  });
+
   describe('specific-date preset', () => {
     it('returns true for task due on the specific date', () => {
       const specificDate = new Date(2024, 5, 15, 12, 0).getTime();
@@ -548,6 +622,8 @@ describe('computePresetCounts', () => {
       today: 0,
       tomorrow: 0,
       'this-week': 0,
+      past: 0,
+      future: 0,
     });
   });
 });

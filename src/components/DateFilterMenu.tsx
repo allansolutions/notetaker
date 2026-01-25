@@ -17,17 +17,22 @@ interface DateFilterMenuProps {
   onPresetChange: (preset: DateFilterPreset) => void;
   onDateChange: (date: number | null) => void;
   onRangeChange: (range: DateRange | null) => void;
-  counts?: Record<'all' | 'today' | 'tomorrow' | 'this-week', number>;
+  counts?: Record<
+    'all' | 'today' | 'tomorrow' | 'this-week' | 'past' | 'future',
+    number
+  >;
 }
 
 const PRESET_LABELS: Record<
-  'all' | 'today' | 'tomorrow' | 'this-week',
+  'all' | 'today' | 'tomorrow' | 'this-week' | 'past' | 'future',
   string
 > = {
   all: 'All',
   today: 'Today',
   tomorrow: 'Tomorrow',
   'this-week': 'This Week',
+  past: 'Past',
+  future: 'Future',
 };
 
 export function DateFilterMenu({

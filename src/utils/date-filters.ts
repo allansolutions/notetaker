@@ -2,7 +2,7 @@ import { DateFilterPreset, DateRange, Task } from '../types';
 import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
 
 export type PresetCounts = Record<
-  'all' | 'today' | 'tomorrow' | 'this-week',
+  'all' | 'today' | 'tomorrow' | 'this-week' | 'past' | 'future',
   number
 >;
 
@@ -139,6 +139,20 @@ export function matchesDatePreset(
       return isInDateRange(dueDate, weekStart, weekEnd);
     }
 
+    case 'past': {
+      // End date is yesterday (start is open/unbounded)
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return dueDate <= endOfDay(yesterday).getTime();
+    }
+
+    case 'future': {
+      // Start date is tomorrow (end is open/unbounded)
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return dueDate >= startOfDay(tomorrow).getTime();
+    }
+
     case 'specific-date': {
       if (!options?.specificDate) return false;
       return isOnDate(dueDate, new Date(options.specificDate));
@@ -172,6 +186,9 @@ export function computePresetCounts(tasks: Task[]): PresetCounts {
     'this-week': tasks.filter((t) =>
       matchesDatePreset(t.dueDate, 'this-week', now)
     ).length,
+    past: tasks.filter((t) => matchesDatePreset(t.dueDate, 'past', now)).length,
+    future: tasks.filter((t) => matchesDatePreset(t.dueDate, 'future', now))
+      .length,
   };
 }
 
