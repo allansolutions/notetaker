@@ -87,6 +87,7 @@ export function CommandPalette({
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectedItemRef = useRef<HTMLButtonElement>(null);
 
   const normalizedQuery = useMemo(() => getNormalizedQuery(query), [query]);
   const queryTokens = useMemo(
@@ -151,6 +152,11 @@ export function CommandPalette({
       setSelectedIndex(0);
     }
   }, [selectedIndex, visibleCommands.length]);
+
+  // Scroll selected item into view when navigating with keyboard
+  useEffect(() => {
+    selectedItemRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [selectedIndex]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -248,6 +254,7 @@ export function CommandPalette({
               return (
                 <button
                   key={command.id}
+                  ref={index === selectedIndex ? selectedItemRef : null}
                   type="button"
                   role="option"
                   aria-selected={index === selectedIndex}
