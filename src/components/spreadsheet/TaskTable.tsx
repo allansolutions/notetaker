@@ -133,7 +133,13 @@ function SortIcon({ direction }: { direction: SortDirection | false }) {
   );
 }
 
-export type GroupByMode = 'none' | 'date';
+export type GroupByMode =
+  | 'none'
+  | 'date'
+  | 'type'
+  | 'status'
+  | 'importance'
+  | 'assignee';
 
 interface TaskTableProps {
   tasks: Task[];
@@ -274,14 +280,23 @@ function SortableRow({
 
 // Row data types for grouped rendering
 type RowData =
-  | { type: 'header'; group: DateGroup; label: string }
+  | { type: 'header'; group: string; label: string }
   | {
       type: 'task';
       task: Task;
       rowIndex: number;
       isFirstInGroup: boolean;
       isLastInGroup: boolean;
+      group: string;
     };
+
+// Group configuration for different group modes
+interface GroupConfig {
+  getGroup: (task: Task) => string;
+  getLabel: (group: string) => string;
+  getOrder: (group: string) => number;
+  shouldSkipGroup?: (group: string) => boolean;
+}
 
 function GroupHeaderRow({
   label,
@@ -298,6 +313,55 @@ function GroupHeaderRow({
         </span>
       </td>
     </tr>
+  );
+}
+
+// Map column IDs to their corresponding group modes
+const COLUMN_GROUP_MAP: Record<string, GroupByMode> = {
+  type: 'type',
+  status: 'status',
+  importance: 'importance',
+  assigneeId: 'assignee',
+  dueDate: 'date',
+};
+
+const COLUMN_LABELS: Record<string, string> = {
+  type: 'type',
+  status: 'status',
+  importance: 'importance',
+  assigneeId: 'assignee',
+  dueDate: 'date',
+};
+
+function ColumnGroupButton({
+  columnId,
+  groupBy,
+  onGroupByChange,
+}: {
+  columnId: string;
+  groupBy: GroupByMode;
+  onGroupByChange: (groupBy: GroupByMode) => void;
+}) {
+  const targetGroupBy = COLUMN_GROUP_MAP[columnId];
+  if (!targetGroupBy) return null;
+
+  const isActive = groupBy === targetGroupBy;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onGroupByChange(isActive ? 'none' : targetGroupBy)}
+      className={`p-0.5 rounded transition-colors ${
+        isActive
+          ? 'text-accent'
+          : 'text-muted opacity-0 group-hover:opacity-50 hover:opacity-100'
+      }`}
+      title={
+        isActive ? 'Disable grouping' : `Group by ${COLUMN_LABELS[columnId]}`
+      }
+    >
+      <GroupIcon />
+    </button>
   );
 }
 
@@ -438,36 +502,142 @@ export function TaskTable({
     });
   }, [tasksFilteredByOtherColumns, filters.title]);
 
-  // Compute grouped row data for visual grouping
-  const groupedRowData = useMemo((): RowData[] => {
+  // Build group configuration based on groupBy mode
+  const groupConfig = useMemo((): GroupConfig | null => {
+    if (groupBy === 'none') return null;
+
     const now = new Date();
     const remainingWeekdays = new Set(getRemainingWeekdayGroups(now));
+
+    // Type grouping
+    const typeOrder = TASK_TYPE_OPTIONS.reduce(
+      (acc, opt, idx) => {
+        acc[opt.value] = idx;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+    const typeLabels = TASK_TYPE_OPTIONS.reduce(
+      (acc, opt) => {
+        acc[opt.value] = opt.label;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
+    // Status grouping
+    const statusOrder: Record<string, number> = {
+      todo: 0,
+      'in-progress': 1,
+      blocked: 2,
+      done: 3,
+    };
+    const statusLabels = TASK_STATUS_OPTIONS.reduce(
+      (acc, opt) => {
+        acc[opt.value] = opt.label;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
+    // Importance grouping (high first)
+    const importanceOrder: Record<string, number> = {
+      high: 0,
+      mid: 1,
+      low: 2,
+      '': 3, // No importance set
+    };
+    const importanceLabels: Record<string, string> = {
+      high: 'High',
+      mid: 'Mid',
+      low: 'Low',
+      '': 'No Importance',
+    };
+
+    // Assignee grouping
+    const assigneeLabels = members.reduce(
+      (acc, member) => {
+        acc[member.userId] = member.user.name || member.user.email;
+        return acc;
+      },
+      { '': 'Unassigned' } as Record<string, string>
+    );
+    const assigneeOrder = members.reduce(
+      (acc, member, idx) => {
+        acc[member.userId] = idx + 1; // Start at 1, 0 is for unassigned
+        return acc;
+      },
+      { '': 0 } as Record<string, number>
+    );
+
+    switch (groupBy) {
+      case 'date':
+        return {
+          getGroup: (task) => getDateGroup(task.dueDate, now),
+          getLabel: (group) => getGroupLabel(group as DateGroup),
+          getOrder: (group) => getGroupOrder(group as DateGroup),
+          shouldSkipGroup: (group) =>
+            isWeekdayGroup(group as DateGroup) &&
+            !remainingWeekdays.has(group as DateGroup),
+        };
+      case 'type':
+        return {
+          getGroup: (task) => task.type,
+          getLabel: (group) => typeLabels[group] || group,
+          getOrder: (group) => typeOrder[group] ?? 999,
+        };
+      case 'status':
+        return {
+          getGroup: (task) => task.status,
+          getLabel: (group) => statusLabels[group] || group,
+          getOrder: (group) => statusOrder[group] ?? 999,
+        };
+      case 'importance':
+        return {
+          getGroup: (task) => task.importance || '',
+          getLabel: (group) => importanceLabels[group] || group,
+          getOrder: (group) => importanceOrder[group] ?? 999,
+        };
+      case 'assignee':
+        return {
+          getGroup: (task) => task.assigneeId || '',
+          getLabel: (group) => assigneeLabels[group] || 'Unknown',
+          getOrder: (group) => assigneeOrder[group] ?? 999,
+        };
+      default:
+        return null;
+    }
+  }, [groupBy, members]);
+
+  // Compute grouped row data for visual grouping
+  const groupedRowData = useMemo((): RowData[] => {
+    if (!groupConfig) return [];
 
     // Compute group for each task and sort by group order (preserving original order within groups)
     const tasksWithGroups = filteredTasks.map((task, originalIndex) => ({
       task,
-      group: getDateGroup(task.dueDate, now),
+      group: groupConfig.getGroup(task),
       originalIndex,
     }));
 
     // Sort by group order, then by original index to preserve order within groups
     tasksWithGroups.sort((a, b) => {
-      const groupDiff = getGroupOrder(a.group) - getGroupOrder(b.group);
+      const groupDiff =
+        groupConfig.getOrder(a.group) - groupConfig.getOrder(b.group);
       if (groupDiff !== 0) return groupDiff;
       return a.originalIndex - b.originalIndex;
     });
 
     // Build row data with headers
     const rowData: RowData[] = [];
-    let currentGroup: DateGroup | null = null;
+    let currentGroup: string | null = null;
     let groupStartIndex = 0;
 
     tasksWithGroups.forEach((item, index) => {
       const { task, group } = item;
 
-      // Skip weekday groups that are before today
-      const shouldShowGroup =
-        !isWeekdayGroup(group) || remainingWeekdays.has(group);
+      // Check if we should skip this group (e.g., past weekdays for date grouping)
+      const shouldShowGroup = !groupConfig.shouldSkipGroup?.(group);
 
       if (shouldShowGroup && group !== currentGroup) {
         // Mark the previous group's last row
@@ -482,7 +652,7 @@ export function TaskTable({
         rowData.push({
           type: 'header',
           group,
-          label: getGroupLabel(group),
+          label: groupConfig.getLabel(group),
         });
         currentGroup = group;
         groupStartIndex = rowData.length;
@@ -499,6 +669,7 @@ export function TaskTable({
         rowIndex: index,
         isFirstInGroup,
         isLastInGroup: false, // Will be updated when next group starts or at end
+        group,
       });
     });
 
@@ -511,19 +682,17 @@ export function TaskTable({
     }
 
     return rowData;
-  }, [filteredTasks]);
+  }, [filteredTasks, groupConfig]);
 
   // Extract sorted task IDs and task-to-group mapping from groupedRowData
   const { sortedTaskIds, taskGroupMap } = useMemo(() => {
     const ids: string[] = [];
-    const groupMap = new Map<string, DateGroup>();
+    const groupMap = new Map<string, string>();
 
     for (const row of groupedRowData) {
       if (row.type === 'task') {
         ids.push(row.task.id);
-        // Find the group this task belongs to by looking at previous header
-        const group = getDateGroup(row.task.dueDate, new Date());
-        groupMap.set(row.task.id, group);
+        groupMap.set(row.task.id, row.group);
       }
     }
 
@@ -669,7 +838,7 @@ export function TaskTable({
 
   // Get navigable task IDs based on current display order
   const navigableTaskIds = useMemo(() => {
-    if (groupBy === 'date') {
+    if (groupBy !== 'none') {
       return sortedTaskIds;
     }
     return visibleRows.map((row) => row.original.id);
@@ -715,7 +884,7 @@ export function TaskTable({
         const targetGroup = taskGroupMap.get(targetTaskId);
 
         if (activeGroup && targetGroup && activeGroup !== targetGroup) {
-          const newDate = getDateForGroup(targetGroup);
+          const newDate = getDateForGroup(targetGroup as DateGroup);
           if (newDate !== undefined) {
             onUpdateTask(activeTaskId, { dueDate: newDate });
           } else {
@@ -877,7 +1046,7 @@ export function TaskTable({
 
       if (activeGroup && overGroup && activeGroup !== overGroup) {
         // Get the date for the target group
-        const newDate = getDateForGroup(overGroup);
+        const newDate = getDateForGroup(overGroup as DateGroup);
 
         if (newDate !== undefined) {
           // Update the task's dueDate to match the target group
@@ -966,27 +1135,13 @@ export function TaskTable({
                             }
                           />
                         )}
-                        {header.id === 'dueDate' && onGroupByChange && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onGroupByChange(
-                                groupBy === 'date' ? 'none' : 'date'
-                              )
-                            }
-                            className={`p-0.5 rounded transition-colors ${
-                              groupBy === 'date'
-                                ? 'text-accent'
-                                : 'text-muted opacity-0 group-hover:opacity-50 hover:opacity-100'
-                            }`}
-                            title={
-                              groupBy === 'date'
-                                ? 'Disable grouping'
-                                : 'Group by date'
-                            }
-                          >
-                            <GroupIcon />
-                          </button>
+                        {/* Group icon for groupable columns */}
+                        {onGroupByChange && (
+                          <ColumnGroupButton
+                            columnId={header.id}
+                            groupBy={groupBy}
+                            onGroupByChange={onGroupByChange}
+                          />
                         )}
                       </div>
                     </th>
@@ -998,14 +1153,14 @@ export function TaskTable({
           </thead>
           <SortableContext
             items={
-              groupBy === 'date'
+              groupBy !== 'none'
                 ? sortedTaskIds
                 : visibleRows.map((row) => row.id)
             }
             strategy={verticalListSortingStrategy}
           >
             <tbody>
-              {groupBy === 'date'
+              {groupBy !== 'none'
                 ? groupedRowData.map((rowData) => {
                     if (rowData.type === 'header') {
                       return (

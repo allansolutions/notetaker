@@ -341,6 +341,36 @@ test.describe('Keyboard Row Navigation', () => {
     await expect(modal).not.toBeVisible();
   });
 
+  test('Shift+Enter edit modal focuses Type dropdown for keyboard navigation', async ({
+    page,
+  }) => {
+    await page.goto('http://localhost:5173/');
+    await page.waitForSelector('table');
+
+    await page.click('body');
+
+    // Activate first row and open edit modal
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Shift+Enter');
+
+    const modal = page.locator('[role="dialog"]');
+    await expect(modal).toBeVisible();
+
+    // Verify the Type dropdown trigger is focused
+    const typeButton = modal.locator('button[id="add-task-type"]');
+    await expect(typeButton).toBeFocused();
+
+    // Press Enter to open the dropdown
+    await page.keyboard.press('Enter');
+
+    // Verify dropdown is open (listbox should be visible)
+    await expect(page.locator('[role="listbox"]')).toBeVisible();
+
+    // Press Escape to close the dropdown, then Cancel to close modal
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+  });
+
   test('Shift+Enter edit modal shows Save button instead of Create', async ({
     page,
   }) => {

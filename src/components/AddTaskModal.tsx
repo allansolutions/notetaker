@@ -108,6 +108,15 @@ export function AddTaskModal({
     [isEditMode]
   );
 
+  // Focus the Type dropdown in edit mode (add mode uses autoOpen which handles focus)
+  useEffect(() => {
+    if (isEditMode && typeRef.current) {
+      requestAnimationFrame(() => {
+        typeRef.current?.focus();
+      });
+    }
+  }, [isEditMode]);
+
   const isValid =
     type !== '' &&
     title.trim() !== '' &&
