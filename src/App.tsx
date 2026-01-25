@@ -302,6 +302,10 @@ export function AppContent() {
   const [focusedDetailsTaskId, setFocusedDetailsTaskId] = useState<
     string | null
   >(null);
+  // Tracks which task is active (selected row) in spreadsheet/archive views
+  const [spreadsheetActiveTaskId, setSpreadsheetActiveTaskId] = useState<
+    string | null
+  >(null);
 
   // Task details context - tracks filter state when navigating to task details
   const [taskDetailsContext, setTaskDetailsContext] =
@@ -543,6 +547,11 @@ export function AppContent() {
       targetTaskId = selectedTaskId;
     } else if (currentView === 'full-day-details') {
       targetTaskId = focusedDetailsTaskId;
+    } else if (
+      (currentView === 'spreadsheet' || currentView === 'archive') &&
+      spreadsheetActiveTaskId
+    ) {
+      targetTaskId = spreadsheetActiveTaskId;
     }
 
     if (!targetTaskId) return;
@@ -550,7 +559,7 @@ export function AppContent() {
     // Mark the task as done and clear blockedReason if it was set
     updateTaskById(targetTaskId, { status: 'done', blockedReason: undefined });
 
-    // Navigate based on context: task-detail → spreadsheet, task-details → stay
+    // Navigate based on context: task-detail → spreadsheet, others → stay
     if (currentView === 'task-detail') {
       handleBackToSpreadsheet();
     }
@@ -558,6 +567,7 @@ export function AppContent() {
     currentView,
     selectedTaskId,
     focusedDetailsTaskId,
+    spreadsheetActiveTaskId,
     updateTaskById,
     handleBackToSpreadsheet,
   ]);
@@ -875,7 +885,10 @@ export function AppContent() {
         keywords: ['complete', 'finish', 'done', 'mark'],
         shouldShow: () =>
           (currentView === 'task-detail' && selectedTaskId !== null) ||
-          (currentView === 'full-day-details' && focusedDetailsTaskId !== null),
+          (currentView === 'full-day-details' &&
+            focusedDetailsTaskId !== null) ||
+          ((currentView === 'spreadsheet' || currentView === 'archive') &&
+            spreadsheetActiveTaskId !== null),
         onExecute: handleCommandMarkDone,
       },
       {
@@ -1028,6 +1041,7 @@ export function AppContent() {
       handleCreateWikiPage,
       selectedTaskId,
       focusedDetailsTaskId,
+      spreadsheetActiveTaskId,
       members,
     ]
   );
@@ -1328,6 +1342,7 @@ export function AppContent() {
             onFiltersChange={handleColumnFiltersChange}
             groupBy={groupBy}
             onGroupByChange={setGroupBy}
+            onActiveTaskChange={setSpreadsheetActiveTaskId}
           />
         );
       case 'crm-list':
@@ -1396,6 +1411,7 @@ export function AppContent() {
             onVisibleTasksChange={handleVisibleTasksChange}
             groupBy={groupBy}
             onGroupByChange={setGroupBy}
+            onActiveTaskChange={setSpreadsheetActiveTaskId}
           />
         );
       }

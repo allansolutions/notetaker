@@ -46,6 +46,7 @@ interface SpreadsheetViewProps {
   onFilterStateChange?: (state: SpreadsheetFilterState) => void;
   groupBy?: GroupByMode;
   onGroupByChange?: (groupBy: GroupByMode) => void;
+  onActiveTaskChange?: (taskId: string | null) => void;
 }
 
 export function SpreadsheetView({
@@ -64,6 +65,7 @@ export function SpreadsheetView({
   onFilterStateChange,
   groupBy = 'none',
   onGroupByChange,
+  onActiveTaskChange,
 }: SpreadsheetViewProps) {
   const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>(
     initialFilters?.dateFilterPreset ?? 'all'
@@ -213,6 +215,7 @@ export function SpreadsheetView({
         onFiltersChange={setFilters}
         groupBy={groupBy}
         onGroupByChange={onGroupByChange}
+        onActiveTaskChange={onActiveTaskChange}
       />
     </div>
   );

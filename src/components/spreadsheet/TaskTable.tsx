@@ -160,6 +160,8 @@ interface TaskTableProps {
   // Grouping
   groupBy?: GroupByMode;
   onGroupByChange?: (groupBy: GroupByMode) => void;
+  // Active row callback for command palette integration
+  onActiveTaskChange?: (taskId: string | null) => void;
 }
 
 const columnHelper = createColumnHelper<Task>();
@@ -396,6 +398,7 @@ export function TaskTable({
   onFiltersChange,
   groupBy = 'none',
   onGroupByChange,
+  onActiveTaskChange,
 }: TaskTableProps) {
   const { members } = useTeam();
   const [internalAddModalOpen, setInternalAddModalOpen] = useState(false);
@@ -848,6 +851,15 @@ export function TaskTable({
   useEffect(() => {
     setActiveRowIndex(null);
   }, [navigableTaskIds.length, groupBy]);
+
+  // Notify parent when active task changes
+  useEffect(() => {
+    const activeTaskId =
+      activeRowIndex !== null
+        ? (navigableTaskIds[activeRowIndex] ?? null)
+        : null;
+    onActiveTaskChange?.(activeTaskId);
+  }, [activeRowIndex, navigableTaskIds, onActiveTaskChange]);
 
   // Keyboard navigation - compute next active index for arrow keys
   const getNextActiveIndex = useCallback(

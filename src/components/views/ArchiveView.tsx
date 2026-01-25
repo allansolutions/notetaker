@@ -30,6 +30,7 @@ interface ArchiveViewProps {
   onFiltersChange: (filters: ColumnFilters) => void;
   groupBy?: GroupByMode;
   onGroupByChange?: (groupBy: GroupByMode) => void;
+  onActiveTaskChange?: (taskId: string | null) => void;
 }
 
 export function ArchiveView({
@@ -47,6 +48,7 @@ export function ArchiveView({
   onFiltersChange,
   groupBy = 'none',
   onGroupByChange,
+  onActiveTaskChange,
 }: ArchiveViewProps): JSX.Element {
   const presetCounts = useMemo(() => computePresetCounts(tasks), [tasks]);
 
@@ -108,6 +110,7 @@ export function ArchiveView({
           onFiltersChange={onFiltersChange}
           groupBy={groupBy}
           onGroupByChange={onGroupByChange}
+          onActiveTaskChange={onActiveTaskChange}
         />
       )}
     </div>
