@@ -106,6 +106,7 @@ wikiRoutes.post('/', async (c) => {
       icon: body.icon || null,
       type: body.type || null,
       category: body.category || null,
+      tags: body.tags ? JSON.stringify(body.tags) : '[]',
       blocks: body.blocks || '[]',
     });
 
@@ -140,6 +141,7 @@ wikiRoutes.put('/:id', async (c) => {
   if (body.icon !== undefined) updateData.icon = body.icon;
   if (body.type !== undefined) updateData.type = body.type;
   if (body.category !== undefined) updateData.category = body.category;
+  if (body.tags !== undefined) updateData.tags = JSON.stringify(body.tags);
   if (body.blocks !== undefined) updateData.blocks = body.blocks;
   if (body.order !== undefined) updateData.order = body.order;
 

@@ -33,6 +33,7 @@ export interface WikiPage {
   icon: string | null;
   type: WikiPageType | null;
   category: WikiCategory | null;
+  tags?: string[]; // User-defined tags for categorization
   createdAt: number;
   updatedAt: number;
 }

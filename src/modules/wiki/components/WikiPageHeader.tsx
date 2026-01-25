@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { WikiIconPicker } from './WikiIconPicker';
+import { TagInput } from '@/components/TagInput';
+import { useAvailableTags } from '@/hooks/useAvailableTags';
 import type { WikiPageType, WikiCategory } from '../types';
 
 interface WikiPageHeaderProps {
@@ -7,10 +9,12 @@ interface WikiPageHeaderProps {
   icon: string | null;
   type: WikiPageType | null;
   category: WikiCategory | null;
+  tags: string[] | null;
   onTitleChange: (title: string) => void;
   onIconChange: (icon: string | null) => void;
   onTypeChange: (type: WikiPageType | null) => void;
   onCategoryChange: (category: WikiCategory | null) => void;
+  onTagsChange: (tags: string[]) => void;
 }
 
 const PAGE_TYPES: { value: WikiPageType; label: string }[] = [
@@ -37,11 +41,14 @@ export function WikiPageHeader({
   icon,
   type,
   category,
+  tags,
   onTitleChange,
   onIconChange,
   onTypeChange,
   onCategoryChange,
+  onTagsChange,
 }: WikiPageHeaderProps): JSX.Element {
+  const availableTags = useAvailableTags();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -157,6 +164,16 @@ export function WikiPageHeader({
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Tags */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Tags:</span>
+        <TagInput
+          tags={tags ?? []}
+          availableTags={availableTags}
+          onChange={onTagsChange}
+        />
       </div>
     </div>
   );

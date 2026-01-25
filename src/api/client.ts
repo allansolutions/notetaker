@@ -62,6 +62,7 @@ export interface ApiTask {
   assigneeId?: string | null;
   assigner?: ApiTaskUser | null;
   assignee?: ApiTaskUser | null;
+  tags?: string[];
   orderIndex: number;
   createdAt: number;
   updatedAt: number;
@@ -97,6 +98,7 @@ export function apiTaskToTask(
     assigneeId: apiTask.assigneeId,
     assigner: apiTask.assigner,
     assignee: apiTask.assignee,
+    tags: apiTask.tags,
     sessions,
     createdAt: apiTask.createdAt,
     updatedAt: apiTask.updatedAt,
@@ -400,29 +402,31 @@ export const companyApi = {
 };
 
 // Wiki page operations
-// Helper to parse blocks from JSON string if needed (API may return string or array)
-function parseWikiPageBlocks(page: WikiPage): WikiPage {
+// Helper to parse blocks and tags from JSON string if needed (API may return string or array)
+function parseWikiPageFields(page: WikiPage): WikiPage {
   return {
     ...page,
     blocks:
       typeof page.blocks === 'string' ? JSON.parse(page.blocks) : page.blocks,
+    tags:
+      typeof page.tags === 'string' ? JSON.parse(page.tags) : (page.tags ?? []),
   };
 }
 
 export const wikiApi = {
   async getAll(): Promise<WikiPage[]> {
     const data = await fetchApi<{ pages: WikiPage[] }>('/api/wiki');
-    return data.pages.map(parseWikiPageBlocks);
+    return data.pages.map(parseWikiPageFields);
   },
 
   async get(id: string): Promise<WikiPage> {
     const data = await fetchApi<{ page: WikiPage }>(`/api/wiki/${id}`);
-    return parseWikiPageBlocks(data.page);
+    return parseWikiPageFields(data.page);
   },
 
   async getBySlug(slug: string): Promise<WikiPage> {
     const data = await fetchApi<{ page: WikiPage }>(`/api/wiki/slug/${slug}`);
-    return parseWikiPageBlocks(data.page);
+    return parseWikiPageFields(data.page);
   },
 
   async getAncestors(id: string): Promise<WikiBreadcrumb[]> {
@@ -442,7 +446,7 @@ export const wikiApi = {
         blocks: JSON.stringify(page.blocks),
       }),
     });
-    return parseWikiPageBlocks(data.page);
+    return parseWikiPageFields(data.page);
   },
 
   async update(
@@ -457,7 +461,7 @@ export const wikiApi = {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
-    return parseWikiPageBlocks(data.page);
+    return parseWikiPageFields(data.page);
   },
 
   async move(
@@ -469,7 +473,7 @@ export const wikiApi = {
       method: 'PUT',
       body: JSON.stringify({ parentId, order }),
     });
-    return parseWikiPageBlocks(data.page);
+    return parseWikiPageFields(data.page);
   },
 
   async delete(id: string): Promise<void> {

@@ -11,7 +11,9 @@ import { Editor, createBlock } from '../Editor';
 import { BackButton } from '../BackButton';
 import { TimeDisplay } from '../TimeDisplay';
 import { SessionsModal } from '../SessionsModal';
+import { TagInput } from '../TagInput';
 import { useTimeTracking } from '../../hooks/useTimeTracking';
+import { useAvailableTags } from '../../hooks/useAvailableTags';
 import { useAuth } from '../../context/AuthContext';
 
 interface TaskDetailViewProps {
@@ -36,6 +38,7 @@ export function TaskDetailView({
   onBack,
 }: TaskDetailViewProps) {
   const { user } = useAuth();
+  const availableTags = useAvailableTags();
   const [title, setTitle] = useState(task.title);
   const [showSessionsModal, setShowSessionsModal] = useState(false);
   const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(
@@ -179,6 +182,14 @@ export function TaskDetailView({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="mb-4">
+        <TagInput
+          tags={task.tags ?? []}
+          availableTags={availableTags}
+          onChange={(tags) => onUpdateTask(task.id, { tags })}
+        />
       </div>
 
       <textarea

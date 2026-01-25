@@ -134,6 +134,15 @@ export function WikiPageView({
     [page, updatePage]
   );
 
+  const handleTagsChange = useCallback(
+    (tags: string[]) => {
+      if (!page) return;
+      setPage((prev) => (prev ? { ...prev, tags } : null));
+      updatePage(page.id, { tags });
+    },
+    [page, updatePage]
+  );
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -175,10 +184,12 @@ export function WikiPageView({
         icon={page.icon}
         type={page.type}
         category={page.category}
+        tags={page.tags ?? null}
         onTitleChange={handleTitleChange}
         onIconChange={handleIconChange}
         onTypeChange={handleTypeChange}
         onCategoryChange={handleCategoryChange}
+        onTagsChange={handleTagsChange}
       />
 
       {/* Editor */}

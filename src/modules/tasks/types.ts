@@ -93,6 +93,7 @@ export interface Task {
   assigneeId?: string | null; // User assigned to this task
   assigner?: TaskUser | null; // User who created/assigned the task
   assignee?: TaskUser | null; // User the task is assigned to
+  tags?: string[]; // User-defined tags for categorization
   createdAt: number;
   updatedAt: number;
 }
