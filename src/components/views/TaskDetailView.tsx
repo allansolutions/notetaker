@@ -1,5 +1,12 @@
 import { useState, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
-import { Task, Block, TimeSession } from '../../types';
+import {
+  Task,
+  Block,
+  TimeSession,
+  TaskType,
+  TASK_TYPE_OPTIONS,
+  TASK_TYPE_COLORS,
+} from '../../types';
 import { Editor, createBlock } from '../Editor';
 import { BackButton } from '../BackButton';
 import { TimeDisplay } from '../TimeDisplay';
@@ -156,6 +163,22 @@ export function TaskDetailView({
           isActive={isActive}
           onClick={() => setShowSessionsModal(true)}
         />
+      </div>
+
+      <div className="mb-2">
+        <select
+          value={task.type}
+          onChange={(e) =>
+            onUpdateTask(task.id, { type: e.target.value as TaskType })
+          }
+          className={`border-none outline-none cursor-pointer appearance-none rounded px-2 py-1 text-sm font-medium ${TASK_TYPE_COLORS[task.type].bg} ${TASK_TYPE_COLORS[task.type].text}`}
+        >
+          {TASK_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <textarea
