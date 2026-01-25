@@ -9,6 +9,7 @@ interface DateCellProps {
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString(undefined, {
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
   });

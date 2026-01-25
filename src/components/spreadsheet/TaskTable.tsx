@@ -743,7 +743,7 @@ export function TaskTable({
             onClick={() => onSelectTask(row.original.id)}
           />
         ),
-        size: 400,
+        size: 375,
         sortingFn: 'alphanumeric',
       }),
       columnHelper.accessor('status', {
@@ -808,7 +808,7 @@ export function TaskTable({
             }
           />
         ),
-        size: 75,
+        size: 100,
         sortingFn: (rowA, rowB) => {
           const a = rowA.original.dueDate ?? Infinity;
           const b = rowB.original.dueDate ?? Infinity;

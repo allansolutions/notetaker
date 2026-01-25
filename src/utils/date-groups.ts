@@ -10,6 +10,7 @@ export type DateGroup =
   | 'friday'
   | 'saturday'
   | 'sunday'
+  | 'next-week'
   | 'future'
   | 'no-date';
 
@@ -59,7 +60,14 @@ export function getDateGroup(
     return DAY_GROUPS[dayIndex];
   }
 
-  // It's in the future (after this week)
+  // Check if it's within next week
+  const nextWeekEnd = new Date(weekEnd);
+  nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
+  if (taskTime <= nextWeekEnd.getTime()) {
+    return 'next-week';
+  }
+
+  // It's in the future (after next week)
   return 'future';
 }
 
@@ -86,6 +94,8 @@ export function getGroupLabel(group: DateGroup): string {
       return 'Saturday';
     case 'sunday':
       return 'Sunday';
+    case 'next-week':
+      return 'Next Week';
     case 'future':
       return 'Future';
     case 'no-date':
@@ -116,10 +126,12 @@ export function getGroupOrder(group: DateGroup): number {
       return 7;
     case 'sunday':
       return 8;
-    case 'future':
+    case 'next-week':
       return 9;
-    case 'no-date':
+    case 'future':
       return 10;
+    case 'no-date':
+      return 11;
   }
 }
 
@@ -182,6 +194,14 @@ export function getDateForGroup(
       const targetDate = new Date(today);
       targetDate.setDate(targetDate.getDate() + daysUntilTarget);
       return targetDate.getTime();
+    }
+
+    case 'next-week': {
+      // Return the Monday of next week
+      const weekEnd = getWeekEnd(now);
+      const nextMonday = new Date(weekEnd);
+      nextMonday.setDate(nextMonday.getDate() + 1);
+      return nextMonday.getTime();
     }
 
     // These groups don't have specific dates
