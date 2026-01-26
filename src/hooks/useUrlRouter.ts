@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ViewType } from '../types';
 import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
+import type { GroupByMode } from '../components/spreadsheet/TaskTable';
 import {
   RouterState,
   parseUrl,
@@ -18,6 +19,7 @@ export interface UseUrlRouterResult {
     params?: { taskId?: string; contactId?: string; wikiPageId?: string }
   ) => void;
   updateFilters: (filters: SpreadsheetFilterState) => void;
+  updateGroupBy: (groupBy: GroupByMode) => void;
   currentState: RouterState;
 }
 
@@ -39,8 +41,9 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
     return parseUrl(window.location.pathname, window.location.search);
   });
 
-  // Track current filters for updateFilters
+  // Track current filters and groupBy for URL updates
   const filtersRef = useRef<SpreadsheetFilterState | null>(null);
+  const groupByRef = useRef<GroupByMode>('none');
 
   // Navigate to a new view (pushState)
   const navigate = useCallback(
@@ -52,9 +55,10 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
       const contactId = params?.contactId ?? null;
       const wikiPageId = params?.wikiPageId ?? null;
 
-      // Build URL - include current filters for views that use them
+      // Build URL - include current filters and groupBy for views that use them
       const filters = filtersRef.current ?? undefined;
-      const url = buildUrl(view, taskId, filters, contactId, wikiPageId);
+      const groupBy = groupByRef.current;
+      const url = buildUrl(view, taskId, filters, contactId, wikiPageId, groupBy);
 
       // Update browser history
       window.history.pushState(
@@ -76,6 +80,35 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
     []
   );
 
+  // Replace URL state without creating a new history entry
+  const replaceUrl = useCallback(() => {
+    const filters = filtersRef.current ?? undefined;
+    const groupBy = groupByRef.current;
+    const url = buildUrl(
+      currentState.view,
+      currentState.taskId,
+      filters,
+      currentState.contactId,
+      currentState.wikiPageId,
+      groupBy
+    );
+    window.history.replaceState(
+      {
+        view: currentState.view,
+        taskId: currentState.taskId,
+        contactId: currentState.contactId,
+        wikiPageId: currentState.wikiPageId,
+      },
+      '',
+      url
+    );
+  }, [
+    currentState.view,
+    currentState.taskId,
+    currentState.contactId,
+    currentState.wikiPageId,
+  ]);
+
   // Update filters without creating new history entry (replaceState)
   const updateFilters = useCallback(
     (filters: SpreadsheetFilterState) => {
@@ -86,22 +119,7 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
         currentState.view === 'spreadsheet' ||
         currentState.view === 'full-day-details'
       ) {
-        const url = buildUrl(
-          currentState.view,
-          currentState.taskId,
-          filters,
-          currentState.contactId
-        );
-        window.history.replaceState(
-          {
-            view: currentState.view,
-            taskId: currentState.taskId,
-            contactId: currentState.contactId,
-            wikiPageId: currentState.wikiPageId,
-          },
-          '',
-          url
-        );
+        replaceUrl();
 
         // Update internal state
         setCurrentState((prev) => ({
@@ -110,12 +128,27 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
         }));
       }
     },
-    [
-      currentState.view,
-      currentState.taskId,
-      currentState.contactId,
-      currentState.wikiPageId,
-    ]
+    [currentState.view, replaceUrl]
+  );
+
+  // Update groupBy without creating new history entry (replaceState)
+  const updateGroupBy = useCallback(
+    (groupBy: GroupByMode) => {
+      groupByRef.current = groupBy;
+
+      if (
+        currentState.view === 'spreadsheet' ||
+        currentState.view === 'archive'
+      ) {
+        replaceUrl();
+
+        setCurrentState((prev) => ({
+          ...prev,
+          groupBy,
+        }));
+      }
+    },
+    [currentState.view, replaceUrl]
   );
 
   // Listen to popstate events (browser back/forward)
@@ -136,6 +169,7 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
   return {
     navigate,
     updateFilters,
+    updateGroupBy,
     currentState,
   };
 }

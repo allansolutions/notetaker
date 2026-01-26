@@ -1,5 +1,6 @@
 import { ViewType, DateFilterPreset, DateRange } from '../types';
 import { SpreadsheetFilterState } from '../components/views/SpreadsheetView';
+import type { GroupByMode } from '../components/spreadsheet/TaskTable';
 
 export interface RouterState {
   view: ViewType;
@@ -7,6 +8,7 @@ export interface RouterState {
   contactId: string | null;
   wikiPageId: string | null;
   filters: Partial<SpreadsheetFilterState>;
+  groupBy?: GroupByMode;
 }
 
 /**
@@ -250,7 +252,8 @@ export function buildUrl(
   taskId?: string | null,
   filters?: SpreadsheetFilterState,
   contactId?: string | null,
-  wikiPageId?: string | null
+  wikiPageId?: string | null,
+  groupBy?: GroupByMode
 ): string {
   let path: string;
 
@@ -285,9 +288,19 @@ export function buildUrl(
       break;
   }
 
-  // Only add filters for views that use them
-  if (filters && (view === 'spreadsheet' || view === 'full-day-details')) {
-    const params = serializeFiltersToParams(filters);
+  // Only add query params for views that use them
+  const useFilters = view === 'spreadsheet' || view === 'full-day-details';
+  const useGroupBy = view === 'spreadsheet' || view === 'archive';
+
+  if (useFilters || useGroupBy) {
+    const params = useFilters && filters
+      ? serializeFiltersToParams(filters)
+      : new URLSearchParams();
+
+    if (useGroupBy && groupBy && groupBy !== 'none') {
+      params.set('groupBy', groupBy);
+    }
+
     const search = params.toString();
     if (search) {
       return `${path}?${search}`;
@@ -341,10 +354,16 @@ export function parseUrl(pathname: string, search: string): RouterState {
   }
   // Default: spreadsheet (for '/' or any unmatched path)
 
-  // Parse search params for filters
+  // Parse search params for filters and groupBy
   if (search) {
     const params = new URLSearchParams(search);
     result.filters = parseParamsToFilters(params);
+
+    const groupByParam = params.get('groupBy');
+    const validGroupBy: GroupByMode[] = ['none', 'date', 'type', 'status', 'importance', 'assignee'];
+    if (groupByParam && validGroupBy.includes(groupByParam as GroupByMode)) {
+      result.groupBy = groupByParam as GroupByMode;
+    }
   }
 
   return result;

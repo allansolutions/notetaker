@@ -373,6 +373,38 @@ describe('buildUrl', () => {
     expect(buildUrl('archive', null, state)).toBe('/archive');
   });
 
+  it('includes groupBy for spreadsheet view', () => {
+    expect(buildUrl('spreadsheet', null, undefined, null, null, 'date')).toBe(
+      '/?groupBy=date'
+    );
+  });
+
+  it('includes groupBy for archive view', () => {
+    expect(buildUrl('archive', null, undefined, null, null, 'status')).toBe(
+      '/archive?groupBy=status'
+    );
+  });
+
+  it('omits groupBy when set to none', () => {
+    expect(buildUrl('spreadsheet', null, undefined, null, null, 'none')).toBe('/');
+  });
+
+  it('combines filters and groupBy for spreadsheet', () => {
+    const state: SpreadsheetFilterState = {
+      ...emptyFilterState,
+      dateFilterPreset: 'today',
+    };
+    const url = buildUrl('spreadsheet', null, state, null, null, 'type');
+    expect(url).toContain('date=today');
+    expect(url).toContain('groupBy=type');
+  });
+
+  it('does not include groupBy for task-detail view', () => {
+    expect(buildUrl('task-detail', 'task-123', undefined, null, null, 'date')).toBe(
+      '/task/task-123'
+    );
+  });
+
   it('falls back to root when task-detail has no taskId', () => {
     expect(buildUrl('task-detail', null)).toBe('/');
   });
@@ -431,6 +463,28 @@ describe('parseUrl', () => {
   it('handles unknown paths as spreadsheet', () => {
     const result = parseUrl('/unknown/path', '');
     expect(result.view).toBe('spreadsheet');
+  });
+
+  it('parses groupBy from query params', () => {
+    const result = parseUrl('/', '?groupBy=date');
+    expect(result.groupBy).toBe('date');
+  });
+
+  it('parses groupBy with filters', () => {
+    const result = parseUrl('/', '?date=today&groupBy=type');
+    expect(result.groupBy).toBe('type');
+    expect(result.filters.dateFilterPreset).toBe('today');
+  });
+
+  it('ignores invalid groupBy values', () => {
+    const result = parseUrl('/', '?groupBy=invalid');
+    expect(result.groupBy).toBeUndefined();
+  });
+
+  it('parses groupBy on archive path', () => {
+    const result = parseUrl('/archive', '?groupBy=status');
+    expect(result.view).toBe('archive');
+    expect(result.groupBy).toBe('status');
   });
 
   it('parses crm-list path', () => {

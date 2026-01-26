@@ -7,6 +7,7 @@ import {
   getInitialRouterState,
   routerFiltersToState,
 } from './hooks/useUrlRouter';
+import type { RouterState } from './utils/urlSerializer';
 import { ThemeProvider } from './context/ThemeContext';
 import { GoogleAuthProvider } from './context/GoogleAuthContext';
 import { AuthProvider } from './context/AuthContext';
@@ -317,17 +318,13 @@ export function AppContent() {
     useState<SpreadsheetFilterState>(() =>
       routerFiltersToState(initialRouterState.filters)
     );
-  const [groupBy, setGroupBy] = useState<GroupByMode>('none');
+  const [groupBy, setGroupBy] = useState<GroupByMode>(
+    initialRouterState.groupBy ?? 'none'
+  );
 
   // URL Router - manages browser history and URL state
   const handleUrlNavigate = useCallback(
-    (state: {
-      view: ViewType;
-      taskId: string | null;
-      contactId: string | null;
-      wikiPageId: string | null;
-      filters: Partial<SpreadsheetFilterState>;
-    }) => {
+    (state: RouterState) => {
       setCurrentView(state.view);
       setSelectedTaskId(state.taskId);
       setSelectedContactId(state.contactId);
@@ -338,6 +335,7 @@ export function AppContent() {
         setReturnFilters(newFilterState);
         setSpreadsheetViewKey((prev) => prev + 1);
       }
+      setGroupBy(state.groupBy ?? 'none');
       // Clear task details context when navigating via browser back/forward
       setTaskDetailsContext(null);
     },
@@ -569,6 +567,35 @@ export function AppContent() {
     focusedDetailsTaskId,
     spreadsheetActiveTaskId,
     updateTaskById,
+    handleBackToSpreadsheet,
+  ]);
+
+  const handleCommandDeleteTask = useCallback(() => {
+    let targetTaskId: string | null = null;
+    if (currentView === 'task-detail') {
+      targetTaskId = selectedTaskId;
+    } else if (currentView === 'full-day-details') {
+      targetTaskId = focusedDetailsTaskId;
+    } else if (
+      (currentView === 'spreadsheet' || currentView === 'archive') &&
+      spreadsheetActiveTaskId
+    ) {
+      targetTaskId = spreadsheetActiveTaskId;
+    }
+
+    if (!targetTaskId) return;
+
+    removeTask(targetTaskId);
+
+    if (currentView === 'task-detail') {
+      handleBackToSpreadsheet();
+    }
+  }, [
+    currentView,
+    selectedTaskId,
+    focusedDetailsTaskId,
+    spreadsheetActiveTaskId,
+    removeTask,
     handleBackToSpreadsheet,
   ]);
 
@@ -820,6 +847,15 @@ export function AppContent() {
     applyFilterState(emptyFilters);
   }, [applyFilterState, spreadsheetFilterState]);
 
+  // Handle groupBy change - updates both React state and URL
+  const handleGroupByChange = useCallback(
+    (newGroupBy: GroupByMode) => {
+      setGroupBy(newGroupBy);
+      routerRef.current.updateGroupBy(newGroupBy);
+    },
+    []
+  );
+
   const commandPaletteCommands = useMemo<CommandPaletteItem[]>(
     () => [
       {
@@ -906,6 +942,19 @@ export function AppContent() {
         onExecute: handleCommandMarkDone,
       },
       {
+        id: 'task-delete',
+        label: 'Task: Delete',
+        type: 'command',
+        keywords: ['delete', 'remove', 'trash'],
+        shouldShow: () =>
+          (currentView === 'task-detail' && selectedTaskId !== null) ||
+          (currentView === 'full-day-details' &&
+            focusedDetailsTaskId !== null) ||
+          ((currentView === 'spreadsheet' || currentView === 'archive') &&
+            spreadsheetActiveTaskId !== null),
+        onExecute: handleCommandDeleteTask,
+      },
+      {
         id: 'view-task-list',
         label: 'Task: List',
         type: 'command',
@@ -957,21 +1006,21 @@ export function AppContent() {
         label: 'Group: By Date',
         type: 'command',
         keywords: ['group', 'date', 'organize', 'today', 'week'],
-        onExecute: () => setGroupBy('date'),
+        onExecute: () => handleGroupByChange('date'),
       },
       {
         id: 'group-by-type',
         label: 'Group: By Type',
         type: 'command',
         keywords: ['group', 'type', 'organize', 'category'],
-        onExecute: () => setGroupBy('type'),
+        onExecute: () => handleGroupByChange('type'),
       },
       {
         id: 'group-by-status',
         label: 'Group: By Status',
         type: 'command',
         keywords: ['group', 'status', 'organize', 'todo', 'progress', 'done'],
-        onExecute: () => setGroupBy('status'),
+        onExecute: () => handleGroupByChange('status'),
       },
       {
         id: 'group-by-importance',
@@ -985,21 +1034,21 @@ export function AppContent() {
           'high',
           'low',
         ],
-        onExecute: () => setGroupBy('importance'),
+        onExecute: () => handleGroupByChange('importance'),
       },
       {
         id: 'group-by-assignee',
         label: 'Group: By Assignee',
         type: 'command',
         keywords: ['group', 'assignee', 'person', 'organize', 'who'],
-        onExecute: () => setGroupBy('assignee'),
+        onExecute: () => handleGroupByChange('assignee'),
       },
       {
         id: 'group-by-none',
         label: 'Group: None',
         type: 'command',
         keywords: ['group', 'none', 'flat', 'list', 'ungroup'],
-        onExecute: () => setGroupBy('none'),
+        onExecute: () => handleGroupByChange('none'),
       },
       ...TASK_TYPE_OPTIONS.map((option) => ({
         id: `task-type-${option.value}`,
@@ -1045,6 +1094,8 @@ export function AppContent() {
       handleCommandNavigateToTaskDetails,
       handleCommandNewTask,
       handleCommandMarkDone,
+      handleCommandDeleteTask,
+      handleGroupByChange,
       handleCommandSetTypeFilter,
       handleCommandSetAssigneeFilter,
       handleCommandSetImportanceFilter,
@@ -1355,7 +1406,7 @@ export function AppContent() {
             filters={spreadsheetFilterState.filters}
             onFiltersChange={handleColumnFiltersChange}
             groupBy={groupBy}
-            onGroupByChange={setGroupBy}
+            onGroupByChange={handleGroupByChange}
             onActiveTaskChange={setSpreadsheetActiveTaskId}
           />
         );
@@ -1424,7 +1475,7 @@ export function AppContent() {
             onFilterStateChange={handleFilterStateChange}
             onVisibleTasksChange={handleVisibleTasksChange}
             groupBy={groupBy}
-            onGroupByChange={setGroupBy}
+            onGroupByChange={handleGroupByChange}
             onActiveTaskChange={setSpreadsheetActiveTaskId}
           />
         );
