@@ -43,7 +43,7 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
 
   // Track current filters and groupBy for URL updates
   const filtersRef = useRef<SpreadsheetFilterState | null>(null);
-  const groupByRef = useRef<GroupByMode>('none');
+  const groupByRef = useRef<GroupByMode>(currentState.groupBy ?? 'none');
 
   // Navigate to a new view (pushState)
   const navigate = useCallback(
@@ -159,6 +159,7 @@ export function useUrlRouter(options: UseUrlRouterOptions): UseUrlRouterResult {
         window.location.search
       );
       setCurrentState(newState);
+      groupByRef.current = newState.groupBy ?? 'none';
       onNavigateRef.current(newState);
     };
 
