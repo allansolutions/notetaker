@@ -71,6 +71,7 @@ taskRoutes.get('/', async (c) => {
       blocks: JSON.parse(task.blocks),
       scheduled: task.scheduled ?? false,
       tags: task.tags ? JSON.parse(task.tags) : [],
+      resources: task.resources ? JSON.parse(task.resources) : [],
     }));
 
     return c.json({ tasks: transformed });
@@ -85,6 +86,7 @@ taskRoutes.get('/', async (c) => {
     blocks: JSON.parse(task.blocks),
     scheduled: task.scheduled ?? false,
     tags: task.tags ? JSON.parse(task.tags) : [],
+    resources: task.resources ? JSON.parse(task.resources) : [],
   }));
 
   return c.json({ tasks: transformed });
@@ -149,6 +151,7 @@ taskRoutes.get('/:id', async (c) => {
         blocks: JSON.parse(task.blocks),
         scheduled: task.scheduled ?? false,
         tags: task.tags ? JSON.parse(task.tags) : [],
+        resources: task.resources ? JSON.parse(task.resources) : [],
       },
     });
   }
@@ -166,6 +169,7 @@ taskRoutes.get('/:id', async (c) => {
       blocks: JSON.parse(task.blocks),
       scheduled: task.scheduled ?? false,
       tags: task.tags ? JSON.parse(task.tags) : [],
+      resources: task.resources ? JSON.parse(task.resources) : [],
     },
   });
 });
@@ -218,6 +222,7 @@ taskRoutes.post('/', async (c) => {
     dueDate: body.dueDate,
     blockedReason: body.blockedReason,
     tags: JSON.stringify(body.tags ?? []),
+    resources: JSON.stringify(body.resources ?? []),
     orderIndex: body.orderIndex ?? maxOrder + 1,
     teamId: body.teamId ?? null,
     assigneeId: body.assigneeId ?? null,
@@ -238,6 +243,7 @@ taskRoutes.post('/', async (c) => {
         blocks: JSON.parse(task.blocks),
         scheduled: task.scheduled ?? false,
         tags: task.tags ? JSON.parse(task.tags) : [],
+        resources: task.resources ? JSON.parse(task.resources) : [],
         assigner: toUserObj(assigner),
         assignee: toUserObj(assignee),
       },
@@ -274,6 +280,8 @@ taskRoutes.put('/:id', async (c) => {
   if (body.blockedReason !== undefined)
     updateData.blockedReason = body.blockedReason;
   if (body.tags !== undefined) updateData.tags = JSON.stringify(body.tags);
+  if (body.resources !== undefined)
+    updateData.resources = JSON.stringify(body.resources);
   if (body.orderIndex !== undefined) updateData.orderIndex = body.orderIndex;
   if (body.assigneeId !== undefined) updateData.assigneeId = body.assigneeId;
 
@@ -325,6 +333,7 @@ taskRoutes.put('/:id', async (c) => {
             blocks: JSON.parse(updatedTask.blocks),
             scheduled: updatedTask.scheduled ?? false,
             tags: updatedTask.tags ? JSON.parse(updatedTask.tags) : [],
+            resources: updatedTask.resources ? JSON.parse(updatedTask.resources) : [],
           }
         : null,
     });
@@ -347,6 +356,7 @@ taskRoutes.put('/:id', async (c) => {
           blocks: JSON.parse(updatedTask.blocks),
           scheduled: updatedTask.scheduled ?? false,
           tags: updatedTask.tags ? JSON.parse(updatedTask.tags) : [],
+          resources: updatedTask.resources ? JSON.parse(updatedTask.resources) : [],
         }
       : null,
   });

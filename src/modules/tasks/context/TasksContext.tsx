@@ -48,6 +48,7 @@ function toTask(apiTask: ApiTask, sessions: TimeSession[] = []): Task {
     assigner: apiTask.assigner,
     assignee: apiTask.assignee,
     tags: apiTask.tags,
+    resources: apiTask.resources,
     sessions,
     createdAt: apiTask.createdAt,
     updatedAt: apiTask.updatedAt,

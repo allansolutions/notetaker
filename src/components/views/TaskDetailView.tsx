@@ -12,6 +12,7 @@ import { BackButton } from '../BackButton';
 import { TimeDisplay } from '../TimeDisplay';
 import { SessionsModal } from '../SessionsModal';
 import { TagInput } from '../TagInput';
+import { ResourceInput } from '../ResourceInput';
 import { useTimeTracking } from '../../hooks/useTimeTracking';
 import { useAvailableTags } from '../../hooks/useAvailableTags';
 import { useAuth } from '../../context/AuthContext';
@@ -184,11 +185,18 @@ export function TaskDetailView({
         </select>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-2">
         <TagInput
           tags={task.tags ?? []}
           availableTags={availableTags}
           onChange={(tags) => onUpdateTask(task.id, { tags })}
+        />
+      </div>
+
+      <div className="mb-4">
+        <ResourceInput
+          resources={task.resources ?? []}
+          onChange={(resources) => onUpdateTask(task.id, { resources })}
         />
       </div>
 

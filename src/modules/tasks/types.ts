@@ -94,6 +94,7 @@ export interface Task {
   assigner?: TaskUser | null; // User who created/assigned the task
   assignee?: TaskUser | null; // User the task is assigned to
   tags?: string[]; // User-defined tags for categorization
+  resources?: string[]; // URLs attached to the task (Google Docs, Sheets, etc.)
   createdAt: number;
   updatedAt: number;
 }

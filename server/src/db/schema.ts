@@ -94,6 +94,7 @@ export const tasks = sqliteTable('tasks', {
   dueDate: integer('due_date'),
   blockedReason: text('blocked_reason'),
   tags: text('tags').default('[]'),
+  resources: text('resources').default('[]'),
   orderIndex: integer('order_index').notNull().default(0),
   deletedAt: integer('deleted_at'),
   createdAt: integer('created_at').notNull(),

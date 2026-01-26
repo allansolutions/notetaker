@@ -63,6 +63,7 @@ export interface ApiTask {
   assigner?: ApiTaskUser | null;
   assignee?: ApiTaskUser | null;
   tags?: string[];
+  resources?: string[];
   orderIndex: number;
   createdAt: number;
   updatedAt: number;
@@ -99,6 +100,7 @@ export function apiTaskToTask(
     assigner: apiTask.assigner,
     assignee: apiTask.assignee,
     tags: apiTask.tags,
+    resources: apiTask.resources,
     sessions,
     createdAt: apiTask.createdAt,
     updatedAt: apiTask.updatedAt,
