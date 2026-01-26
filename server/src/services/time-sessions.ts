@@ -1,4 +1,4 @@
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and, or, isNull } from 'drizzle-orm';
 import type { Database } from '../db';
 import {
   timeSessions,
@@ -98,7 +98,7 @@ export async function verifyTaskOwnership(
       teamId: tasks.teamId,
     })
     .from(tasks)
-    .where(eq(tasks.id, taskId))
+    .where(and(eq(tasks.id, taskId), isNull(tasks.deletedAt)))
     .limit(1);
 
   if (taskResult.length === 0) {

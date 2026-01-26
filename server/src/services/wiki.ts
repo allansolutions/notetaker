@@ -1,4 +1,4 @@
-import { eq, and, asc, isNull } from 'drizzle-orm';
+import { eq, and, asc, isNull, inArray } from 'drizzle-orm';
 import type { Database } from '../db';
 import { wikiPages, type DbWikiPage, type NewDbWikiPage } from '../db/schema';
 
@@ -41,7 +41,7 @@ export async function getWikiPagesByUserId(
   return db
     .select()
     .from(wikiPages)
-    .where(eq(wikiPages.userId, userId))
+    .where(and(eq(wikiPages.userId, userId), isNull(wikiPages.deletedAt)))
     .orderBy(asc(wikiPages.order));
 }
 
@@ -53,7 +53,7 @@ export async function getWikiPageById(
   const result = await db
     .select()
     .from(wikiPages)
-    .where(and(eq(wikiPages.id, pageId), eq(wikiPages.userId, userId)))
+    .where(and(eq(wikiPages.id, pageId), eq(wikiPages.userId, userId), isNull(wikiPages.deletedAt)))
     .limit(1);
 
   return result[0];
@@ -67,7 +67,7 @@ export async function getWikiPageBySlug(
   const result = await db
     .select()
     .from(wikiPages)
-    .where(and(eq(wikiPages.slug, slug), eq(wikiPages.userId, userId)))
+    .where(and(eq(wikiPages.slug, slug), eq(wikiPages.userId, userId), isNull(wikiPages.deletedAt)))
     .limit(1);
 
   return result[0];
@@ -82,14 +82,14 @@ export async function getWikiPageChildren(
     return db
       .select()
       .from(wikiPages)
-      .where(and(eq(wikiPages.userId, userId), isNull(wikiPages.parentId)))
+      .where(and(eq(wikiPages.userId, userId), isNull(wikiPages.parentId), isNull(wikiPages.deletedAt)))
       .orderBy(asc(wikiPages.order));
   }
 
   return db
     .select()
     .from(wikiPages)
-    .where(and(eq(wikiPages.userId, userId), eq(wikiPages.parentId, parentId)))
+    .where(and(eq(wikiPages.userId, userId), eq(wikiPages.parentId, parentId), isNull(wikiPages.deletedAt)))
     .orderBy(asc(wikiPages.order));
 }
 
@@ -252,8 +252,23 @@ export async function deleteWikiPage(
   pageId: string,
   userId: string
 ): Promise<void> {
-  // Cascading delete is handled by the foreign key constraint
+  const now = Date.now();
+  // Collect all descendant IDs iteratively
+  const toDelete = [pageId];
+  let i = 0;
+  while (i < toDelete.length) {
+    const children = await db
+      .select({ id: wikiPages.id })
+      .from(wikiPages)
+      .where(and(eq(wikiPages.parentId, toDelete[i]), eq(wikiPages.userId, userId)));
+    for (const child of children) {
+      toDelete.push(child.id);
+    }
+    i++;
+  }
+  // Soft-delete all collected pages
   await db
-    .delete(wikiPages)
-    .where(and(eq(wikiPages.id, pageId), eq(wikiPages.userId, userId)));
+    .update(wikiPages)
+    .set({ deletedAt: now })
+    .where(and(inArray(wikiPages.id, toDelete), eq(wikiPages.userId, userId)));
 }

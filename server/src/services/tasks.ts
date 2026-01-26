@@ -1,4 +1,4 @@
-import { eq, and, asc, or, inArray } from 'drizzle-orm';
+import { eq, and, asc, or, inArray, isNull } from 'drizzle-orm';
 import type { Database } from '../db';
 import { tasks, users, type DbTask, type NewDbTask } from '../db/schema';
 
@@ -15,7 +15,7 @@ export async function getTasksByUserId(
   return db
     .select()
     .from(tasks)
-    .where(eq(tasks.userId, userId))
+    .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt)))
     .orderBy(asc(tasks.orderIndex));
 }
 
@@ -27,7 +27,7 @@ export async function getTaskById(
   const result = await db
     .select()
     .from(tasks)
-    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
+    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId), isNull(tasks.deletedAt)))
     .limit(1);
 
   return result[0];
@@ -75,7 +75,8 @@ export async function deleteTask(
   userId: string
 ): Promise<void> {
   await db
-    .delete(tasks)
+    .update(tasks)
+    .set({ deletedAt: Date.now() })
     .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
 }
 
@@ -102,7 +103,7 @@ export async function getMaxOrderIndex(
   const result = await db
     .select()
     .from(tasks)
-    .where(eq(tasks.userId, userId))
+    .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt)))
     .orderBy(asc(tasks.orderIndex));
 
   if (result.length === 0) {
@@ -149,7 +150,7 @@ export async function getTasksByTeam(
   const { teamId, assigneeIds, assignerIds } = filters;
 
   // Build base conditions
-  const conditions = [eq(tasks.teamId, teamId)];
+  const conditions = [eq(tasks.teamId, teamId), isNull(tasks.deletedAt)];
 
   // Visibility rules
   if (userRole === 'member') {
@@ -241,7 +242,7 @@ export async function getTaskByIdWithTeam(
   userRole: 'admin' | 'member',
   teamId: string
 ): Promise<TaskWithUsers | undefined> {
-  const conditions = [eq(tasks.id, taskId), eq(tasks.teamId, teamId)];
+  const conditions = [eq(tasks.id, taskId), eq(tasks.teamId, teamId), isNull(tasks.deletedAt)];
 
   // Visibility rules for members
   if (userRole === 'member') {
@@ -372,7 +373,8 @@ export async function deleteTaskWithTeam(
   }
 
   await db
-    .delete(tasks)
+    .update(tasks)
+    .set({ deletedAt: Date.now() })
     .where(and(eq(tasks.id, taskId), eq(tasks.teamId, teamId)));
 
   return true;
@@ -385,7 +387,7 @@ export async function getMaxOrderIndexForTeam(
   const result = await db
     .select()
     .from(tasks)
-    .where(eq(tasks.teamId, teamId))
+    .where(and(eq(tasks.teamId, teamId), isNull(tasks.deletedAt)))
     .orderBy(asc(tasks.orderIndex));
 
   if (result.length === 0) {

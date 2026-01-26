@@ -1,4 +1,4 @@
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, isNull } from 'drizzle-orm';
 import type { Database } from '../db';
 import {
   contacts,
@@ -28,8 +28,8 @@ export async function getContactsByUserId(
       company: companies,
     })
     .from(contacts)
-    .leftJoin(companies, eq(contacts.companyId, companies.id))
-    .where(eq(contacts.userId, userId))
+    .leftJoin(companies, and(eq(contacts.companyId, companies.id), isNull(companies.deletedAt)))
+    .where(and(eq(contacts.userId, userId), isNull(contacts.deletedAt)))
     .orderBy(asc(contacts.lastName), asc(contacts.firstName));
 
   return result.map((row) => ({
@@ -49,8 +49,8 @@ export async function getContactById(
       company: companies,
     })
     .from(contacts)
-    .leftJoin(companies, eq(contacts.companyId, companies.id))
-    .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId)))
+    .leftJoin(companies, and(eq(contacts.companyId, companies.id), isNull(companies.deletedAt)))
+    .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId), isNull(contacts.deletedAt)))
     .limit(1);
 
   if (result.length === 0) {
@@ -105,6 +105,7 @@ export async function deleteContact(
   userId: string
 ): Promise<void> {
   await db
-    .delete(contacts)
+    .update(contacts)
+    .set({ deletedAt: Date.now() })
     .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId)));
 }

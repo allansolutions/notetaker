@@ -95,6 +95,7 @@ export const tasks = sqliteTable('tasks', {
   blockedReason: text('blocked_reason'),
   tags: text('tags').default('[]'),
   orderIndex: integer('order_index').notNull().default(0),
+  deletedAt: integer('deleted_at'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });
@@ -156,6 +157,7 @@ export const companies = sqliteTable('companies', {
   street: text('street'),
   city: text('city'),
   country: text('country'),
+  deletedAt: integer('deleted_at'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });
@@ -181,6 +183,7 @@ export const contacts = sqliteTable('contacts', {
   companyId: text('company_id').references(() => companies.id, {
     onDelete: 'set null',
   }),
+  deletedAt: integer('deleted_at'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });
@@ -203,6 +206,7 @@ export const wikiPages = sqliteTable('wiki_pages', {
   category: text('category'),
   tags: text('tags').default('[]'),
   blocks: text('blocks').notNull().default('[]'),
+  deletedAt: integer('deleted_at'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });

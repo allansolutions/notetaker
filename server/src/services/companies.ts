@@ -1,4 +1,4 @@
-import { eq, and, like, asc } from 'drizzle-orm';
+import { eq, and, like, asc, isNull } from 'drizzle-orm';
 import type { Database } from '../db';
 import { companies, type DbCompany, type NewDbCompany } from '../db/schema';
 
@@ -15,7 +15,7 @@ export async function getCompaniesByUserId(
   return db
     .select()
     .from(companies)
-    .where(eq(companies.userId, userId))
+    .where(and(eq(companies.userId, userId), isNull(companies.deletedAt)))
     .orderBy(asc(companies.name));
 }
 
@@ -28,7 +28,7 @@ export async function searchCompanies(
     .select()
     .from(companies)
     .where(
-      and(eq(companies.userId, userId), like(companies.name, `%${query}%`))
+      and(eq(companies.userId, userId), like(companies.name, `%${query}%`), isNull(companies.deletedAt))
     )
     .orderBy(asc(companies.name));
 }
@@ -41,7 +41,7 @@ export async function getCompanyById(
   const result = await db
     .select()
     .from(companies)
-    .where(and(eq(companies.id, companyId), eq(companies.userId, userId)))
+    .where(and(eq(companies.id, companyId), eq(companies.userId, userId), isNull(companies.deletedAt)))
     .limit(1);
 
   return result[0];
@@ -89,6 +89,7 @@ export async function deleteCompany(
   userId: string
 ): Promise<void> {
   await db
-    .delete(companies)
+    .update(companies)
+    .set({ deletedAt: Date.now() })
     .where(and(eq(companies.id, companyId), eq(companies.userId, userId)));
 }
