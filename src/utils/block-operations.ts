@@ -328,3 +328,80 @@ export function deleteBlock(blocks: Block[], id: string): DeleteBlockResult {
     focusBlockId: prevBlock?.id || null,
   };
 }
+
+/**
+ * Deletes multiple blocks and returns the updated array with the ID of the block to focus.
+ * Prevents deletion if it would remove all blocks.
+ */
+export function deleteBlocks(
+  blocks: Block[],
+  ids: Set<string>
+): DeleteBlockResult {
+  if (ids.size === 0) return { blocks, focusBlockId: null };
+  if (ids.size >= blocks.length) return { blocks, focusBlockId: null };
+
+  // Find the first selected block's index to determine focus target
+  const firstSelectedIndex = blocks.findIndex((b) => ids.has(b.id));
+  const newBlocks = blocks.filter((b) => !ids.has(b.id));
+
+  // Focus the block before the first deleted, or the first remaining block
+  const focusIndex = Math.max(0, firstSelectedIndex - 1);
+  const focusBlock = newBlocks[Math.min(focusIndex, newBlocks.length - 1)];
+
+  return {
+    blocks: newBlocks,
+    focusBlockId: focusBlock?.id || null,
+  };
+}
+
+/**
+ * Moves a contiguous range of blocks up by one position.
+ * The blocks must be contiguous in the array.
+ * Returns unchanged array if the first block is already at the top.
+ */
+export function moveBlocksUp(blocks: Block[], ids: Set<string>): Block[] {
+  if (ids.size === 0) return blocks;
+
+  // Find indices of selected blocks
+  const indices = blocks
+    .map((b, i) => (ids.has(b.id) ? i : -1))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b);
+
+  // Check if first selected block is already at top
+  if (indices[0] <= 0) return blocks;
+
+  // Move the block before the selection to after the selection
+  const newBlocks = [...blocks];
+  const blockToMove = newBlocks[indices[0] - 1];
+  newBlocks.splice(indices[0] - 1, 1);
+  newBlocks.splice(indices[indices.length - 1], 0, blockToMove);
+
+  return newBlocks;
+}
+
+/**
+ * Moves a contiguous range of blocks down by one position.
+ * The blocks must be contiguous in the array.
+ * Returns unchanged array if the last block is already at the bottom.
+ */
+export function moveBlocksDown(blocks: Block[], ids: Set<string>): Block[] {
+  if (ids.size === 0) return blocks;
+
+  // Find indices of selected blocks
+  const indices = blocks
+    .map((b, i) => (ids.has(b.id) ? i : -1))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b);
+
+  // Check if last selected block is already at bottom
+  if (indices[indices.length - 1] >= blocks.length - 1) return blocks;
+
+  // Move the block after the selection to before the selection
+  const newBlocks = [...blocks];
+  const blockToMove = newBlocks[indices[indices.length - 1] + 1];
+  newBlocks.splice(indices[indices.length - 1] + 1, 1);
+  newBlocks.splice(indices[0], 0, blockToMove);
+
+  return newBlocks;
+}

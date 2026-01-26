@@ -17,10 +17,28 @@ interface BlockInputProps {
   onArrowDown: (id: string, cursorX?: number) => void;
   isFocused: boolean;
   isSelected: boolean;
+  /** True if this block should receive wrapper focus in selection mode */
+  isSelectionFocused?: boolean;
+  /** True if multiple blocks are selected */
+  isMultiSelected?: boolean;
   onSelect: (id: string) => void;
   onEnterEdit: (id: string) => void;
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
+  /** Extend selection to include this block (Shift+Arrow) */
+  onExtendSelection?: (id: string) => void;
+  /** Delete all selected blocks */
+  onDeleteSelected?: () => void;
+  /** Clear multi-selection */
+  onClearSelection?: () => void;
+  /** Select the previous block (selection mode navigation) */
+  onSelectPrevious?: (id: string) => void;
+  /** Select the next block (selection mode navigation) */
+  onSelectNext?: (id: string) => void;
+  /** Get the previous block's id */
+  getPreviousBlockId?: (id: string) => string | null;
+  /** Get the next block's id */
+  getNextBlockId?: (id: string) => string | null;
   numberedIndex: number;
   isCollapsed?: boolean;
   onToggleCollapse?: (id: string) => void;
@@ -174,10 +192,19 @@ export function BlockInput({
   onArrowDown,
   isFocused,
   isSelected,
+  isSelectionFocused,
+  isMultiSelected,
   onSelect,
   onEnterEdit,
   onMoveUp,
   onMoveDown,
+  onExtendSelection,
+  onDeleteSelected,
+  onClearSelection,
+  onSelectPrevious,
+  onSelectNext,
+  getPreviousBlockId,
+  getNextBlockId,
   numberedIndex,
   isCollapsed,
   onToggleCollapse,
@@ -200,15 +227,15 @@ export function BlockInput({
     }
   }, [isFocused]);
 
-  // Focus wrapper when selected
+  // Focus wrapper when this block should have selection focus
   useLayoutEffect(() => {
-    if (isSelected && wrapperRef.current) {
+    if (isSelectionFocused && wrapperRef.current) {
       // Small delay to ensure blur has completed
       setTimeout(() => {
         wrapperRef.current?.focus();
       }, 0);
     }
-  }, [isSelected]);
+  }, [isSelectionFocused]);
 
   // Set initial content only once on mount
   useLayoutEffect(() => {
@@ -452,6 +479,14 @@ export function BlockInput({
     if (handleMetaShortcut(e)) return;
     if (e.key === 'Tab' && handleTabKey(e)) return;
 
+    // Escape key: select current block (like Notion)
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onSelect(block.id);
+      inputRef.current?.blur();
+      return;
+    }
+
     const sel = window.getSelection();
     const text = inputRef.current?.textContent || '';
     const cursorPos = inputRef.current
@@ -489,15 +524,34 @@ export function BlockInput({
     }
   };
 
+  // Handle vertical arrow key in selection mode with modifier awareness
+  const handleSelectionArrow = (
+    e: KeyboardEvent<HTMLDivElement>,
+    direction: 'up' | 'down'
+  ) => {
+    if (e.metaKey && e.shiftKey) {
+      (direction === 'up' ? onMoveUp : onMoveDown)(block.id);
+    } else if (e.shiftKey) {
+      const adjacentId =
+        direction === 'up'
+          ? getPreviousBlockId?.(block.id)
+          : getNextBlockId?.(block.id);
+      if (adjacentId) onExtendSelection?.(adjacentId);
+    } else {
+      (direction === 'up' ? onSelectPrevious : onSelectNext)?.(block.id);
+    }
+  };
+
   const handleWrapperKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (!isSelected) return;
 
     e.preventDefault();
 
-    // Cmd+Return to toggle todo done state when selected
+    // Cmd+Return to toggle todo done state when selected (only for single selection)
     if (
       e.metaKey &&
       e.key === 'Enter' &&
+      !isMultiSelected &&
       (block.type === 'todo' || block.type === 'todo-checked')
     ) {
       const newType = block.type === 'todo' ? 'todo-checked' : 'todo';
@@ -507,27 +561,24 @@ export function BlockInput({
 
     switch (e.key) {
       case 'Enter':
-        onEnterEdit(block.id);
+        if (!isMultiSelected) onEnterEdit(block.id);
         break;
       case 'Escape':
+        onClearSelection?.();
         break;
       case 'ArrowUp':
-        if (e.metaKey && e.shiftKey) {
-          onMoveUp(block.id);
-        } else {
-          onArrowUp(block.id);
-        }
+        handleSelectionArrow(e, 'up');
         break;
       case 'ArrowDown':
-        if (e.metaKey && e.shiftKey) {
-          onMoveDown(block.id);
-        } else {
-          onArrowDown(block.id);
-        }
+        handleSelectionArrow(e, 'down');
         break;
       case 'Backspace':
       case 'Delete':
-        onBackspace(block.id);
+        if (isMultiSelected) {
+          onDeleteSelected?.();
+        } else {
+          onBackspace(block.id);
+        }
         break;
     }
   };

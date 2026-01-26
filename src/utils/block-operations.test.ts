@@ -2,11 +2,14 @@ import { describe, it, expect } from 'vitest';
 import {
   moveBlockUp,
   moveBlockDown,
+  moveBlocksUp,
+  moveBlocksDown,
   getNumberedIndex,
   getShownBlocks,
   getVisibleBlocks,
   insertBlockAfter,
   deleteBlock,
+  deleteBlocks,
   mergeBlockWithPrevious,
   getBlockLevel,
   canIndentBlock,
@@ -790,5 +793,142 @@ describe('insertBlockAfter with level inheritance', () => {
     ];
     const result = insertBlockAfter(blocks, '1', createBlockWithLevel);
     expect(result.blocks[1].level).toBe(1);
+  });
+});
+
+describe('deleteBlocks', () => {
+  it('deletes multiple blocks', () => {
+    const blocks = [
+      makeBlock('1'),
+      makeBlock('2'),
+      makeBlock('3'),
+      makeBlock('4'),
+    ];
+    const result = deleteBlocks(blocks, new Set(['2', '3']));
+    expect(result.blocks.map((b) => b.id)).toEqual(['1', '4']);
+  });
+
+  it('returns focus block before first deleted', () => {
+    const blocks = [
+      makeBlock('1'),
+      makeBlock('2'),
+      makeBlock('3'),
+      makeBlock('4'),
+    ];
+    const result = deleteBlocks(blocks, new Set(['2', '3']));
+    expect(result.focusBlockId).toBe('1');
+  });
+
+  it('returns first block when deleting from start', () => {
+    const blocks = [
+      makeBlock('1'),
+      makeBlock('2'),
+      makeBlock('3'),
+      makeBlock('4'),
+    ];
+    const result = deleteBlocks(blocks, new Set(['1', '2']));
+    expect(result.focusBlockId).toBe('3');
+  });
+
+  it('returns unchanged array when ids is empty', () => {
+    const blocks = [makeBlock('1'), makeBlock('2')];
+    const result = deleteBlocks(blocks, new Set());
+    expect(result.blocks).toBe(blocks);
+    expect(result.focusBlockId).toBeNull();
+  });
+
+  it('returns unchanged array when would delete all blocks', () => {
+    const blocks = [makeBlock('1'), makeBlock('2')];
+    const result = deleteBlocks(blocks, new Set(['1', '2']));
+    expect(result.blocks).toBe(blocks);
+    expect(result.focusBlockId).toBeNull();
+  });
+
+  it('handles non-contiguous selection', () => {
+    const blocks = [
+      makeBlock('1'),
+      makeBlock('2'),
+      makeBlock('3'),
+      makeBlock('4'),
+    ];
+    const result = deleteBlocks(blocks, new Set(['1', '3']));
+    expect(result.blocks.map((b) => b.id)).toEqual(['2', '4']);
+    expect(result.focusBlockId).toBe('2');
+  });
+});
+
+describe('moveBlocksUp', () => {
+  it('moves contiguous blocks up', () => {
+    const blocks = [
+      makeBlock('1'),
+      makeBlock('2'),
+      makeBlock('3'),
+      makeBlock('4'),
+    ];
+    const result = moveBlocksUp(blocks, new Set(['2', '3']));
+    expect(result.map((b) => b.id)).toEqual(['2', '3', '1', '4']);
+  });
+
+  it('returns same array when first block is selected', () => {
+    const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
+    const result = moveBlocksUp(blocks, new Set(['1', '2']));
+    expect(result).toBe(blocks);
+  });
+
+  it('returns same array when ids is empty', () => {
+    const blocks = [makeBlock('1'), makeBlock('2')];
+    const result = moveBlocksUp(blocks, new Set());
+    expect(result).toBe(blocks);
+  });
+
+  it('moves single selected block up', () => {
+    const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
+    const result = moveBlocksUp(blocks, new Set(['2']));
+    expect(result.map((b) => b.id)).toEqual(['2', '1', '3']);
+  });
+
+  it('does not mutate original array', () => {
+    const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
+    const original = blocks.map((b) => b.id);
+    moveBlocksUp(blocks, new Set(['2', '3']));
+    expect(blocks.map((b) => b.id)).toEqual(original);
+  });
+});
+
+describe('moveBlocksDown', () => {
+  it('moves contiguous blocks down', () => {
+    const blocks = [
+      makeBlock('1'),
+      makeBlock('2'),
+      makeBlock('3'),
+      makeBlock('4'),
+    ];
+    const result = moveBlocksDown(blocks, new Set(['2', '3']));
+    expect(result.map((b) => b.id)).toEqual(['1', '4', '2', '3']);
+  });
+
+  it('returns same array when last block is selected', () => {
+    const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
+    const result = moveBlocksDown(blocks, new Set(['2', '3']));
+    expect(result).toBe(blocks);
+  });
+
+  it('returns same array when ids is empty', () => {
+    const blocks = [makeBlock('1'), makeBlock('2')];
+    const result = moveBlocksDown(blocks, new Set());
+    expect(result).toBe(blocks);
+  });
+
+  it('moves single selected block down', () => {
+    const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
+    const result = moveBlocksDown(blocks, new Set(['2']));
+    expect(result.map((b) => b.id)).toEqual(['1', '3', '2']);
+  });
+
+  it('does not mutate original array', () => {
+    const blocks = [makeBlock('1'), makeBlock('2'), makeBlock('3')];
+    const original = blocks.map((b) => b.id);
+    moveBlocksDown(blocks, new Set(['1', '2']));
+    expect(blocks.map((b) => b.id)).toEqual(original);
   });
 });

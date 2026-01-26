@@ -4,6 +4,7 @@ import { Block, BlockType } from '../types';
 import { BlockInput } from './BlockInput';
 import {
   deleteBlock as deleteBlockUtil,
+  deleteBlocks as deleteBlocksUtil,
   getNumberedIndex,
   getShownBlocks,
   getVisibleBlocks,
@@ -11,6 +12,8 @@ import {
   mergeBlockWithPrevious as mergeBlockWithPreviousUtil,
   moveBlockDown,
   moveBlockUp,
+  moveBlocksUp,
+  moveBlocksDown,
   indentBlock as indentBlockUtil,
   unindentBlock as unindentBlockUtil,
   SplitInfo,
@@ -46,7 +49,12 @@ export function Editor({
   const [focusedId, setFocusedId] = useState<string | null>(
     blocks[0]?.id || null
   );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Multi-selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Anchor is the block where selection started (for Shift+Arrow extension)
+  const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
+  // The block that should receive keyboard focus in multi-selection (boundary block)
+  const [selectionFocusId, setSelectionFocusId] = useState<string | null>(null);
   const pendingFocusRef = useRef<string | null>(null);
   const [pendingCursorOffset, setPendingCursorOffset] = useState<{
     blockId: string;
@@ -96,7 +104,9 @@ export function Editor({
   useEffect(() => {
     if (navigateToId) {
       setFocusedId(navigateToId);
-      setSelectedId(null);
+      setSelectedIds(new Set());
+      setSelectionAnchor(null);
+      setSelectionFocusId(null);
       // Scroll the block into view
       const element = document.querySelector(
         `[data-block-id="${navigateToId}"]`
@@ -198,29 +208,145 @@ export function Editor({
     [visibleBlocks]
   );
 
+  // Select a single block (clears any existing selection)
   const selectBlock = useCallback((id: string) => {
-    setSelectedId(id);
+    setSelectedIds(new Set([id]));
+    setSelectionAnchor(id);
+    setSelectionFocusId(id);
     setFocusedId(null);
   }, []);
 
+  // Clear selection and enter edit mode
   const enterEditMode = useCallback((id: string) => {
-    setSelectedId(null);
+    setSelectedIds(new Set());
+    setSelectionAnchor(null);
+    setSelectionFocusId(null);
     setFocusedId(id);
   }, []);
 
+  // Extend selection from anchor to target block (for Shift+Arrow)
+  const extendSelection = useCallback(
+    (targetId: string) => {
+      if (!selectionAnchor) return;
+
+      const anchorIndex = visibleBlocks.findIndex(
+        (b) => b.id === selectionAnchor
+      );
+      const targetIndex = visibleBlocks.findIndex((b) => b.id === targetId);
+
+      if (anchorIndex < 0 || targetIndex < 0) return;
+
+      const start = Math.min(anchorIndex, targetIndex);
+      const end = Math.max(anchorIndex, targetIndex);
+
+      const newSelection = new Set<string>();
+      for (let i = start; i <= end; i++) {
+        newSelection.add(visibleBlocks[i].id);
+      }
+      setSelectedIds(newSelection);
+      // Move focus to the target block (boundary of selection)
+      setSelectionFocusId(targetId);
+    },
+    [selectionAnchor, visibleBlocks]
+  );
+
+  // Clear selection
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+    setSelectionAnchor(null);
+    setSelectionFocusId(null);
+  }, []);
+
+  // Select the previous block (for Up arrow in selection mode)
+  const selectPreviousBlock = useCallback(
+    (id: string) => {
+      const index = visibleBlocks.findIndex((b) => b.id === id);
+      if (index > 0) {
+        const targetId = visibleBlocks[index - 1].id;
+        setSelectedIds(new Set([targetId]));
+        setSelectionAnchor(targetId);
+        setSelectionFocusId(targetId);
+      }
+    },
+    [visibleBlocks]
+  );
+
+  // Select the next block (for Down arrow in selection mode)
+  const selectNextBlock = useCallback(
+    (id: string) => {
+      const index = visibleBlocks.findIndex((b) => b.id === id);
+      if (index < visibleBlocks.length - 1) {
+        const targetId = visibleBlocks[index + 1].id;
+        setSelectedIds(new Set([targetId]));
+        setSelectionAnchor(targetId);
+        setSelectionFocusId(targetId);
+      }
+    },
+    [visibleBlocks]
+  );
+
+  // Get the previous block id (for extending selection upward)
+  const getPreviousBlockId = useCallback(
+    (id: string) => {
+      const index = visibleBlocks.findIndex((b) => b.id === id);
+      if (index > 0) {
+        return visibleBlocks[index - 1].id;
+      }
+      return null;
+    },
+    [visibleBlocks]
+  );
+
+  // Get the next block id (for extending selection downward)
+  const getNextBlockId = useCallback(
+    (id: string) => {
+      const index = visibleBlocks.findIndex((b) => b.id === id);
+      if (index < visibleBlocks.length - 1) {
+        return visibleBlocks[index + 1].id;
+      }
+      return null;
+    },
+    [visibleBlocks]
+  );
+
   const handleMoveUp = useCallback(
     (id: string) => {
-      setBlocks((prev) => moveBlockUp(prev, id));
+      // If multiple blocks selected, move them all
+      if (selectedIds.size > 1) {
+        setBlocks((prev) => moveBlocksUp(prev, selectedIds));
+      } else {
+        setBlocks((prev) => moveBlockUp(prev, id));
+      }
     },
-    [setBlocks]
+    [setBlocks, selectedIds]
   );
 
   const handleMoveDown = useCallback(
     (id: string) => {
-      setBlocks((prev) => moveBlockDown(prev, id));
+      // If multiple blocks selected, move them all
+      if (selectedIds.size > 1) {
+        setBlocks((prev) => moveBlocksDown(prev, selectedIds));
+      } else {
+        setBlocks((prev) => moveBlockDown(prev, id));
+      }
     },
-    [setBlocks]
+    [setBlocks, selectedIds]
   );
+
+  // Delete all selected blocks
+  const deleteSelectedBlocks = useCallback(() => {
+    if (selectedIds.size === 0) return;
+
+    setBlocks((prev) => {
+      const result = deleteBlocksUtil(prev, selectedIds);
+      if (result.focusBlockId) {
+        setFocusedId(result.focusBlockId);
+      }
+      return result.blocks;
+    });
+    setSelectedIds(new Set());
+    setSelectionAnchor(null);
+  }, [setBlocks, selectedIds]);
 
   const handleIndent = useCallback(
     (id: string) => {
@@ -252,11 +378,20 @@ export function Editor({
             onArrowUp={focusPreviousBlock}
             onArrowDown={focusNextBlock}
             isFocused={focusedId === block.id}
-            isSelected={selectedId === block.id}
+            isSelected={selectedIds.has(block.id)}
+            isSelectionFocused={selectionFocusId === block.id}
+            isMultiSelected={selectedIds.size > 1}
             onSelect={selectBlock}
             onEnterEdit={enterEditMode}
             onMoveUp={handleMoveUp}
             onMoveDown={handleMoveDown}
+            onExtendSelection={extendSelection}
+            onDeleteSelected={deleteSelectedBlocks}
+            onClearSelection={clearSelection}
+            onSelectPrevious={selectPreviousBlock}
+            onSelectNext={selectNextBlock}
+            getPreviousBlockId={getPreviousBlockId}
+            getNextBlockId={getNextBlockId}
             numberedIndex={getNumberedIndex(blocks, originalIndex)}
             isCollapsed={
               block.type === 'h1' && collapsedBlockIds?.has(block.id)

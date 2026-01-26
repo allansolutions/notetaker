@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `bun dev` - Start development server (Vite, runs on port 5173)
 - `bun run build` - Type-check with TypeScript then build for production
+- `bun run lint` - Run ESLint
 - `bun run test` - Run unit tests with Vitest
 - `bunx playwright test` - Run Playwright E2E tests (requires dev server running)
 - `bunx playwright test tests/visual.spec.ts` - Run a single E2E test file
@@ -38,11 +39,22 @@ The editor uses a block-based architecture where each piece of content is a `Blo
 
 ### Keyboard Shortcuts
 
-- `Cmd+E` - Select current block
+**In edit mode:**
+
+- `Escape` or `Cmd+E` - Select current block (exit edit mode)
 - `Cmd+Shift+Arrow` - Move block up/down
 - Arrow keys - Navigate between blocks
-- Enter - Create new block / enter edit mode when selected
+- Enter - Create new block
 - Backspace on empty block - Delete block
+
+**In selection mode (after Escape):**
+
+- `Shift+Up/Down` - Extend selection to include adjacent blocks
+- `Up/Down` - Move selection to adjacent block (single selection)
+- `Cmd+Shift+Up/Down` - Move selected block(s) up/down
+- `Enter` - Enter edit mode (single selection only)
+- `Delete/Backspace` - Delete selected block(s)
+- `Escape` - Clear selection
 
 ### Task List and Archive Views
 
