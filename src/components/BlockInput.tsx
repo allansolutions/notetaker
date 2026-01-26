@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect, KeyboardEvent } from 'react';
+import { useRef, useLayoutEffect, KeyboardEvent, ClipboardEvent } from 'react';
 import { Block, BlockType } from '../types';
 import { detectBlockType, stripPrefix } from '../utils/markdown';
 import { blockTypeClasses } from '../utils/block-styles';
@@ -29,6 +29,14 @@ interface BlockInputProps {
   onExtendSelection?: (id: string) => void;
   /** Delete all selected blocks */
   onDeleteSelected?: () => void;
+  /** Copy selected blocks as markdown */
+  onCopySelected?: () => void;
+  /** Cut selected blocks as markdown (copy + delete) */
+  onCutSelected?: () => void;
+  /** Paste multi-line text into a block (edit mode) */
+  onPasteBlocks?: (blockId: string, text: string, cursorOffset: number) => void;
+  /** Paste text replacing selected blocks (selection mode) */
+  onPasteSelected?: (text: string) => void;
   /** Clear multi-selection */
   onClearSelection?: () => void;
   /** Select the previous block (selection mode navigation) */
@@ -54,6 +62,12 @@ interface BlockInputProps {
   onIndent?: (id: string) => void;
   /** Callback to unindent a bullet block (Shift+Tab key) */
   onUnindent?: (id: string) => void;
+  /** Undo the last operation */
+  onUndo?: () => void;
+  /** Redo the last undone operation */
+  onRedo?: () => void;
+  /** Counter incremented after undo/redo to trigger content re-sync */
+  undoGeneration?: number;
 }
 
 const wrapperBaseClasses: Partial<Record<BlockType, string>> = {
@@ -200,6 +214,10 @@ export function BlockInput({
   onMoveDown,
   onExtendSelection,
   onDeleteSelected,
+  onCopySelected,
+  onCutSelected,
+  onPasteBlocks,
+  onPasteSelected,
   onClearSelection,
   onSelectPrevious,
   onSelectNext,
@@ -214,6 +232,9 @@ export function BlockInput({
   onTaskCreate,
   onIndent,
   onUnindent,
+  onUndo,
+  onRedo,
+  undoGeneration,
 }: BlockInputProps) {
   const inputRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -245,6 +266,17 @@ export function BlockInput({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentional: only set content on initial mount, not on updates
   }, []);
+
+  // Re-sync contentEditable text after undo/redo
+  const lastUndoGenRef = useRef(undoGeneration);
+  useLayoutEffect(() => {
+    if (undoGeneration != null && undoGeneration !== lastUndoGenRef.current) {
+      lastUndoGenRef.current = undoGeneration;
+      if (inputRef.current) {
+        inputRef.current.textContent = block.content;
+      }
+    }
+  }, [undoGeneration, block.content]);
 
   // Track which cursor offset we've already processed to avoid re-running on content changes
   const processedCursorOffsetRef = useRef<number | null>(null);
@@ -360,9 +392,27 @@ export function BlockInput({
     }
   };
 
+  const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
+    const text = e.clipboardData.getData('text/plain');
+    if (!text.includes('\n')) return; // Single line: let browser handle it
+
+    e.preventDefault();
+    const el = inputRef.current;
+    if (!el) return;
+    const sel = window.getSelection();
+    const offset = getCursorPosition(el, sel, el.textContent?.length ?? 0);
+    onPasteBlocks?.(block.id, text, offset);
+  };
+
   // Handle meta key shortcuts, returns true if handled
   const handleMetaShortcut = (e: KeyboardEvent<HTMLDivElement>): boolean => {
     if (!e.metaKey) return false;
+
+    if (e.key === 'z') {
+      e.preventDefault();
+      (e.shiftKey ? onRedo : onUndo)?.();
+      return true;
+    }
 
     if (e.key === 'e') {
       e.preventDefault();
@@ -542,22 +592,47 @@ export function BlockInput({
     }
   };
 
+  // Handle Cmd+key shortcuts in selection mode, returns true if handled
+  const handleWrapperMetaKey = (e: KeyboardEvent<HTMLDivElement>): boolean => {
+    if (!e.metaKey) return false;
+
+    switch (e.key) {
+      case 'z':
+        if (e.shiftKey) onRedo?.();
+        else onUndo?.();
+        return true;
+      case 'c':
+        onCopySelected?.();
+        return true;
+      case 'x':
+        onCutSelected?.();
+        return true;
+      case 'v':
+        navigator.clipboard.readText().then((text) => {
+          if (text) onPasteSelected?.(text);
+        });
+        return true;
+      case 'Enter':
+        if (
+          !isMultiSelected &&
+          (block.type === 'todo' || block.type === 'todo-checked')
+        ) {
+          const newType = block.type === 'todo' ? 'todo-checked' : 'todo';
+          onUpdate(block.id, block.content, newType);
+          return true;
+        }
+        return false;
+      default:
+        return false;
+    }
+  };
+
   const handleWrapperKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (!isSelected) return;
 
     e.preventDefault();
 
-    // Cmd+Return to toggle todo done state when selected (only for single selection)
-    if (
-      e.metaKey &&
-      e.key === 'Enter' &&
-      !isMultiSelected &&
-      (block.type === 'todo' || block.type === 'todo-checked')
-    ) {
-      const newType = block.type === 'todo' ? 'todo-checked' : 'todo';
-      onUpdate(block.id, block.content, newType);
-      return;
-    }
+    if (handleWrapperMetaKey(e)) return;
 
     switch (e.key) {
       case 'Enter':
@@ -602,6 +677,12 @@ export function BlockInput({
         data-block-id={block.id}
         onClick={() => onFocus(block.id)}
         onKeyDown={(e) => {
+          if (e.metaKey && e.key === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) onRedo?.();
+            else onUndo?.();
+            return;
+          }
           e.preventDefault();
           switch (e.key) {
             case 'ArrowUp':
@@ -724,6 +805,7 @@ export function BlockInput({
         contentEditable={!isSelected}
         onInput={handleInput}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         onFocus={() => onFocus(block.id)}
         suppressContentEditableWarning
         data-placeholder={placeholder}

@@ -244,3 +244,4 @@ Never make commits on your own. Only commit when explicitly asked via /commit or
 ## Permissions
 
 When the user approves a new tool permission that isn't already in `.claude/settings.json`, add it to `permissions.allow` so it persists across sessions.
+Use 'bd' for task tracking

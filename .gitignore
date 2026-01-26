@@ -22,3 +22,6 @@ server/.wrangler/
 .env
 .env.local
 .playwright-mcp/
+
+# bv (beads viewer) local config and caches
+.bv/

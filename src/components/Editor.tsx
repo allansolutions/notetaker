@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 
 import { Block, BlockType } from '../types';
 import { BlockInput } from './BlockInput';
+import { useUndoHistory } from '../hooks/useUndoHistory';
 import {
   deleteBlock as deleteBlockUtil,
   deleteBlocks as deleteBlocksUtil,
@@ -18,7 +19,12 @@ import {
   unindentBlock as unindentBlockUtil,
   SplitInfo,
 } from '../utils/block-operations';
-import { generateId } from '../utils/markdown';
+import {
+  generateId,
+  getPrefix,
+  detectBlockType,
+  stripPrefix,
+} from '../utils/markdown';
 
 export function createBlock(
   type: BlockType = 'paragraph',
@@ -46,9 +52,16 @@ export function Editor({
   onToggleCollapse,
   hiddenBlockIds,
 }: EditorProps): JSX.Element {
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
   const [focusedId, setFocusedId] = useState<string | null>(
     blocks[0]?.id || null
   );
+  const focusedIdRef = useRef(focusedId);
+  focusedIdRef.current = focusedId;
+
+  const { pushHistory, undo, redo } = useUndoHistory(blocksRef, focusedIdRef);
+  const [undoGeneration, setUndoGeneration] = useState(0);
   // Multi-selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // Anchor is the block where selection started (for Shift+Arrow extension)
@@ -120,17 +133,24 @@ export function Editor({
 
   const updateBlock = useCallback(
     (id: string, content: string, type: BlockType) => {
+      const existing = blocksRef.current!.find((b) => b.id === id);
+      if (existing && existing.type !== type) {
+        pushHistory('structural');
+      } else {
+        pushHistory('content', id);
+      }
       setBlocks((prev) =>
         prev.map((block) =>
           block.id === id ? { ...block, content, type } : block
         )
       );
     },
-    [setBlocks]
+    [setBlocks, pushHistory]
   );
 
   const insertBlockAfter = useCallback(
     (id: string, splitInfo?: SplitInfo) => {
+      pushHistory('structural');
       setBlocks((prev) => {
         const result = insertBlockAfterUtil(prev, id, createBlock, splitInfo);
         if (result.newBlockId) {
@@ -144,11 +164,12 @@ export function Editor({
         return result.blocks;
       });
     },
-    [setBlocks]
+    [setBlocks, pushHistory]
   );
 
   const deleteBlock = useCallback(
     (id: string) => {
+      pushHistory('structural');
       setBlocks((prev) => {
         const result = deleteBlockUtil(prev, id);
         if (result.focusBlockId) {
@@ -157,11 +178,12 @@ export function Editor({
         return result.blocks;
       });
     },
-    [setBlocks]
+    [setBlocks, pushHistory]
   );
 
   const mergeBlock = useCallback(
     (id: string) => {
+      pushHistory('structural');
       setBlocks((prev) => {
         const result = mergeBlockWithPreviousUtil(prev, id);
         if (!result) return prev;
@@ -175,7 +197,7 @@ export function Editor({
         return result.blocks;
       });
     },
-    [setBlocks]
+    [setBlocks, pushHistory]
   );
 
   const focusPreviousBlock = useCallback(
@@ -257,6 +279,28 @@ export function Editor({
     setSelectionFocusId(null);
   }, []);
 
+  const handleUndo = useCallback(() => {
+    const entry = undo();
+    if (!entry) return;
+    setBlocks(entry.blocks);
+    setFocusedId(entry.focusedId);
+    setSelectedIds(new Set());
+    setSelectionAnchor(null);
+    setSelectionFocusId(null);
+    setUndoGeneration((g) => g + 1);
+  }, [undo, setBlocks]);
+
+  const handleRedo = useCallback(() => {
+    const entry = redo();
+    if (!entry) return;
+    setBlocks(entry.blocks);
+    setFocusedId(entry.focusedId);
+    setSelectedIds(new Set());
+    setSelectionAnchor(null);
+    setSelectionFocusId(null);
+    setUndoGeneration((g) => g + 1);
+  }, [redo, setBlocks]);
+
   // Select the previous block (for Up arrow in selection mode)
   const selectPreviousBlock = useCallback(
     (id: string) => {
@@ -311,32 +355,33 @@ export function Editor({
 
   const handleMoveUp = useCallback(
     (id: string) => {
-      // If multiple blocks selected, move them all
+      pushHistory('structural');
       if (selectedIds.size > 1) {
         setBlocks((prev) => moveBlocksUp(prev, selectedIds));
       } else {
         setBlocks((prev) => moveBlockUp(prev, id));
       }
     },
-    [setBlocks, selectedIds]
+    [setBlocks, selectedIds, pushHistory]
   );
 
   const handleMoveDown = useCallback(
     (id: string) => {
-      // If multiple blocks selected, move them all
+      pushHistory('structural');
       if (selectedIds.size > 1) {
         setBlocks((prev) => moveBlocksDown(prev, selectedIds));
       } else {
         setBlocks((prev) => moveBlockDown(prev, id));
       }
     },
-    [setBlocks, selectedIds]
+    [setBlocks, selectedIds, pushHistory]
   );
 
   // Delete all selected blocks
   const deleteSelectedBlocks = useCallback(() => {
     if (selectedIds.size === 0) return;
 
+    pushHistory('structural');
     setBlocks((prev) => {
       const result = deleteBlocksUtil(prev, selectedIds);
       if (result.focusBlockId) {
@@ -346,20 +391,188 @@ export function Editor({
     });
     setSelectedIds(new Set());
     setSelectionAnchor(null);
-  }, [setBlocks, selectedIds]);
+  }, [setBlocks, selectedIds, pushHistory]);
+
+  // Convert selected blocks to markdown text
+  const selectedBlocksToMarkdown = useCallback(
+    (ids: Set<string>) => {
+      const selectedInOrder = blocks.filter((b) => ids.has(b.id));
+      return selectedInOrder
+        .map((block) => {
+          if (block.type === 'divider') return '---';
+          const indent =
+            block.type === 'bullet' && block.level
+              ? '  '.repeat(block.level)
+              : '';
+          return indent + getPrefix(block.type) + block.content;
+        })
+        .join('\n');
+    },
+    [blocks]
+  );
+
+  // Copy selected blocks as markdown
+  const copySelectedBlocks = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const markdown = selectedBlocksToMarkdown(selectedIds);
+    navigator.clipboard.writeText(markdown);
+  }, [selectedIds, selectedBlocksToMarkdown]);
+
+  // Cut selected blocks (copy + delete)
+  const cutSelectedBlocks = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const markdown = selectedBlocksToMarkdown(selectedIds);
+    navigator.clipboard.writeText(markdown);
+    deleteSelectedBlocks();
+  }, [selectedIds, selectedBlocksToMarkdown, deleteSelectedBlocks]);
+
+  // Parse clipboard text into block definitions
+  const parseClipboardBlocks = useCallback(
+    (
+      text: string
+    ): Array<{ type: BlockType; content: string; level?: number }> => {
+      const lines = text.split('\n');
+      return lines.map((line) => {
+        // Check for indented bullets (2 spaces per level)
+        const indentMatch = line.match(/^( {2,})(- |\* )/);
+        if (indentMatch) {
+          const level = Math.min(Math.floor(indentMatch[1].length / 2), 2);
+          const content = line.slice(indentMatch[0].length);
+          return { type: 'bullet' as BlockType, content, level };
+        }
+
+        const type = detectBlockType(line);
+        const content = stripPrefix(line, type);
+        return { type, content };
+      });
+    },
+    []
+  );
+
+  // Handle paste in edit mode (multi-line text splits into blocks)
+  const handlePasteInBlock = useCallback(
+    (blockId: string, text: string, cursorOffset: number) => {
+      const parsed = parseClipboardBlocks(text);
+      if (parsed.length === 0) return;
+
+      pushHistory('structural');
+      setBlocks((prev) => {
+        const blockIndex = prev.findIndex((b) => b.id === blockId);
+        if (blockIndex < 0) return prev;
+
+        const block = prev[blockIndex];
+        const beforeCursor = block.content.slice(0, cursorOffset);
+        const afterCursor = block.content.slice(cursorOffset);
+
+        const result = [...prev];
+        const newBlocks: Block[] = [];
+        let startIndex: number;
+
+        if (beforeCursor === '') {
+          // Cursor at start: replace current block with first parsed block.
+          // Use a new block (new ID) so React remounts the component and
+          // the contentEditable div picks up the new content on mount.
+          const replacement = createBlock(parsed[0].type, parsed[0].content);
+          if (parsed[0].level !== undefined) replacement.level = parsed[0].level;
+          result[blockIndex] = replacement;
+          startIndex = 1;
+        } else {
+          // Cursor in middle/end: keep current block with content before cursor,
+          // insert all parsed blocks as new blocks after it
+          result[blockIndex] = { ...block, content: beforeCursor };
+          startIndex = 0;
+        }
+
+        for (let i = startIndex; i < parsed.length; i++) {
+          const nb = createBlock(parsed[i].type, parsed[i].content);
+          if (parsed[i].level !== undefined) nb.level = parsed[i].level;
+          newBlocks.push(nb);
+        }
+
+        // If there's content after the cursor, add it as a trailing block
+        if (afterCursor) {
+          newBlocks.push(createBlock(block.type, afterCursor));
+        }
+
+        result.splice(blockIndex + 1, 0, ...newBlocks);
+
+        // Focus the last pasted block (not the trailing afterCursor block)
+        const lastPastedIndex = afterCursor
+          ? newBlocks.length - 2
+          : newBlocks.length - 1;
+        if (lastPastedIndex >= 0) {
+          const focusBlock = newBlocks[lastPastedIndex];
+          pendingFocusRef.current = focusBlock.id;
+          setPendingCursorOffset({
+            blockId: focusBlock.id,
+            offset: focusBlock.content.length,
+          });
+        } else {
+          // Single parsed line replaced the current block
+          const replacedBlock = result[blockIndex];
+          pendingFocusRef.current = replacedBlock.id;
+          setPendingCursorOffset({
+            blockId: replacedBlock.id,
+            offset: parsed[0].content.length,
+          });
+        }
+
+        return result;
+      });
+    },
+    [setBlocks, parseClipboardBlocks, pushHistory]
+  );
+
+  // Handle paste when blocks are selected (replace selection with pasted blocks)
+  const handlePasteOverSelection = useCallback(
+    (text: string) => {
+      if (selectedIds.size === 0) return;
+
+      const parsed = parseClipboardBlocks(text);
+      if (parsed.length === 0) return;
+
+      pushHistory('structural');
+      setBlocks((prev) => {
+        const firstSelectedIndex = prev.findIndex((b) => selectedIds.has(b.id));
+        if (firstSelectedIndex < 0) return prev;
+
+        const newBlocks = parsed.map((pb) => {
+          const b = createBlock(pb.type, pb.content);
+          if (pb.level !== undefined) b.level = pb.level;
+          return b;
+        });
+
+        const without = prev.filter((b) => !selectedIds.has(b.id));
+        without.splice(firstSelectedIndex, 0, ...newBlocks);
+
+        // Focus last new block
+        const lastBlock = newBlocks[newBlocks.length - 1];
+        setFocusedId(lastBlock.id);
+
+        return without;
+      });
+
+      setSelectedIds(new Set());
+      setSelectionAnchor(null);
+      setSelectionFocusId(null);
+    },
+    [setBlocks, selectedIds, parseClipboardBlocks, pushHistory]
+  );
 
   const handleIndent = useCallback(
     (id: string) => {
+      pushHistory('structural');
       setBlocks((prev) => indentBlockUtil(prev, id));
     },
-    [setBlocks]
+    [setBlocks, pushHistory]
   );
 
   const handleUnindent = useCallback(
     (id: string) => {
+      pushHistory('structural');
       setBlocks((prev) => unindentBlockUtil(prev, id));
     },
-    [setBlocks]
+    [setBlocks, pushHistory]
   );
 
   return (
@@ -387,6 +600,10 @@ export function Editor({
             onMoveDown={handleMoveDown}
             onExtendSelection={extendSelection}
             onDeleteSelected={deleteSelectedBlocks}
+            onCopySelected={copySelectedBlocks}
+            onCutSelected={cutSelectedBlocks}
+            onPasteBlocks={handlePasteInBlock}
+            onPasteSelected={handlePasteOverSelection}
             onClearSelection={clearSelection}
             onSelectPrevious={selectPreviousBlock}
             onSelectNext={selectNextBlock}
@@ -409,6 +626,9 @@ export function Editor({
             }
             onIndent={handleIndent}
             onUnindent={handleUnindent}
+            undoGeneration={undoGeneration}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
           />
         );
       })}
