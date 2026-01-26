@@ -93,8 +93,8 @@ export function apiTaskToTask(
     startTime: apiTask.startTime,
     duration: apiTask.duration,
     estimate: apiTask.estimate,
-    dueDate: apiTask.dueDate,
-    blockedReason: apiTask.blockedReason,
+    dueDate: apiTask.dueDate ?? undefined,
+    blockedReason: apiTask.blockedReason ?? undefined,
     teamId: apiTask.teamId,
     assigneeId: apiTask.assigneeId,
     assigner: apiTask.assigner,
@@ -158,7 +158,9 @@ export const taskApi = {
       `/api/tasks/${id}${params}`,
       {
         method: 'PUT',
-        body: JSON.stringify(updates),
+        body: JSON.stringify(updates, (_key, value) =>
+          value === undefined ? null : value
+        ),
       }
     );
     return data.task;
