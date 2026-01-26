@@ -94,6 +94,7 @@ export function AssigneeSelect({
                 <img
                   src={member.user.avatarUrl}
                   alt=""
+                  referrerPolicy="no-referrer"
                   className="w-5 h-5 rounded-full"
                 />
               ) : (

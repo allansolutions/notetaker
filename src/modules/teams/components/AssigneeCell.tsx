@@ -17,6 +17,7 @@ export function AssigneeCell({ assignee }: AssigneeCellProps) {
         <img
           src={assignee.avatarUrl}
           alt=""
+          referrerPolicy="no-referrer"
           className="w-5 h-5 rounded-full shrink-0"
         />
       ) : (

@@ -20,7 +20,7 @@ export function buildOAuthUrl(
     redirect_uri: redirectUri,
     response_type: 'code',
     scope:
-      'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
     access_type: 'offline',
     prompt: 'consent',
     state,

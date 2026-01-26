@@ -177,6 +177,7 @@ export function TeamSettingsModal({ onClose }: TeamSettingsModalProps) {
                         <img
                           src={member.user.avatarUrl}
                           alt=""
+                          referrerPolicy="no-referrer"
                           className="w-8 h-8 rounded-full"
                         />
                       ) : (
