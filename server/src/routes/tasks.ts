@@ -16,6 +16,7 @@ import {
   getMaxOrderIndexForTeam,
 } from '../services/tasks';
 import { isTeamMember, getUserRole } from '../services/teams';
+import { getUserById } from '../services/user';
 import {
   getSessionsByTaskId,
   getSessionById,
@@ -222,6 +223,14 @@ taskRoutes.post('/', async (c) => {
     assigneeId: body.assigneeId ?? null,
   });
 
+  const [assigner, assignee] = await Promise.all([
+    getUserById(db, userId),
+    task.assigneeId ? getUserById(db, task.assigneeId) : undefined,
+  ]);
+
+  const toUserObj = (u: typeof assigner) =>
+    u ? { id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl } : null;
+
   return c.json(
     {
       task: {
@@ -229,6 +238,8 @@ taskRoutes.post('/', async (c) => {
         blocks: JSON.parse(task.blocks),
         scheduled: task.scheduled ?? false,
         tags: task.tags ? JSON.parse(task.tags) : [],
+        assigner: toUserObj(assigner),
+        assignee: toUserObj(assignee),
       },
     },
     201
