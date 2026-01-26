@@ -394,14 +394,18 @@ export function BlockInput({
 
   const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
     const text = e.clipboardData.getData('text/plain');
-    if (!text.includes('\n')) return; // Single line: let browser handle it
-
     e.preventDefault();
-    const el = inputRef.current;
-    if (!el) return;
-    const sel = window.getSelection();
-    const offset = getCursorPosition(el, sel, el.textContent?.length ?? 0);
-    onPasteBlocks?.(block.id, text, offset);
+
+    if (text.includes('\n')) {
+      const el = inputRef.current;
+      if (!el) return;
+      const sel = window.getSelection();
+      const offset = getCursorPosition(el, sel, el.textContent?.length ?? 0);
+      onPasteBlocks?.(block.id, text, offset);
+    } else {
+      // Insert as plain text to strip any formatting (e.g. color styles)
+      document.execCommand('insertText', false, text);
+    }
   };
 
   // Handle meta key shortcuts, returns true if handled
