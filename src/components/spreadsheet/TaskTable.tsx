@@ -61,6 +61,10 @@ import { DateCell } from './DateCell';
 import { AssigneeCell } from './AssigneeCell';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
 import { DragHandleIcon, TrashIcon, PlusIcon, GroupIcon } from '../icons';
+import {
+  formatMinutes,
+  computeTimeSpentWithActive,
+} from '../../utils/task-operations';
 import { useTeam } from '@/modules/teams/context/TeamContext';
 import { AddTaskModal, AddTaskData, EditTaskData } from '../AddTaskModal';
 import { BlockedReasonModal } from '../BlockedReasonModal';
@@ -282,7 +286,7 @@ function SortableRow({
 
 // Row data types for grouped rendering
 type RowData =
-  | { type: 'header'; group: string; label: string }
+  | { type: 'header'; group: string; label: string; remainingMinutes: number }
   | {
       type: 'task';
       task: Task;
@@ -303,15 +307,20 @@ interface GroupConfig {
 function GroupHeaderRow({
   label,
   columnCount,
+  remainingMinutes,
 }: {
   label: string;
   columnCount: number;
+  remainingMinutes: number;
 }) {
   return (
     <tr className="group-header-row">
       <td colSpan={columnCount + 2} className="pt-4 pb-1 px-2">
         <span className="text-xs font-semibold text-muted uppercase tracking-wider">
           {label}
+          {remainingMinutes > 0 && (
+            <>: {formatMinutes(remainingMinutes)}</>
+          )}
         </span>
       </td>
     </tr>
@@ -631,6 +640,20 @@ export function TaskTable({
       return a.originalIndex - b.originalIndex;
     });
 
+    // Compute remaining time per group
+    const groupRemainingMinutes = new Map<string, number>();
+    for (const { task, group } of tasksWithGroups) {
+      if (task.estimate !== undefined) {
+        const spentMs = computeTimeSpentWithActive(task.sessions);
+        const spentMinutes = Math.floor(spentMs / 60000);
+        const remaining = Math.max(0, task.estimate - spentMinutes);
+        groupRemainingMinutes.set(
+          group,
+          (groupRemainingMinutes.get(group) ?? 0) + remaining
+        );
+      }
+    }
+
     // Build row data with headers
     const rowData: RowData[] = [];
     let currentGroup: string | null = null;
@@ -656,6 +679,7 @@ export function TaskTable({
           type: 'header',
           group,
           label: groupConfig.getLabel(group),
+          remainingMinutes: groupRemainingMinutes.get(group) ?? 0,
         });
         currentGroup = group;
         groupStartIndex = rowData.length;
@@ -1180,6 +1204,7 @@ export function TaskTable({
                           key={`header-${rowData.group}`}
                           label={rowData.label}
                           columnCount={columns.length}
+                          remainingMinutes={rowData.remainingMinutes}
                         />
                       );
                     }
