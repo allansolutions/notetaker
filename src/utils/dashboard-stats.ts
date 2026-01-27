@@ -1,4 +1,4 @@
-import { Task } from '../types';
+import { Task, TaskType } from '../types';
 
 export type DashboardPreset =
   | 'this-week'
@@ -190,4 +190,165 @@ export function computeDashboardStats(
     peakDay,
     undatedCount,
   };
+}
+
+// --- Time by Category (stacked bar chart) ---
+
+export const CATEGORY_CHART_COLORS: Record<TaskType, string> = {
+  admin: '#6b7280',
+  operations: '#3b82f6',
+  'business-dev': '#a855f7',
+  'jardin-casa': '#22c55e',
+  'jardin-finca': '#f59e0b',
+  personal: '#ec4899',
+  fitness: '#ef4444',
+};
+
+export interface TimeByCategoryPoint {
+  bucketKey: string;
+  label: string;
+  admin: number;
+  operations: number;
+  'business-dev': number;
+  'jardin-casa': number;
+  'jardin-finca': number;
+  personal: number;
+  fitness: number;
+  total: number;
+}
+
+function emptyPoint(bucketKey: string, label: string): TimeByCategoryPoint {
+  return {
+    bucketKey,
+    label,
+    admin: 0,
+    operations: 0,
+    'business-dev': 0,
+    'jardin-casa': 0,
+    'jardin-finca': 0,
+    personal: 0,
+    fitness: 0,
+    total: 0,
+  };
+}
+
+/**
+ * Get the Monday-based week key for a date.
+ * Returns the YYYY-MM-DD of the Monday of that week.
+ */
+function getMondayKey(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun
+  const daysFromMonday = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - daysFromMonday);
+  return formatDateKey(d);
+}
+
+function buildWeeklyBuckets(range: {
+  start: Date;
+  end: Date;
+}): Map<string, TimeByCategoryPoint> {
+  const bucketMap = new Map<string, TimeByCategoryPoint>();
+  const cursor = startOfDay(range.start);
+  const day = cursor.getDay();
+  const daysFromMonday = day === 0 ? 6 : day - 1;
+  cursor.setDate(cursor.getDate() - daysFromMonday);
+  const endDay = startOfDay(range.end);
+
+  while (cursor <= endDay) {
+    const key = formatDateKey(cursor);
+    if (!bucketMap.has(key)) {
+      bucketMap.set(key, emptyPoint(key, formatDateLabel(cursor)));
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return bucketMap;
+}
+
+function buildDailyBuckets(range: {
+  start: Date;
+  end: Date;
+}): Map<string, TimeByCategoryPoint> {
+  const bucketMap = new Map<string, TimeByCategoryPoint>();
+  const cursor = startOfDay(range.start);
+  const endDay = startOfDay(range.end);
+
+  while (cursor <= endDay) {
+    const key = formatDateKey(cursor);
+    bucketMap.set(key, emptyPoint(key, formatDateLabel(cursor)));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return bucketMap;
+}
+
+function getCompletedSessions(
+  tasks: Task[],
+  range: { start: Date; end: Date }
+): { type: TaskType; startTime: number; durationMinutes: number }[] {
+  const rangeStart = range.start.getTime();
+  const rangeEnd = range.end.getTime();
+  const result: {
+    type: TaskType;
+    startTime: number;
+    durationMinutes: number;
+  }[] = [];
+
+  for (const task of tasks) {
+    if (!task.sessions) continue;
+    for (const session of task.sessions) {
+      if (!session.endTime) continue;
+      if (session.startTime > rangeEnd || session.endTime < rangeStart)
+        continue;
+      result.push({
+        type: task.type,
+        startTime: session.startTime,
+        durationMinutes: Math.round(
+          (session.endTime - session.startTime) / (1000 * 60)
+        ),
+      });
+    }
+  }
+  return result;
+}
+
+function addSessionsToBuckets(
+  tasks: Task[],
+  bucketMap: Map<string, TimeByCategoryPoint>,
+  range: { start: Date; end: Date },
+  useWeeks: boolean
+): void {
+  const sessions = getCompletedSessions(tasks, range);
+  const keyFn = useWeeks ? getMondayKey : (d: Date) => formatDateKey(d);
+
+  for (const s of sessions) {
+    const key = keyFn(new Date(s.startTime));
+    const bucket = bucketMap.get(key);
+    if (!bucket) continue;
+    bucket[s.type] += s.durationMinutes;
+    bucket.total += s.durationMinutes;
+  }
+}
+
+/**
+ * Aggregates tracked time per category into day or week buckets.
+ * Day granularity for ranges ≤ 31 days, week granularity otherwise.
+ */
+export function aggregateTimeByCategory(
+  tasks: Task[],
+  range: { start: Date; end: Date }
+): TimeByCategoryPoint[] {
+  const diffDays = Math.ceil(
+    (range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const useWeeks = diffDays > 31;
+
+  const bucketMap = useWeeks
+    ? buildWeeklyBuckets(range)
+    : buildDailyBuckets(range);
+
+  addSessionsToBuckets(tasks, bucketMap, range, useWeeks);
+
+  return Array.from(bucketMap.values()).sort((a, b) =>
+    a.bucketKey.localeCompare(b.bucketKey)
+  );
 }

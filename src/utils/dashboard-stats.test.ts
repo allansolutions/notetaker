@@ -4,6 +4,7 @@ import {
   clampRangeToAccountStart,
   aggregateCompletionsByDay,
   computeDashboardStats,
+  aggregateTimeByCategory,
 } from './dashboard-stats';
 import { Task } from '../types';
 
@@ -205,5 +206,148 @@ describe('computeDashboardStats', () => {
     expect(stats.avgPerDay).toBe(0);
     expect(stats.peakDay).toBe('');
     expect(stats.undatedCount).toBe(0);
+  });
+});
+
+describe('aggregateTimeByCategory', () => {
+  // Helper to create a session spanning a certain number of minutes
+  function session(date: Date, durationMinutes: number, hasEnd = true) {
+    const startTime = date.getTime();
+    return {
+      id: `s-${startTime}`,
+      startTime,
+      endTime: hasEnd ? startTime + durationMinutes * 60 * 1000 : undefined,
+    };
+  }
+
+  it('buckets sessions by day for short ranges', () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: '1',
+        type: 'admin',
+        sessions: [
+          session(new Date(2025, 0, 2, 9, 0), 60), // Jan 2, 60 min
+          session(new Date(2025, 0, 3, 14, 0), 30), // Jan 3, 30 min
+        ],
+      }),
+    ];
+    const range = {
+      start: new Date(2025, 0, 1),
+      end: new Date(2025, 0, 3, 23, 59, 59),
+    };
+    const points = aggregateTimeByCategory(tasks, range);
+    expect(points).toHaveLength(3);
+    expect(points[0].admin).toBe(0); // Jan 1
+    expect(points[1].admin).toBe(60); // Jan 2
+    expect(points[2].admin).toBe(30); // Jan 3
+    expect(points[1].total).toBe(60);
+    expect(points[2].total).toBe(30);
+  });
+
+  it('uses week granularity for ranges > 31 days', () => {
+    // Range: Jan 1 – Mar 15 (74 days)
+    const tasks: Task[] = [
+      makeTask({
+        id: '1',
+        type: 'operations',
+        sessions: [
+          session(new Date(2025, 0, 7, 10, 0), 45), // Jan 7 (Tue) → week of Jan 6 (Mon)
+          session(new Date(2025, 0, 9, 10, 0), 30), // Jan 9 (Thu) → week of Jan 6 (Mon)
+        ],
+      }),
+    ];
+    const range = {
+      start: new Date(2025, 0, 1),
+      end: new Date(2025, 2, 15, 23, 59, 59),
+    };
+    const points = aggregateTimeByCategory(tasks, range);
+    // Should have weekly buckets, not daily
+    expect(points.length).toBeLessThan(74);
+    // Find the week of Jan 6
+    const jan6Week = points.find((p) => p.bucketKey === '2025-01-06');
+    expect(jan6Week).toBeDefined();
+    expect(jan6Week!.operations).toBe(75); // 45 + 30
+    expect(jan6Week!.total).toBe(75);
+  });
+
+  it('skips sessions without endTime', () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: '1',
+        type: 'personal',
+        sessions: [
+          session(new Date(2025, 0, 2, 9, 0), 60, false), // no end
+        ],
+      }),
+    ];
+    const range = {
+      start: new Date(2025, 0, 1),
+      end: new Date(2025, 0, 3, 23, 59, 59),
+    };
+    const points = aggregateTimeByCategory(tasks, range);
+    expect(points.every((p) => p.total === 0)).toBe(true);
+  });
+
+  it('zero-fills empty buckets', () => {
+    const range = {
+      start: new Date(2025, 0, 1),
+      end: new Date(2025, 0, 5, 23, 59, 59),
+    };
+    const points = aggregateTimeByCategory([], range);
+    expect(points).toHaveLength(5);
+    for (const p of points) {
+      expect(p.total).toBe(0);
+      expect(p.admin).toBe(0);
+      expect(p.operations).toBe(0);
+    }
+  });
+
+  it('excludes sessions outside range', () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: '1',
+        type: 'fitness',
+        sessions: [
+          session(new Date(2025, 0, 10, 9, 0), 60), // outside range
+        ],
+      }),
+    ];
+    const range = {
+      start: new Date(2025, 0, 1),
+      end: new Date(2025, 0, 3, 23, 59, 59),
+    };
+    const points = aggregateTimeByCategory(tasks, range);
+    expect(points.every((p) => p.total === 0)).toBe(true);
+  });
+
+  it('aggregates multiple categories correctly', () => {
+    const tasks: Task[] = [
+      makeTask({
+        id: '1',
+        type: 'admin',
+        sessions: [session(new Date(2025, 0, 2, 9, 0), 30)],
+      }),
+      makeTask({
+        id: '2',
+        type: 'fitness',
+        sessions: [session(new Date(2025, 0, 2, 14, 0), 45)],
+      }),
+      makeTask({
+        id: '3',
+        type: 'operations',
+        sessions: [session(new Date(2025, 0, 2, 16, 0), 20)],
+      }),
+    ];
+    const range = {
+      start: new Date(2025, 0, 1),
+      end: new Date(2025, 0, 3, 23, 59, 59),
+    };
+    const points = aggregateTimeByCategory(tasks, range);
+    const jan2 = points[1]; // Jan 2
+    expect(jan2.admin).toBe(30);
+    expect(jan2.fitness).toBe(45);
+    expect(jan2.operations).toBe(20);
+    expect(jan2.total).toBe(95);
+    expect(jan2.personal).toBe(0);
   });
 });

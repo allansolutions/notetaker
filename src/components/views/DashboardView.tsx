@@ -3,12 +3,14 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { Task, DateRange } from '../../types';
+import { Task, DateRange, TASK_TYPE_OPTIONS, TaskType } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { BackButton } from '../BackButton';
 import { DateRangeModal } from '../DateRangeModal';
@@ -18,7 +20,10 @@ import {
   clampRangeToAccountStart,
   aggregateCompletionsByDay,
   computeDashboardStats,
+  aggregateTimeByCategory,
+  CATEGORY_CHART_COLORS,
 } from '../../utils/dashboard-stats';
+import { formatMinutes } from '../../utils/task-operations';
 
 interface DashboardViewProps {
   tasks: Task[];
@@ -71,6 +76,11 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
     [tasks, points]
   );
 
+  const timePoints = useMemo(
+    () => aggregateTimeByCategory(tasks, range),
+    [tasks, range]
+  );
+
   const handlePresetClick = (key: DashboardPreset | 'custom') => {
     setActivePreset(key);
     if (key === 'custom') {
@@ -85,13 +95,17 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
     }
   };
 
-  // Determine tick interval to avoid crowding
+  // Determine tick intervals to avoid crowding
   let tickInterval = 0;
   if (points.length > 60) tickInterval = 6;
   else if (points.length > 14) tickInterval = 2;
 
+  let timeTickInterval = 0;
+  if (timePoints.length > 60) timeTickInterval = 6;
+  else if (timePoints.length > 14) timeTickInterval = 2;
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <BackButton onClick={onBack} />
@@ -135,8 +149,9 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
         <StatCard label="Undated" value={String(stats.undatedCount)} />
       </div>
 
-      {/* Chart */}
-      <div className="flex-1 min-h-[300px]">
+      {/* Task Completions chart */}
+      <h2 className="text-sm font-medium text-muted mb-2">Task Completions</h2>
+      <div className="h-[300px] mb-8">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={points}
@@ -176,6 +191,40 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
         </ResponsiveContainer>
       </div>
 
+      {/* Time by Category chart */}
+      <h2 className="text-sm font-medium text-muted mb-2">Time by Category</h2>
+      <div className="h-[300px] mb-8">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={timePoints}
+            margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 11, fill: 'var(--color-muted)' }}
+              interval={timeTickInterval}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: 'var(--color-muted)' }}
+              width={40}
+              tickFormatter={(value: number) =>
+                value >= 60 ? `${Math.round(value / 60)}h` : `${value}m`
+              }
+            />
+            <Tooltip content={<TimeCategoryTooltip />} />
+            {TASK_TYPE_OPTIONS.map(({ value }) => (
+              <Bar
+                key={value}
+                dataKey={value}
+                stackId="time"
+                fill={CATEGORY_CHART_COLORS[value]}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
       {/* Custom range modal */}
       {isRangeModalOpen && (
         <DateRangeModal
@@ -183,6 +232,61 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
           onChange={handleCustomRangeChange}
           onClose={() => setIsRangeModalOpen(false)}
         />
+      )}
+    </div>
+  );
+}
+
+const CATEGORY_LABELS: Record<TaskType, string> = Object.fromEntries(
+  TASK_TYPE_OPTIONS.map(({ value, label }) => [value, label])
+) as Record<TaskType, string>;
+
+function TimeCategoryTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { dataKey: string; value: number; fill: string }[];
+  label?: string;
+}) {
+  if (!active || !payload) return null;
+
+  const nonZero = payload.filter((p) => p.value > 0);
+  if (nonZero.length === 0) return null;
+
+  const total = nonZero.reduce((sum, p) => sum + p.value, 0);
+
+  return (
+    <div
+      className="rounded-lg border px-3 py-2 text-xs"
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        borderColor: 'var(--color-border)',
+        color: 'var(--color-primary)',
+      }}
+    >
+      <div className="text-muted mb-1">{label}</div>
+      {nonZero.map((entry) => (
+        <div key={entry.dataKey} className="flex items-center gap-2">
+          <span
+            className="inline-block w-2 h-2 rounded-full"
+            style={{ backgroundColor: entry.fill }}
+          />
+          <span>{CATEGORY_LABELS[entry.dataKey as TaskType]}</span>
+          <span className="ml-auto font-medium">
+            {formatMinutes(entry.value)}
+          </span>
+        </div>
+      ))}
+      {nonZero.length > 1 && (
+        <div
+          className="flex items-center gap-2 border-t mt-1 pt-1"
+          style={{ borderColor: 'var(--color-border)' }}
+        >
+          <span className="font-medium">Total</span>
+          <span className="ml-auto font-medium">{formatMinutes(total)}</span>
+        </div>
       )}
     </div>
   );
