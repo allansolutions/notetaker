@@ -1,4 +1,7 @@
 import { getWeekEnd, isOnDate, startOfDay } from './date-filters';
+import type { Task } from '../types';
+
+export const MAX_TASKS_PER_DAY = 8;
 
 export type DateGroup =
   | 'past'
@@ -210,4 +213,68 @@ export function getDateForGroup(
     case 'no-date':
       return undefined;
   }
+}
+
+/**
+ * Normalize a Date to a 'YYYY-MM-DD' string for use as a map key.
+ */
+export function toDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Count active (non-done) tasks per calendar date.
+ * Tasks without a dueDate are skipped.
+ */
+export function getTaskCountsByDate(tasks: Task[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const task of tasks) {
+    if (task.dueDate === undefined) continue;
+    const key = toDateKey(new Date(task.dueDate));
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * Check whether a specific date has reached the task limit.
+ * `excludeTaskId` allows a task being edited to not count against its own current date.
+ */
+export function isDateFull(
+  dateTs: number,
+  counts: Map<string, number>,
+  excludeTaskId?: string,
+  tasks?: Task[]
+): boolean {
+  const key = toDateKey(new Date(dateTs));
+  let count = counts.get(key) ?? 0;
+
+  if (excludeTaskId && tasks) {
+    const task = tasks.find((t) => t.id === excludeTaskId);
+    if (task?.dueDate !== undefined) {
+      const taskKey = toDateKey(new Date(task.dueDate));
+      if (taskKey === key) {
+        count = Math.max(0, count - 1);
+      }
+    }
+  }
+
+  return count >= MAX_TASKS_PER_DAY;
+}
+
+/**
+ * Check whether a date group is full.
+ * Returns false for multi-date groups (past, future, no-date).
+ */
+export function isGroupFull(
+  group: DateGroup,
+  counts: Map<string, number>,
+  now?: Date
+): boolean {
+  const dateTs = getDateForGroup(group, now);
+  if (dateTs === undefined) return false;
+  return isDateFull(dateTs, counts);
 }

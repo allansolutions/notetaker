@@ -75,6 +75,7 @@ import {
   isOnDate,
   startOfDay,
 } from './utils/date-filters';
+import { getTaskCountsByDate } from './utils/date-groups';
 import { highlightSnippet, tokenizeQuery } from './utils/task-search';
 
 // Get initial state from URL before first render
@@ -522,6 +523,11 @@ export function AppContent() {
     return doneTasks.filter((t) => t.dueDate && isOnDate(t.dueDate, now))
       .length;
   }, [doneTasks]);
+
+  const taskCountsByDate = useMemo(
+    () => getTaskCountsByDate(activeTasks),
+    [activeTasks]
+  );
 
   const handleCommandNavigateToTaskDetails = useCallback(() => {
     if (currentView === 'full-day-details') return;
@@ -1487,6 +1493,7 @@ export function AppContent() {
             groupBy={groupBy}
             onGroupByChange={handleGroupByChange}
             onActiveTaskChange={setSpreadsheetActiveTaskId}
+            taskCountsByDate={taskCountsByDate}
           />
         );
       }

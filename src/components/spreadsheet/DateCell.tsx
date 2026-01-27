@@ -5,6 +5,7 @@ import { DatePickerModal } from '../DatePickerModal';
 interface DateCellProps {
   value: number | undefined;
   onChange: (date: number | undefined) => void;
+  isDateDisabled?: (date: Date) => boolean;
 }
 
 function formatDate(timestamp: number): string {
@@ -15,7 +16,7 @@ function formatDate(timestamp: number): string {
   });
 }
 
-export function DateCell({ value, onChange }: DateCellProps) {
+export function DateCell({ value, onChange, isDateDisabled }: DateCellProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -39,6 +40,7 @@ export function DateCell({ value, onChange }: DateCellProps) {
           value={value}
           onChange={onChange}
           onClose={() => setIsOpen(false)}
+          isDateDisabled={isDateDisabled}
         />
       )}
     </>

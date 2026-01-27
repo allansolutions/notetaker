@@ -52,6 +52,7 @@ interface AddTaskModalProps {
     assigneeId?: string | null;
   };
   onEditSubmit?: (data: EditTaskData) => void;
+  isDateDisabled?: (date: Date) => boolean;
 }
 
 function getTodayNoon(): number {
@@ -65,6 +66,7 @@ export function AddTaskModal({
   onClose,
   editTask,
   onEditSubmit,
+  isDateDisabled,
 }: AddTaskModalProps) {
   const { user } = useAuth();
   const { members, activeTeam } = useTeam();
@@ -123,8 +125,13 @@ export function AddTaskModal({
     importance !== '' &&
     estimate !== null;
 
+  const isSelectedDateDisabled =
+    isDateDisabled && dueDate
+      ? isDateDisabled(new Date(dueDate))
+      : false;
+
   const handleSubmit = () => {
-    if (!isValid) return;
+    if (!isValid || isSelectedDateDisabled) return;
     if (isEditMode && editTask && onEditSubmit) {
       onEditSubmit({
         id: editTask.id,
@@ -434,7 +441,7 @@ export function AddTaskModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!isValid}
+            disabled={!isValid || isSelectedDateDisabled}
             className="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isEditMode ? 'Save' : 'Create'}
@@ -450,6 +457,7 @@ export function AddTaskModal({
             setShowDatePicker(false);
           }}
           onClose={() => setShowDatePicker(false)}
+          isDateDisabled={isDateDisabled}
         />
       )}
     </div>

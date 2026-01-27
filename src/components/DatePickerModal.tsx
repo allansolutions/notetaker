@@ -5,6 +5,7 @@ interface DatePickerModalProps {
   value: number | undefined;
   onChange: (date: number | undefined) => void;
   onClose: () => void;
+  isDateDisabled?: (date: Date) => boolean;
 }
 
 function getDaysInMonth(year: number, month: number): number {
@@ -38,6 +39,7 @@ export function DatePickerModal({
   value,
   onChange,
   onClose,
+  isDateDisabled,
 }: DatePickerModalProps) {
   const initialDate = value ? new Date(value) : new Date();
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
@@ -65,8 +67,14 @@ export function DatePickerModal({
 
   const handleSelectDay = (day: number) => {
     const date = new Date(viewYear, viewMonth, day, 12, 0, 0);
+    if (isDateDisabled?.(date)) return;
     onChange(date.getTime());
     onClose();
+  };
+
+  const isDayDisabled = (day: number): boolean => {
+    if (!isDateDisabled) return false;
+    return isDateDisabled(new Date(viewYear, viewMonth, day, 12, 0, 0));
   };
 
   const handleClear = () => {
@@ -102,6 +110,9 @@ export function DatePickerModal({
   };
 
   const getDayClassName = (day: number): string => {
+    if (isDayDisabled(day)) {
+      return 'text-muted/40 cursor-not-allowed';
+    }
     if (isSelectedDay(day)) {
       return 'bg-blue-500 text-white';
     }
@@ -177,6 +188,7 @@ export function DatePickerModal({
                   <button
                     type="button"
                     onClick={() => handleSelectDay(day)}
+                    disabled={isDayDisabled(day)}
                     className={`w-full h-full rounded text-sm transition-colors ${getDayClassName(day)}`}
                   >
                     {day}

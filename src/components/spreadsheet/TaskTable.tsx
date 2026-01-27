@@ -16,6 +16,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -45,6 +46,9 @@ import {
   getGroupOrder,
   getRemainingWeekdayGroups,
   isWeekdayGroup,
+  isDateFull,
+  isGroupFull,
+  MAX_TASKS_PER_DAY,
 } from '../../utils/date-groups';
 import {
   matchesMultiselect,
@@ -167,6 +171,8 @@ interface TaskTableProps {
   onGroupByChange?: (groupBy: GroupByMode) => void;
   // Active row callback for command palette integration
   onActiveTaskChange?: (taskId: string | null) => void;
+  // Task counts per date for enforcing daily limit
+  taskCountsByDate?: Map<string, number>;
 }
 
 const columnHelper = createColumnHelper<Task>();
@@ -287,7 +293,7 @@ function SortableRow({
 
 // Row data types for grouped rendering
 type RowData =
-  | { type: 'header'; group: string; label: string; remainingMinutes: number; completedCount: number }
+  | { type: 'header'; group: string; label: string; remainingMinutes: number; taskCount: number; completedCount: number }
   | {
       type: 'task';
       task: Task;
@@ -309,26 +315,40 @@ function GroupHeaderRow({
   label,
   columnCount,
   remainingMinutes,
+  taskCount,
   completedCount,
+  isFull,
 }: {
   label: string;
   columnCount: number;
   remainingMinutes: number;
+  taskCount: number;
   completedCount: number;
+  isFull?: boolean;
 }) {
-  const hasMeta = remainingMinutes > 0 || completedCount > 0;
   return (
     <tr className="group-header-row">
       <td colSpan={columnCount + 2} className="pt-4 pb-1 px-2">
-        <span className="text-xs font-semibold text-muted uppercase tracking-wider">
-          {label}
-          {hasMeta && ': '}
-          {remainingMinutes > 0 && formatMinutes(remainingMinutes)}
-          {remainingMinutes > 0 && completedCount > 0 && ' · '}
+        <span className="text-xs font-semibold uppercase tracking-wider inline-flex items-baseline">
+          <span className="text-muted min-w-[6.5rem] shrink-0">{label}:</span>
+          {remainingMinutes > 0 && (
+            <span className="text-muted min-w-[4.5rem] shrink-0 tabular-nums">{formatMinutes(remainingMinutes)}</span>
+          )}
+          {taskCount > 0 && (
+            <span className="text-blue-600 dark:text-blue-400 shrink-0">{taskCount} pending</span>
+          )}
+          {taskCount > 0 && completedCount > 0 && (
+            <span className="text-muted mx-1">·</span>
+          )}
           {completedCount > 0 && (
-            <span className="text-emerald-600 dark:text-emerald-400">{completedCount} {completedCount === 1 ? 'task' : 'tasks'} completed</span>
+            <span className="text-emerald-600 dark:text-emerald-400 shrink-0">{completedCount} completed</span>
           )}
         </span>
+        {isFull && (
+          <span className="text-xs font-semibold text-red-500 dark:text-red-400 ml-2">
+            (full — {MAX_TASKS_PER_DAY} tasks)
+          </span>
+        )}
       </td>
     </tr>
   );
@@ -416,6 +436,7 @@ export function TaskTable({
   groupBy = 'none',
   onGroupByChange,
   onActiveTaskChange,
+  taskCountsByDate,
 }: TaskTableProps) {
   const { members } = useTeam();
   const [internalAddModalOpen, setInternalAddModalOpen] = useState(false);
@@ -428,6 +449,7 @@ export function TaskTable({
   const [blockedReasonModal, setBlockedReasonModal] =
     useState<BlockedReasonModalState>({ isOpen: false, taskId: null });
   const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
+  const [dragOverFullGroup, setDragOverFullGroup] = useState<string | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Use controlled or internal filters
@@ -648,9 +670,11 @@ export function TaskTable({
       return a.originalIndex - b.originalIndex;
     });
 
-    // Compute remaining time per group
+    // Compute remaining time and task count per group
     const groupRemainingMinutes = new Map<string, number>();
+    const groupTaskCounts = new Map<string, number>();
     for (const { task, group } of tasksWithGroups) {
+      groupTaskCounts.set(group, (groupTaskCounts.get(group) ?? 0) + 1);
       if (task.estimate !== undefined) {
         const spentMs = computeTimeSpentWithActive(task.sessions);
         const spentMinutes = Math.floor(spentMs / 60000);
@@ -688,6 +712,7 @@ export function TaskTable({
           group,
           label: groupConfig.getLabel(group),
           remainingMinutes: groupRemainingMinutes.get(group) ?? 0,
+          taskCount: groupTaskCounts.get(group) ?? 0,
           completedCount: group === 'today' ? todayCompletedCount : 0,
         });
         currentGroup = group;
@@ -839,6 +864,17 @@ export function TaskTable({
             onChange={(date) =>
               onUpdateTask(row.original.id, { dueDate: date })
             }
+            isDateDisabled={
+              taskCountsByDate
+                ? (date: Date) =>
+                    isDateFull(
+                      date.getTime(),
+                      taskCountsByDate,
+                      row.original.id,
+                      tasks
+                    )
+                : undefined
+            }
           />
         ),
         size: 100,
@@ -849,7 +885,7 @@ export function TaskTable({
         },
       }),
     ],
-    [onUpdateTask, onSelectTask, handleStatusChange]
+    [onUpdateTask, onSelectTask, handleStatusChange, taskCountsByDate, tasks]
   );
 
   const table = useReactTable({
@@ -929,6 +965,11 @@ export function TaskTable({
         const targetGroup = taskGroupMap.get(targetTaskId);
 
         if (activeGroup && targetGroup && activeGroup !== targetGroup) {
+          // Enforce daily task limit
+          if (taskCountsByDate && isGroupFull(targetGroup as DateGroup, taskCountsByDate)) {
+            return false;
+          }
+
           const newDate = getDateForGroup(targetGroup as DateGroup);
           if (newDate !== undefined) {
             onUpdateTask(activeTaskId, { dueDate: newDate });
@@ -948,6 +989,7 @@ export function TaskTable({
       navigableTaskIds,
       groupBy,
       taskGroupMap,
+      taskCountsByDate,
       onUpdateTask,
       onReorder,
     ]
@@ -1077,7 +1119,34 @@ export function TaskTable({
     })
   );
 
+  const handleDragOver = (event: DragOverEvent) => {
+    if (groupBy !== 'date' || !taskCountsByDate) {
+      setDragOverFullGroup(null);
+      return;
+    }
+
+    const { active, over } = event;
+    if (!over) {
+      setDragOverFullGroup(null);
+      return;
+    }
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const activeGroup = taskGroupMap.get(activeId);
+    const overGroup = taskGroupMap.get(overId);
+
+    if (activeGroup && overGroup && activeGroup !== overGroup) {
+      if (isGroupFull(overGroup as DateGroup, taskCountsByDate)) {
+        setDragOverFullGroup(overGroup);
+        return;
+      }
+    }
+    setDragOverFullGroup(null);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setDragOverFullGroup(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -1090,6 +1159,11 @@ export function TaskTable({
       const overGroup = taskGroupMap.get(overId);
 
       if (activeGroup && overGroup && activeGroup !== overGroup) {
+        // Enforce daily task limit
+        if (taskCountsByDate && isGroupFull(overGroup as DateGroup, taskCountsByDate)) {
+          return;
+        }
+
         // Get the date for the target group
         const newDate = getDateForGroup(overGroup as DateGroup);
 
@@ -1135,6 +1209,7 @@ export function TaskTable({
         sensors={sensors}
         collisionDetection={closestCenter}
         modifiers={[restrictToVerticalAxis]}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         <table ref={tableRef} className="w-full text-small table-fixed">
@@ -1214,7 +1289,9 @@ export function TaskTable({
                           label={rowData.label}
                           columnCount={columns.length}
                           remainingMinutes={rowData.remainingMinutes}
+                          taskCount={rowData.taskCount}
                           completedCount={rowData.completedCount}
+                          isFull={dragOverFullGroup === rowData.group}
                         />
                       );
                     }
@@ -1268,6 +1345,11 @@ export function TaskTable({
         <AddTaskModal
           onSubmit={handleAddTask}
           onClose={() => setShowAddModal(false)}
+          isDateDisabled={
+            taskCountsByDate
+              ? (date: Date) => isDateFull(date.getTime(), taskCountsByDate)
+              : undefined
+          }
         />
       )}
 
@@ -1277,6 +1359,17 @@ export function TaskTable({
           onClose={() => setEditingTask(null)}
           editTask={editingTask}
           onEditSubmit={handleEditTask}
+          isDateDisabled={
+            taskCountsByDate
+              ? (date: Date) =>
+                  isDateFull(
+                    date.getTime(),
+                    taskCountsByDate,
+                    editingTask.id,
+                    tasks
+                  )
+              : undefined
+          }
         />
       )}
 
