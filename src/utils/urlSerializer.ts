@@ -244,6 +244,32 @@ export function parseParamsToFilters(
   return result;
 }
 
+const STATIC_VIEW_PATHS: Partial<Record<ViewType, string>> = {
+  'full-day-details': '/details',
+  archive: '/archive',
+  'crm-list': '/crm',
+  'crm-new': '/crm/new',
+  'wiki-list': '/wiki',
+  dashboard: '/dashboard',
+};
+
+function getViewPath(
+  view: ViewType,
+  taskId?: string | null,
+  contactId?: string | null,
+  wikiPageId?: string | null
+): string {
+  const staticPath = STATIC_VIEW_PATHS[view];
+  if (staticPath) return staticPath;
+
+  if (view === 'task-detail') return taskId ? `/task/${taskId}` : '/';
+  if (view === 'crm-detail')
+    return contactId ? `/crm/contacts/${contactId}` : '/crm';
+  if (view === 'wiki-page') return wikiPageId ? `/wiki/${wikiPageId}` : '/wiki';
+
+  return '/';
+}
+
 /**
  * Build a URL path and search string from view state
  */
@@ -255,47 +281,17 @@ export function buildUrl(
   wikiPageId?: string | null,
   groupBy?: GroupByMode
 ): string {
-  let path: string;
-
-  switch (view) {
-    case 'task-detail':
-      path = taskId ? `/task/${taskId}` : '/';
-      break;
-    case 'full-day-details':
-      path = '/details';
-      break;
-    case 'archive':
-      path = '/archive';
-      break;
-    case 'crm-list':
-      path = '/crm';
-      break;
-    case 'crm-new':
-      path = '/crm/new';
-      break;
-    case 'crm-detail':
-      path = contactId ? `/crm/contacts/${contactId}` : '/crm';
-      break;
-    case 'wiki-list':
-      path = '/wiki';
-      break;
-    case 'wiki-page':
-      path = wikiPageId ? `/wiki/${wikiPageId}` : '/wiki';
-      break;
-    case 'spreadsheet':
-    default:
-      path = '/';
-      break;
-  }
+  const path = getViewPath(view, taskId, contactId, wikiPageId);
 
   // Only add query params for views that use them
   const useFilters = view === 'spreadsheet' || view === 'full-day-details';
   const useGroupBy = view === 'spreadsheet' || view === 'archive';
 
   if (useFilters || useGroupBy) {
-    const params = useFilters && filters
-      ? serializeFiltersToParams(filters)
-      : new URLSearchParams();
+    const params =
+      useFilters && filters
+        ? serializeFiltersToParams(filters)
+        : new URLSearchParams();
 
     if (useGroupBy && groupBy && groupBy !== 'none') {
       params.set('groupBy', groupBy);
@@ -308,6 +304,43 @@ export function buildUrl(
   }
 
   return path;
+}
+
+const STATIC_PATH_TO_VIEW: Record<string, ViewType> = {
+  '/details': 'full-day-details',
+  '/archive': 'archive',
+  '/crm': 'crm-list',
+  '/crm/new': 'crm-new',
+  '/dashboard': 'dashboard',
+  '/wiki': 'wiki-list',
+};
+
+function parsePathname(pathname: string, result: RouterState): void {
+  const staticView = STATIC_PATH_TO_VIEW[pathname];
+  if (staticView) {
+    result.view = staticView;
+    return;
+  }
+
+  if (pathname.startsWith('/task/')) {
+    const taskId = pathname.slice(6);
+    if (taskId) {
+      result.view = 'task-detail';
+      result.taskId = taskId;
+    }
+  } else if (pathname.startsWith('/crm/contacts/')) {
+    const contactId = pathname.slice(14);
+    if (contactId) {
+      result.view = 'crm-detail';
+      result.contactId = contactId;
+    }
+  } else if (pathname.startsWith('/wiki/')) {
+    const wikiPageId = pathname.slice(6);
+    if (wikiPageId) {
+      result.view = 'wiki-page';
+      result.wikiPageId = wikiPageId;
+    }
+  }
 }
 
 /**
@@ -323,36 +356,7 @@ export function parseUrl(pathname: string, search: string): RouterState {
   };
 
   // Parse path
-  if (pathname === '/details') {
-    result.view = 'full-day-details';
-  } else if (pathname === '/archive') {
-    result.view = 'archive';
-  } else if (pathname.startsWith('/task/')) {
-    const taskId = pathname.slice(6); // Remove '/task/'
-    if (taskId) {
-      result.view = 'task-detail';
-      result.taskId = taskId;
-    }
-  } else if (pathname === '/crm') {
-    result.view = 'crm-list';
-  } else if (pathname === '/crm/new') {
-    result.view = 'crm-new';
-  } else if (pathname.startsWith('/crm/contacts/')) {
-    const contactId = pathname.slice(14); // Remove '/crm/contacts/'
-    if (contactId) {
-      result.view = 'crm-detail';
-      result.contactId = contactId;
-    }
-  } else if (pathname === '/wiki') {
-    result.view = 'wiki-list';
-  } else if (pathname.startsWith('/wiki/')) {
-    const wikiPageId = pathname.slice(6); // Remove '/wiki/'
-    if (wikiPageId) {
-      result.view = 'wiki-page';
-      result.wikiPageId = wikiPageId;
-    }
-  }
-  // Default: spreadsheet (for '/' or any unmatched path)
+  parsePathname(pathname, result);
 
   // Parse search params for filters and groupBy
   if (search) {
@@ -360,7 +364,14 @@ export function parseUrl(pathname: string, search: string): RouterState {
     result.filters = parseParamsToFilters(params);
 
     const groupByParam = params.get('groupBy');
-    const validGroupBy: GroupByMode[] = ['none', 'date', 'type', 'status', 'importance', 'assignee'];
+    const validGroupBy: GroupByMode[] = [
+      'none',
+      'date',
+      'type',
+      'status',
+      'importance',
+      'assignee',
+    ];
     if (groupByParam && validGroupBy.includes(groupByParam as GroupByMode)) {
       result.groupBy = groupByParam as GroupByMode;
     }

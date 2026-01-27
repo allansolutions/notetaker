@@ -5,7 +5,7 @@ import {
   ColumnFilters,
   GroupByMode,
 } from '../spreadsheet/TaskTable';
-import { DocumentIcon, ArchiveIcon } from '../icons';
+import { DocumentIcon, ArchiveIcon, BarChartIcon } from '../icons';
 import { AddTaskData } from '../AddTaskModal';
 import { DateFilterMenu } from '../DateFilterMenu';
 import { DateFilterTitle } from '../DateFilterTitle';
@@ -42,6 +42,7 @@ interface SpreadsheetViewProps {
     visibleTaskIds: string[]
   ) => void;
   onNavigateToArchive: () => void;
+  onNavigateToDashboard: () => void;
   onVisibleTasksChange?: (tasks: Task[]) => void;
   initialFilters?: SpreadsheetFilterState;
   onFilterStateChange?: (state: SpreadsheetFilterState) => void;
@@ -63,6 +64,7 @@ export function SpreadsheetView({
   onAddTaskModalOpenChange,
   onNavigateToFullDayDetails,
   onNavigateToArchive,
+  onNavigateToDashboard,
   onVisibleTasksChange,
   initialFilters,
   onFilterStateChange,
@@ -186,14 +188,24 @@ export function SpreadsheetView({
             setDateFilterDate(null);
           }}
         />
-        <button
-          type="button"
-          onClick={onNavigateToArchive}
-          className="text-small text-muted hover:text-primary flex items-center gap-1"
-        >
-          <ArchiveIcon />
-          Archive
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={onNavigateToDashboard}
+            className="text-small text-muted hover:text-primary flex items-center gap-1"
+          >
+            <BarChartIcon />
+            Dashboard
+          </button>
+          <button
+            type="button"
+            onClick={onNavigateToArchive}
+            className="text-small text-muted hover:text-primary flex items-center gap-1"
+          >
+            <ArchiveIcon />
+            Archive
+          </button>
+        </div>
       </div>
 
       <DateFilterTitle

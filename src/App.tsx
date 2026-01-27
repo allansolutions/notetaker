@@ -51,6 +51,7 @@ import { AddTaskData } from './components/AddTaskModal';
 import { TaskDetailView } from './components/views/TaskDetailView';
 import { FullDayDetailsView } from './components/views/FullDayDetailsView';
 import { ArchiveView } from './components/views/ArchiveView';
+import { DashboardView } from './components/views/DashboardView';
 import { Sidebar } from './components/Sidebar';
 import { LoginPage } from './components/LoginPage';
 import { AuthGuard } from './components/AuthGuard';
@@ -328,24 +329,21 @@ export function AppContent() {
   );
 
   // URL Router - manages browser history and URL state
-  const handleUrlNavigate = useCallback(
-    (state: RouterState) => {
-      setCurrentView(state.view);
-      setSelectedTaskId(state.taskId);
-      setSelectedContactId(state.contactId);
-      setSelectedWikiPageId(state.wikiPageId);
-      if (Object.keys(state.filters).length > 0) {
-        const newFilterState = routerFiltersToState(state.filters);
-        setSpreadsheetFilterState(newFilterState);
-        setReturnFilters(newFilterState);
-        setSpreadsheetViewKey((prev) => prev + 1);
-      }
-      setGroupBy(state.groupBy ?? 'none');
-      // Clear task details context when navigating via browser back/forward
-      setTaskDetailsContext(null);
-    },
-    []
-  );
+  const handleUrlNavigate = useCallback((state: RouterState) => {
+    setCurrentView(state.view);
+    setSelectedTaskId(state.taskId);
+    setSelectedContactId(state.contactId);
+    setSelectedWikiPageId(state.wikiPageId);
+    if (Object.keys(state.filters).length > 0) {
+      const newFilterState = routerFiltersToState(state.filters);
+      setSpreadsheetFilterState(newFilterState);
+      setReturnFilters(newFilterState);
+      setSpreadsheetViewKey((prev) => prev + 1);
+    }
+    setGroupBy(state.groupBy ?? 'none');
+    // Clear task details context when navigating via browser back/forward
+    setTaskDetailsContext(null);
+  }, []);
 
   const router = useUrlRouter({ onNavigate: handleUrlNavigate });
 
@@ -447,6 +445,11 @@ export function AppContent() {
   const handleNavigateToArchive = useCallback(() => {
     setCurrentView('archive');
     router.navigate('archive');
+  }, [router]);
+
+  const handleNavigateToDashboard = useCallback(() => {
+    setCurrentView('dashboard');
+    router.navigate('dashboard');
   }, [router]);
 
   // CRM Navigation Handlers
@@ -863,13 +866,10 @@ export function AppContent() {
   }, [applyFilterState, spreadsheetFilterState]);
 
   // Handle groupBy change - updates both React state and URL
-  const handleGroupByChange = useCallback(
-    (newGroupBy: GroupByMode) => {
-      setGroupBy(newGroupBy);
-      routerRef.current.updateGroupBy(newGroupBy);
-    },
-    []
-  );
+  const handleGroupByChange = useCallback((newGroupBy: GroupByMode) => {
+    setGroupBy(newGroupBy);
+    routerRef.current.updateGroupBy(newGroupBy);
+  }, []);
 
   const commandPaletteCommands = useMemo<CommandPaletteItem[]>(
     () => [
@@ -987,6 +987,13 @@ export function AppContent() {
         type: 'command',
         keywords: ['archive', 'completed', 'done', 'tasks'],
         onExecute: handleNavigateToArchive,
+      },
+      {
+        id: 'view-dashboard',
+        label: 'Task: Dashboard',
+        type: 'command',
+        keywords: ['dashboard', 'stats', 'chart', 'analytics', 'completions'],
+        onExecute: handleNavigateToDashboard,
       },
       {
         id: 'view-crm',
@@ -1115,6 +1122,7 @@ export function AppContent() {
       handleCommandSetAssigneeFilter,
       handleCommandSetImportanceFilter,
       handleNavigateToArchive,
+      handleNavigateToDashboard,
       handleNavigateToCrm,
       handleNavigateToCrmNew,
       handleNavigateToWiki,
@@ -1425,6 +1433,8 @@ export function AppContent() {
             onActiveTaskChange={setSpreadsheetActiveTaskId}
           />
         );
+      case 'dashboard':
+        return <DashboardView tasks={tasks} onBack={handleBackToSpreadsheet} />;
       case 'crm-list':
         return (
           <ContactListView
@@ -1487,6 +1497,7 @@ export function AppContent() {
             onAddTaskModalOpenChange={setIsAddTaskModalOpen}
             onNavigateToFullDayDetails={handleNavigateToFullDayDetails}
             onNavigateToArchive={handleNavigateToArchive}
+            onNavigateToDashboard={handleNavigateToDashboard}
             initialFilters={initialFilters}
             onFilterStateChange={handleFilterStateChange}
             onVisibleTasksChange={handleVisibleTasksChange}
@@ -1508,6 +1519,7 @@ export function AppContent() {
         className={`flex-1 mx-auto py-20 px-24 relative ${
           currentView === 'spreadsheet' ||
           currentView === 'archive' ||
+          currentView === 'dashboard' ||
           currentView === 'crm-list' ||
           currentView === 'wiki-list'
             ? 'max-w-[var(--width-content-wide)]'

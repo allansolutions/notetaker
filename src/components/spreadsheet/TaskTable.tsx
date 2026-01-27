@@ -293,7 +293,14 @@ function SortableRow({
 
 // Row data types for grouped rendering
 type RowData =
-  | { type: 'header'; group: string; label: string; remainingMinutes: number; taskCount: number; completedCount: number }
+  | {
+      type: 'header';
+      group: string;
+      label: string;
+      remainingMinutes: number;
+      taskCount: number;
+      completedCount: number;
+    }
   | {
       type: 'task';
       task: Task;
@@ -332,16 +339,22 @@ function GroupHeaderRow({
         <span className="text-xs font-semibold uppercase tracking-wider inline-flex items-baseline">
           <span className="text-muted min-w-[6.5rem] shrink-0">{label}:</span>
           {remainingMinutes > 0 && (
-            <span className="text-muted min-w-[4.5rem] shrink-0 tabular-nums">{formatMinutes(remainingMinutes)}</span>
+            <span className="text-muted min-w-[4.5rem] shrink-0 tabular-nums">
+              {formatMinutes(remainingMinutes)}
+            </span>
           )}
           {taskCount > 0 && (
-            <span className="text-blue-600 dark:text-blue-400 shrink-0">{taskCount} pending</span>
+            <span className="text-blue-600 dark:text-blue-400 shrink-0">
+              {taskCount} pending
+            </span>
           )}
           {taskCount > 0 && completedCount > 0 && (
             <span className="text-muted mx-1">·</span>
           )}
           {completedCount > 0 && (
-            <span className="text-emerald-600 dark:text-emerald-400 shrink-0">{completedCount} completed</span>
+            <span className="text-emerald-600 dark:text-emerald-400 shrink-0">
+              {completedCount} completed
+            </span>
           )}
         </span>
         {isFull && (
@@ -449,7 +462,9 @@ export function TaskTable({
   const [blockedReasonModal, setBlockedReasonModal] =
     useState<BlockedReasonModalState>({ isOpen: false, taskId: null });
   const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
-  const [dragOverFullGroup, setDragOverFullGroup] = useState<string | null>(null);
+  const [dragOverFullGroup, setDragOverFullGroup] = useState<string | null>(
+    null
+  );
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Use controlled or internal filters
@@ -944,39 +959,50 @@ export function TaskTable({
     []
   );
 
+  const handleCrossGroupMove = useCallback(
+    (activeTaskId: string, targetTaskId: string): boolean => {
+      const activeGroup = taskGroupMap.get(activeTaskId);
+      const targetGroup = taskGroupMap.get(targetTaskId);
+
+      if (!activeGroup || !targetGroup || activeGroup === targetGroup)
+        return true;
+
+      if (
+        taskCountsByDate &&
+        isGroupFull(targetGroup as DateGroup, taskCountsByDate)
+      ) {
+        return false;
+      }
+
+      const newDate = getDateForGroup(targetGroup as DateGroup);
+      if (newDate === undefined) return false;
+
+      onUpdateTask(activeTaskId, { dueDate: newDate });
+      return true;
+    },
+    [taskGroupMap, taskCountsByDate, onUpdateTask]
+  );
+
   const handleMoveRow = useCallback(
     (direction: 'up' | 'down') => {
       if (activeRowIndex === null) return false;
 
-      const taskCount = navigableTaskIds.length;
       const activeTaskId = navigableTaskIds[activeRowIndex];
       if (!activeTaskId) return false;
 
       const targetIndex =
         direction === 'down' ? activeRowIndex + 1 : activeRowIndex - 1;
-      if (targetIndex < 0 || targetIndex >= taskCount) return false;
+      if (targetIndex < 0 || targetIndex >= navigableTaskIds.length)
+        return false;
 
       const targetTaskId = navigableTaskIds[targetIndex];
       if (!targetTaskId) return false;
 
-      // When grouping by date, handle cross-group moves
-      if (groupBy === 'date') {
-        const activeGroup = taskGroupMap.get(activeTaskId);
-        const targetGroup = taskGroupMap.get(targetTaskId);
-
-        if (activeGroup && targetGroup && activeGroup !== targetGroup) {
-          // Enforce daily task limit
-          if (taskCountsByDate && isGroupFull(targetGroup as DateGroup, taskCountsByDate)) {
-            return false;
-          }
-
-          const newDate = getDateForGroup(targetGroup as DateGroup);
-          if (newDate !== undefined) {
-            onUpdateTask(activeTaskId, { dueDate: newDate });
-          } else {
-            return false;
-          }
-        }
+      if (
+        groupBy === 'date' &&
+        !handleCrossGroupMove(activeTaskId, targetTaskId)
+      ) {
+        return false;
       }
 
       setSorting([]);
@@ -984,15 +1010,7 @@ export function TaskTable({
       setActiveRowIndex(targetIndex);
       return true;
     },
-    [
-      activeRowIndex,
-      navigableTaskIds,
-      groupBy,
-      taskGroupMap,
-      taskCountsByDate,
-      onUpdateTask,
-      onReorder,
-    ]
+    [activeRowIndex, navigableTaskIds, groupBy, handleCrossGroupMove, onReorder]
   );
 
   const handleEnterKey = useCallback(
@@ -1160,7 +1178,10 @@ export function TaskTable({
 
       if (activeGroup && overGroup && activeGroup !== overGroup) {
         // Enforce daily task limit
-        if (taskCountsByDate && isGroupFull(overGroup as DateGroup, taskCountsByDate)) {
+        if (
+          taskCountsByDate &&
+          isGroupFull(overGroup as DateGroup, taskCountsByDate)
+        ) {
           return;
         }
 

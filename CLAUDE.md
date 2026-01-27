@@ -138,6 +138,10 @@ Do not add unit tests for:
 
 **Never use `bun test` directly** - it runs Bun's incompatible test runner instead of Vitest.
 
+### Dates and Weeks
+
+Weeks always start on **Monday** and end on **Sunday**. This applies everywhere in the application: calendars, date pickers, "this week" filters, grouping by date, and any week-related calculations. When using `Date.getDay()` (which returns 0 for Sunday), convert to a Monday-based index with `(day + 6) % 7` or `day === 0 ? 6 : day - 1`.
+
 ## Code Quality
 
 Before using `eslint-disable` comments, think hard about whether there's a better approach. These comments are often a sign of taking shortcuts rather than solving the underlying problem properly. For example:

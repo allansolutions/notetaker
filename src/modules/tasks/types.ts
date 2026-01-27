@@ -66,7 +66,8 @@ export type ViewType =
   | 'crm-new'
   | 'crm-detail'
   | 'wiki-list'
-  | 'wiki-page';
+  | 'wiki-page'
+  | 'dashboard';
 
 export interface TaskUser {
   id: string;
