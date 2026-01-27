@@ -40,7 +40,6 @@ import {
   TaskImportance,
   TASK_IMPORTANCE_OPTIONS,
   DateRange,
-  DateFilterPreset,
 } from './types';
 import {
   SpreadsheetView,
@@ -691,32 +690,6 @@ export function AppContent() {
         dateFilterPreset: 'date-range',
         dateFilterDate: null,
         dateFilterRange: range,
-      });
-    },
-    [applyFilterState, spreadsheetFilterState]
-  );
-
-  const handleDateFilterChange = useCallback(
-    (
-      preset: DateFilterPreset,
-      date: number | null,
-      range: DateRange | null
-    ) => {
-      applyFilterState({
-        ...spreadsheetFilterState,
-        dateFilterPreset: preset,
-        dateFilterDate: date,
-        dateFilterRange: range,
-      });
-    },
-    [applyFilterState, spreadsheetFilterState]
-  );
-
-  const handleColumnFiltersChange = useCallback(
-    (filters: SpreadsheetFilterState['filters']) => {
-      applyFilterState({
-        ...spreadsheetFilterState,
-        filters,
       });
     },
     [applyFilterState, spreadsheetFilterState]
@@ -1422,14 +1395,6 @@ export function AppContent() {
             onReorder={reorder}
             onSelectTask={handleSelectTask}
             onBack={handleBackToSpreadsheet}
-            dateFilterPreset={spreadsheetFilterState.dateFilterPreset}
-            dateFilterDate={spreadsheetFilterState.dateFilterDate ?? null}
-            dateFilterRange={spreadsheetFilterState.dateFilterRange ?? null}
-            onDateFilterChange={handleDateFilterChange}
-            filters={spreadsheetFilterState.filters}
-            onFiltersChange={handleColumnFiltersChange}
-            groupBy={groupBy}
-            onGroupByChange={handleGroupByChange}
             onActiveTaskChange={setSpreadsheetActiveTaskId}
           />
         );

@@ -139,6 +139,38 @@ export function getGroupOrder(group: DateGroup): number {
 }
 
 /**
+ * Get the sort order for a date group in archive view (Today first, then Past, etc.)
+ */
+export function getArchiveGroupOrder(group: DateGroup): number {
+  switch (group) {
+    case 'today':
+      return 0;
+    case 'past':
+      return 1;
+    case 'monday':
+      return 2;
+    case 'tuesday':
+      return 3;
+    case 'wednesday':
+      return 4;
+    case 'thursday':
+      return 5;
+    case 'friday':
+      return 6;
+    case 'saturday':
+      return 7;
+    case 'sunday':
+      return 8;
+    case 'next-week':
+      return 9;
+    case 'future':
+      return 10;
+    case 'no-date':
+      return 11;
+  }
+}
+
+/**
  * Check if a group represents a specific weekday (for filtering out days before today)
  */
 export function isWeekdayGroup(group: DateGroup): boolean {

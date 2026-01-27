@@ -114,3 +114,11 @@ Key concepts:
 A LinkedIn post generator. This would be a command or some other type of action where you provide a start date and an end date. Then we use an AI agent to look at the work that you've done between that date range. It would look at tasks that were last modified within that date range and wiki pages that were last modified within that date range. It would look at the content within those to understand what you're working on and then offer ideas of LinkedIn posts that could be generated that are relevant to what you're doing right now. There could be some back and forth, and maybe even some research by the agent, before the agent generates the LinkedIn post.
 
 ---
+
+## 12. Independent archive view with custom defaults and headers
+
+**Status:** pending | **Added:** 2026-01-27
+
+On the archive view, group headers should say 'done' instead of 'pending'. Move the Today group to the top in archive view since done tasks are mostly today or past. Sort by date descending by default in archive view. Make sorting, grouping, and filtering independent between archive view and task list view (not shared).
+
+---

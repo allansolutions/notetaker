@@ -40,6 +40,7 @@ import {
 import { matchesDatePreset } from '../../utils/date-filters';
 import {
   DateGroup,
+  getArchiveGroupOrder,
   getDateForGroup,
   getDateGroup,
   getGroupLabel,
@@ -173,6 +174,10 @@ interface TaskTableProps {
   onActiveTaskChange?: (taskId: string | null) => void;
   // Task counts per date for enforcing daily limit
   taskCountsByDate?: Map<string, number>;
+  // Archive mode - changes group header labels and date group ordering
+  isArchive?: boolean;
+  // Default sorting state (e.g., date descending for archive)
+  defaultSorting?: SortingState;
 }
 
 const columnHelper = createColumnHelper<Task>();
@@ -325,6 +330,7 @@ function GroupHeaderRow({
   taskCount,
   completedCount,
   isFull,
+  isArchive,
 }: {
   label: string;
   columnCount: number;
@@ -332,6 +338,7 @@ function GroupHeaderRow({
   taskCount: number;
   completedCount: number;
   isFull?: boolean;
+  isArchive?: boolean;
 }) {
   return (
     <tr className="group-header-row">
@@ -343,18 +350,28 @@ function GroupHeaderRow({
               {formatMinutes(remainingMinutes)}
             </span>
           )}
-          {taskCount > 0 && (
-            <span className="text-blue-600 dark:text-blue-400 shrink-0">
-              {taskCount} pending
-            </span>
-          )}
-          {taskCount > 0 && completedCount > 0 && (
-            <span className="text-muted mx-1">·</span>
-          )}
-          {completedCount > 0 && (
-            <span className="text-emerald-600 dark:text-emerald-400 shrink-0">
-              {completedCount} completed
-            </span>
+          {isArchive ? (
+            taskCount > 0 && (
+              <span className="text-emerald-600 dark:text-emerald-400 shrink-0">
+                {taskCount} done
+              </span>
+            )
+          ) : (
+            <>
+              {taskCount > 0 && (
+                <span className="text-blue-600 dark:text-blue-400 shrink-0">
+                  {taskCount} pending
+                </span>
+              )}
+              {taskCount > 0 && completedCount > 0 && (
+                <span className="text-muted mx-1">·</span>
+              )}
+              {completedCount > 0 && (
+                <span className="text-emerald-600 dark:text-emerald-400 shrink-0">
+                  {completedCount} completed
+                </span>
+              )}
+            </>
           )}
         </span>
         {isFull && (
@@ -450,13 +467,15 @@ export function TaskTable({
   onGroupByChange,
   onActiveTaskChange,
   taskCountsByDate,
+  isArchive = false,
+  defaultSorting,
 }: TaskTableProps) {
   const { members } = useTeam();
   const [internalAddModalOpen, setInternalAddModalOpen] = useState(false);
   const showAddModal = isAddTaskModalOpen ?? internalAddModalOpen;
   const setShowAddModal = onAddTaskModalOpenChange ?? setInternalAddModalOpen;
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(defaultSorting ?? []);
   const [internalFilters, setInternalFilters] =
     useState<ColumnFilters>(defaultFilters);
   const [blockedReasonModal, setBlockedReasonModal] =
@@ -632,10 +651,15 @@ export function TaskTable({
         return {
           getGroup: (task) => getDateGroup(task.dueDate, now),
           getLabel: (group) => getGroupLabel(group as DateGroup),
-          getOrder: (group) => getGroupOrder(group as DateGroup),
-          shouldSkipGroup: (group) =>
-            isWeekdayGroup(group as DateGroup) &&
-            !remainingWeekdays.has(group as DateGroup),
+          getOrder: (group) =>
+            isArchive
+              ? getArchiveGroupOrder(group as DateGroup)
+              : getGroupOrder(group as DateGroup),
+          shouldSkipGroup: isArchive
+            ? undefined
+            : (group: string) =>
+                isWeekdayGroup(group as DateGroup) &&
+                !remainingWeekdays.has(group as DateGroup),
         };
       case 'type':
         return {
@@ -664,7 +688,7 @@ export function TaskTable({
       default:
         return null;
     }
-  }, [groupBy, members]);
+  }, [groupBy, members, isArchive]);
 
   // Compute grouped row data for visual grouping
   const groupedRowData = useMemo((): RowData[] => {
@@ -1313,6 +1337,7 @@ export function TaskTable({
                           taskCount={rowData.taskCount}
                           completedCount={rowData.completedCount}
                           isFull={dragOverFullGroup === rowData.group}
+                          isArchive={isArchive}
                         />
                       );
                     }

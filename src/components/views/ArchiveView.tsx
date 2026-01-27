@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { SortingState } from '@tanstack/react-table';
 import { Task, DateFilterPreset, DateRange } from '../../types';
 import {
   TaskTable,
@@ -11,6 +12,17 @@ import { computePresetCounts } from '../../utils/date-filters';
 
 const noop = (): void => {};
 
+const defaultFilters: ColumnFilters = {
+  type: null,
+  assignee: null,
+  title: null,
+  status: null,
+  importance: null,
+  dueDate: null,
+};
+
+const archiveDefaultSorting: SortingState = [{ id: 'dueDate', desc: true }];
+
 interface ArchiveViewProps {
   tasks: Task[];
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
@@ -18,18 +30,6 @@ interface ArchiveViewProps {
   onReorder: (activeId: string, overId: string) => void;
   onSelectTask: (id: string) => void;
   onBack: () => void;
-  dateFilterPreset: DateFilterPreset;
-  dateFilterDate: number | null;
-  dateFilterRange: DateRange | null;
-  onDateFilterChange: (
-    preset: DateFilterPreset,
-    date: number | null,
-    range: DateRange | null
-  ) => void;
-  filters: ColumnFilters;
-  onFiltersChange: (filters: ColumnFilters) => void;
-  groupBy?: GroupByMode;
-  onGroupByChange?: (groupBy: GroupByMode) => void;
   onActiveTaskChange?: (taskId: string | null) => void;
 }
 
@@ -40,37 +40,45 @@ export function ArchiveView({
   onReorder,
   onSelectTask,
   onBack,
-  dateFilterPreset,
-  dateFilterDate,
-  dateFilterRange,
-  onDateFilterChange,
-  filters,
-  onFiltersChange,
-  groupBy = 'none',
-  onGroupByChange,
   onActiveTaskChange,
 }: ArchiveViewProps): JSX.Element {
+  // Independent state - not shared with task list view
+  const [dateFilterPreset, setDateFilterPreset] =
+    useState<DateFilterPreset>('all');
+  const [dateFilterDate, setDateFilterDate] = useState<number | null>(null);
+  const [dateFilterRange, setDateFilterRange] = useState<DateRange | null>(
+    null
+  );
+  const [filters, setFilters] = useState<ColumnFilters>(defaultFilters);
+  const [groupBy, setGroupBy] = useState<GroupByMode>('date');
+
   const presetCounts = useMemo(() => computePresetCounts(tasks), [tasks]);
 
   const handlePresetChange = (preset: DateFilterPreset) => {
-    const newDate = preset !== 'specific-date' ? null : dateFilterDate;
-    const newRange = preset !== 'date-range' ? null : dateFilterRange;
-    onDateFilterChange(preset, newDate, newRange);
+    setDateFilterPreset(preset);
+    if (preset !== 'specific-date') setDateFilterDate(null);
+    if (preset !== 'date-range') setDateFilterRange(null);
   };
 
   const handleDateChange = (date: number | null) => {
     if (!date) {
-      onDateFilterChange('all', null, null);
+      setDateFilterPreset('all');
+      setDateFilterDate(null);
     } else {
-      onDateFilterChange('specific-date', date, null);
+      setDateFilterPreset('specific-date');
+      setDateFilterDate(date);
+      setDateFilterRange(null);
     }
   };
 
   const handleRangeChange = (range: DateRange | null) => {
     if (!range) {
-      onDateFilterChange('all', null, null);
+      setDateFilterPreset('all');
+      setDateFilterRange(null);
     } else {
-      onDateFilterChange('date-range', null, range);
+      setDateFilterPreset('date-range');
+      setDateFilterRange(range);
+      setDateFilterDate(null);
     }
   };
 
@@ -107,10 +115,12 @@ export function ArchiveView({
           dateFilterDate={dateFilterDate}
           dateFilterRange={dateFilterRange}
           filters={filters}
-          onFiltersChange={onFiltersChange}
+          onFiltersChange={setFilters}
           groupBy={groupBy}
-          onGroupByChange={onGroupByChange}
+          onGroupByChange={setGroupBy}
           onActiveTaskChange={onActiveTaskChange}
+          isArchive
+          defaultSorting={archiveDefaultSorting}
         />
       )}
     </div>
