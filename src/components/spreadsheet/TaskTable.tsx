@@ -147,6 +147,7 @@ export type GroupByMode =
 
 interface TaskTableProps {
   tasks: Task[];
+  todayCompletedCount?: number;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
   onReorder: (activeId: string, overId: string) => void;
@@ -286,7 +287,7 @@ function SortableRow({
 
 // Row data types for grouped rendering
 type RowData =
-  | { type: 'header'; group: string; label: string; remainingMinutes: number }
+  | { type: 'header'; group: string; label: string; remainingMinutes: number; completedCount: number }
   | {
       type: 'task';
       task: Task;
@@ -308,18 +309,24 @@ function GroupHeaderRow({
   label,
   columnCount,
   remainingMinutes,
+  completedCount,
 }: {
   label: string;
   columnCount: number;
   remainingMinutes: number;
+  completedCount: number;
 }) {
+  const hasMeta = remainingMinutes > 0 || completedCount > 0;
   return (
     <tr className="group-header-row">
       <td colSpan={columnCount + 2} className="pt-4 pb-1 px-2">
         <span className="text-xs font-semibold text-muted uppercase tracking-wider">
           {label}
-          {remainingMinutes > 0 && (
-            <>: {formatMinutes(remainingMinutes)}</>
+          {hasMeta && ': '}
+          {remainingMinutes > 0 && formatMinutes(remainingMinutes)}
+          {remainingMinutes > 0 && completedCount > 0 && ' · '}
+          {completedCount > 0 && (
+            <span className="text-emerald-600 dark:text-emerald-400">{completedCount} {completedCount === 1 ? 'task' : 'tasks'} completed</span>
           )}
         </span>
       </td>
@@ -392,6 +399,7 @@ interface BlockedReasonModalState {
 
 export function TaskTable({
   tasks,
+  todayCompletedCount = 0,
   onUpdateTask,
   onDeleteTask,
   onReorder,
@@ -680,6 +688,7 @@ export function TaskTable({
           group,
           label: groupConfig.getLabel(group),
           remainingMinutes: groupRemainingMinutes.get(group) ?? 0,
+          completedCount: group === 'today' ? todayCompletedCount : 0,
         });
         currentGroup = group;
         groupStartIndex = rowData.length;
@@ -709,7 +718,7 @@ export function TaskTable({
     }
 
     return rowData;
-  }, [filteredTasks, groupConfig]);
+  }, [filteredTasks, groupConfig, todayCompletedCount]);
 
   // Extract sorted task IDs and task-to-group mapping from groupedRowData
   const { sortedTaskIds, taskGroupMap } = useMemo(() => {
@@ -1205,6 +1214,7 @@ export function TaskTable({
                           label={rowData.label}
                           columnCount={columns.length}
                           remainingMinutes={rowData.remainingMinutes}
+                          completedCount={rowData.completedCount}
                         />
                       );
                     }

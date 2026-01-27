@@ -29,6 +29,7 @@ const defaultFilters: ColumnFilters = {
 
 interface SpreadsheetViewProps {
   tasks: Task[];
+  todayCompletedCount?: number;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
   onReorder: (activeId: string, overId: string) => void;
@@ -51,6 +52,7 @@ interface SpreadsheetViewProps {
 
 export function SpreadsheetView({
   tasks,
+  todayCompletedCount,
   onUpdateTask,
   onDeleteTask,
   onReorder,
@@ -200,6 +202,7 @@ export function SpreadsheetView({
 
       <TaskTable
         tasks={tasks}
+        todayCompletedCount={todayCompletedCount}
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
         onReorder={onReorder}
