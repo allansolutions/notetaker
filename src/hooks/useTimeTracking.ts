@@ -3,7 +3,7 @@ import { TimeSession } from '../types';
 import { generateSessionId, computeTimeSpent } from '../utils/task-operations';
 
 const ACTIVE_SESSION_KEY = 'notetaker-active-session';
-const MIN_SESSION_DURATION_MS = 1 * 60 * 1000; // 1 minute - sessions shorter than this are not saved
+const MIN_SESSION_DURATION_MS = 5 * 60 * 1000; // 5 minutes - sessions shorter than this are not saved
 
 interface ActiveSessionData {
   taskId: string;
@@ -15,6 +15,7 @@ interface UseTimeTrackingOptions {
   sessions: TimeSession[];
   hasEstimate: boolean;
   onSessionComplete: (session: TimeSession) => void;
+  onMinDurationReached?: () => void;
 }
 
 export function useTimeTracking({
@@ -22,16 +23,23 @@ export function useTimeTracking({
   sessions,
   hasEstimate,
   onSessionComplete,
+  onMinDurationReached,
 }: UseTimeTrackingOptions) {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const currentSessionRef = useRef<TimeSession | null>(null);
   const onSessionCompleteRef = useRef(onSessionComplete);
+  const onMinDurationReachedRef = useRef(onMinDurationReached);
+  const minDurationFiredRef = useRef(false);
 
-  // Keep callback ref updated
+  // Keep callback refs updated
   useEffect(() => {
     onSessionCompleteRef.current = onSessionComplete;
   }, [onSessionComplete]);
+
+  useEffect(() => {
+    onMinDurationReachedRef.current = onMinDurationReached;
+  }, [onMinDurationReached]);
 
   const totalCompleted = computeTimeSpent(sessions);
 
@@ -77,6 +85,7 @@ export function useTimeTracking({
     saveActiveSession(session);
     setElapsedMs(0);
     setIsActive(true);
+    minDurationFiredRef.current = false;
   }, [saveActiveSession]);
 
   // Initialize: recover active session or start new one
@@ -142,7 +151,14 @@ export function useTimeTracking({
     if (!isActive || !currentSessionRef.current) return;
 
     const interval = setInterval(() => {
-      setElapsedMs(Date.now() - currentSessionRef.current!.startTime);
+      const elapsed = Date.now() - currentSessionRef.current!.startTime;
+      setElapsedMs(elapsed);
+
+      // Fire callback once when minimum session duration is reached
+      if (!minDurationFiredRef.current && elapsed >= MIN_SESSION_DURATION_MS) {
+        minDurationFiredRef.current = true;
+        onMinDurationReachedRef.current?.();
+      }
     }, 1000);
 
     return () => clearInterval(interval);

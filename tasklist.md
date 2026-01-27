@@ -122,3 +122,11 @@ A LinkedIn post generator. This would be a command or some other type of action 
 On the archive view, group headers should say 'done' instead of 'pending'. Move the Today group to the top in archive view since done tasks are mostly today or past. Sort by date descending by default in archive view. Make sorting, grouping, and filtering independent between archive view and task list view (not shared).
 
 ---
+
+## 13. Raise minimum tracked time to 5 minutes and auto-set in progress
+
+**Status:** pending | **Added:** 2026-01-27
+
+The minimum period of time for a task to have time logged is five minutes. We already have code that implements this, but the current duration is one minute and it should be five minutes instead. In addition, when that minimum of five minutes in the current session has elapsed, the task should no longer have a status of "to do"—it should be automatically moved to "in progress" at that moment.
+
+---

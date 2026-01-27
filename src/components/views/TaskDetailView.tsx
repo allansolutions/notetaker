@@ -91,11 +91,18 @@ export function TaskDetailView({
     [task.id, onAddSession]
   );
 
+  const handleMinDurationReached = useCallback(() => {
+    if (task.status === 'todo') {
+      onUpdateTask(task.id, { status: 'in-progress' });
+    }
+  }, [task.id, task.status, onUpdateTask]);
+
   const { elapsedMs, totalCompletedMs, isActive } = useTimeTracking({
     taskId: task.id,
     sessions: task.sessions ?? [],
     hasEstimate: shouldAutoTrack, // Only auto-track if user is assignee/owner
     onSessionComplete: handleSessionComplete,
+    onMinDurationReached: handleMinDurationReached,
   });
 
   // Ensure there's at least one block - memoize to keep stable reference

@@ -120,15 +120,15 @@ describe('useTimeTracking', () => {
   });
 
   describe('endCurrentSession', () => {
-    it('calls onSessionComplete with completed session when duration >= 1 minute', () => {
+    it('calls onSessionComplete with completed session when duration >= 5 minutes', () => {
       const onSessionComplete = vi.fn();
       const { result } = renderHook(() =>
         useTimeTracking({ ...defaultProps, onSessionComplete })
       );
 
-      // Advance by more than 1 minute (minimum session duration)
+      // Advance by more than 5 minutes (minimum session duration)
       act(() => {
-        vi.advanceTimersByTime(70000); // 70 seconds
+        vi.advanceTimersByTime(310000); // 5 min 10 sec
       });
 
       act(() => {
@@ -143,15 +143,15 @@ describe('useTimeTracking', () => {
       );
     });
 
-    it('does not call onSessionComplete when duration < 1 minute', () => {
+    it('does not call onSessionComplete when duration < 5 minutes', () => {
       const onSessionComplete = vi.fn();
       const { result } = renderHook(() =>
         useTimeTracking({ ...defaultProps, onSessionComplete })
       );
 
-      // Advance by less than 1 minute
+      // Advance by less than 5 minutes
       act(() => {
-        vi.advanceTimersByTime(5000); // 5 seconds
+        vi.advanceTimersByTime(240000); // 4 minutes
       });
 
       act(() => {
@@ -218,6 +218,44 @@ describe('useTimeTracking', () => {
       );
 
       expect(result.current.totalCompletedMs).toBe(1800000);
+    });
+  });
+
+  describe('onMinDurationReached', () => {
+    it('fires callback once when elapsed time crosses 5-minute threshold', () => {
+      const onMinDurationReached = vi.fn();
+      renderHook(() =>
+        useTimeTracking({ ...defaultProps, onMinDurationReached })
+      );
+
+      // Advance to just under 5 minutes - should not fire
+      act(() => {
+        vi.advanceTimersByTime(299000); // 4 min 59 sec
+      });
+      expect(onMinDurationReached).not.toHaveBeenCalled();
+
+      // Cross the 5-minute threshold
+      act(() => {
+        vi.advanceTimersByTime(2000); // Now at 5 min 1 sec
+      });
+      expect(onMinDurationReached).toHaveBeenCalledTimes(1);
+
+      // Should not fire again
+      act(() => {
+        vi.advanceTimersByTime(60000); // 1 more minute
+      });
+      expect(onMinDurationReached).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not fire when no callback provided', () => {
+      const { result } = renderHook(() => useTimeTracking(defaultProps));
+
+      // Should not throw even without callback
+      act(() => {
+        vi.advanceTimersByTime(310000);
+      });
+
+      expect(result.current.isActive).toBe(true);
     });
   });
 

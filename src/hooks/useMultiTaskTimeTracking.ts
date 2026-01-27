@@ -3,7 +3,7 @@ import { Task, TimeSession } from '../types';
 import { generateSessionId } from '../utils/task-operations';
 
 const ACTIVE_SESSION_KEY = 'notetaker-active-session';
-const MIN_SESSION_DURATION_MS = 1 * 60 * 1000; // 1 minute
+const MIN_SESSION_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 interface ActiveSessionData {
   taskId: string;
@@ -33,6 +33,7 @@ interface UseMultiTaskTimeTrackingOptions {
   activeTaskId: string | null;
   tasks: Task[];
   onAddSession: (taskId: string, session: TimeSession) => void;
+  onMinDurationReached?: (taskId: string) => void;
 }
 
 interface UseMultiTaskTimeTrackingResult {
@@ -50,19 +51,26 @@ export function useMultiTaskTimeTracking({
   activeTaskId,
   tasks,
   onAddSession,
+  onMinDurationReached,
 }: UseMultiTaskTimeTrackingOptions): UseMultiTaskTimeTrackingResult {
   const [trackingTaskId, setTrackingTaskId] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
 
   const currentSessionRef = useRef<TimeSession | null>(null);
   const onAddSessionRef = useRef(onAddSession);
+  const onMinDurationReachedRef = useRef(onMinDurationReached);
+  const minDurationFiredRef = useRef(false);
   // Ref to keep current trackingTaskId accessible in cleanup (avoids stale closure)
   const trackingTaskIdRef = useRef<string | null>(null);
 
-  // Keep callback ref updated
+  // Keep callback refs updated
   useEffect(() => {
     onAddSessionRef.current = onAddSession;
   }, [onAddSession]);
+
+  useEffect(() => {
+    onMinDurationReachedRef.current = onMinDurationReached;
+  }, [onMinDurationReached]);
 
   // Keep trackingTaskId ref in sync with state
   useEffect(() => {
@@ -131,6 +139,7 @@ export function useMultiTaskTimeTracking({
       saveActiveSession(taskId, session);
       setTrackingTaskId(taskId);
       setElapsedMs(0);
+      minDurationFiredRef.current = false;
     },
     [saveActiveSession]
   );
@@ -155,6 +164,7 @@ export function useMultiTaskTimeTracking({
         currentSessionRef.current = recovered.session;
         setElapsedMs(timeSinceStart);
         setTrackingTaskId(newTaskId);
+        minDurationFiredRef.current = false;
         return;
       }
 
@@ -186,7 +196,14 @@ export function useMultiTaskTimeTracking({
     if (!trackingTaskId || !currentSessionRef.current) return;
 
     const interval = setInterval(() => {
-      setElapsedMs(Date.now() - currentSessionRef.current!.startTime);
+      const elapsed = Date.now() - currentSessionRef.current!.startTime;
+      setElapsedMs(elapsed);
+
+      // Fire callback once when minimum session duration is reached
+      if (!minDurationFiredRef.current && elapsed >= MIN_SESSION_DURATION_MS) {
+        minDurationFiredRef.current = true;
+        onMinDurationReachedRef.current?.(trackingTaskId);
+      }
     }, 1000);
 
     return () => clearInterval(interval);

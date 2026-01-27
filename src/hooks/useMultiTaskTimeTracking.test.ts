@@ -131,9 +131,9 @@ describe('useMultiTaskTimeTracking', () => {
 
       expect(result.current.trackingTaskId).toBe('task-1');
 
-      // Advance time by more than 1 minute (minimum session duration)
+      // Advance time by more than 5 minutes (minimum session duration)
       act(() => {
-        vi.advanceTimersByTime(70000); // 70 seconds
+        vi.advanceTimersByTime(310000); // 5 min 10 sec
       });
 
       // Switch to task-2
@@ -152,7 +152,7 @@ describe('useMultiTaskTimeTracking', () => {
       );
     });
 
-    it('does not save session shorter than 1 minute when switching', () => {
+    it('does not save session shorter than 5 minutes when switching', () => {
       const onAddSession = vi.fn();
       const tasks = [
         createMockTask({ id: 'task-1', estimate: 30 }),
@@ -167,9 +167,9 @@ describe('useMultiTaskTimeTracking', () => {
         { initialProps: { activeTaskId: 'task-1' } }
       );
 
-      // Advance time by less than 1 minute
+      // Advance time by less than 5 minutes
       act(() => {
-        vi.advanceTimersByTime(30000); // 30 seconds
+        vi.advanceTimersByTime(240000); // 4 minutes
       });
 
       // Switch to task-2
@@ -302,7 +302,7 @@ describe('useMultiTaskTimeTracking', () => {
   });
 
   describe('pending session storage', () => {
-    it('saves pending session when switching tasks (duration >= 1 min)', () => {
+    it('saves pending session when switching tasks (duration >= 5 min)', () => {
       const onAddSession = vi.fn();
       const tasks = [
         createMockTask({ id: 'task-1', estimate: 30 }),
@@ -318,7 +318,7 @@ describe('useMultiTaskTimeTracking', () => {
       );
 
       act(() => {
-        vi.advanceTimersByTime(90000); // 90 seconds
+        vi.advanceTimersByTime(310000); // 5 min 10 sec
       });
 
       rerender({ activeTaskId: 'task-2' });
@@ -332,8 +332,74 @@ describe('useMultiTaskTimeTracking', () => {
     });
   });
 
+  describe('onMinDurationReached', () => {
+    it('fires callback with taskId when elapsed time crosses 5-minute threshold', () => {
+      const onMinDurationReached = vi.fn();
+      const tasks = [createMockTask({ id: 'task-1', estimate: 30 })];
+
+      renderHook(() =>
+        useMultiTaskTimeTracking({
+          ...createProps('task-1', tasks),
+          onMinDurationReached,
+        })
+      );
+
+      // Advance to just under 5 minutes - should not fire
+      act(() => {
+        vi.advanceTimersByTime(299000); // 4 min 59 sec
+      });
+      expect(onMinDurationReached).not.toHaveBeenCalled();
+
+      // Cross the 5-minute threshold
+      act(() => {
+        vi.advanceTimersByTime(2000); // Now at 5 min 1 sec
+      });
+      expect(onMinDurationReached).toHaveBeenCalledTimes(1);
+      expect(onMinDurationReached).toHaveBeenCalledWith('task-1');
+
+      // Should not fire again
+      act(() => {
+        vi.advanceTimersByTime(60000);
+      });
+      expect(onMinDurationReached).toHaveBeenCalledTimes(1);
+    });
+
+    it('resets and fires again when switching to a new task', () => {
+      const onMinDurationReached = vi.fn();
+      const tasks = [
+        createMockTask({ id: 'task-1', estimate: 30 }),
+        createMockTask({ id: 'task-2', estimate: 30 }),
+      ];
+
+      const { rerender } = renderHook(
+        ({ activeTaskId }) =>
+          useMultiTaskTimeTracking({
+            ...createProps(activeTaskId, tasks),
+            onMinDurationReached,
+          }),
+        { initialProps: { activeTaskId: 'task-1' } }
+      );
+
+      // Cross threshold for task-1
+      act(() => {
+        vi.advanceTimersByTime(310000);
+      });
+      expect(onMinDurationReached).toHaveBeenCalledWith('task-1');
+
+      // Switch to task-2
+      rerender({ activeTaskId: 'task-2' });
+
+      // Cross threshold for task-2
+      act(() => {
+        vi.advanceTimersByTime(310000);
+      });
+      expect(onMinDurationReached).toHaveBeenCalledWith('task-2');
+      expect(onMinDurationReached).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('unmount behavior', () => {
-    it('saves session on unmount when duration >= 1 min', () => {
+    it('saves session on unmount when duration >= 5 min', () => {
       const onAddSession = vi.fn();
       const tasks = [createMockTask({ id: 'task-1', estimate: 30 })];
 
@@ -343,9 +409,9 @@ describe('useMultiTaskTimeTracking', () => {
 
       expect(result.current.isTracking).toBe(true);
 
-      // Advance time by more than 1 minute
+      // Advance time by more than 5 minutes
       act(() => {
-        vi.advanceTimersByTime(90000); // 90 seconds
+        vi.advanceTimersByTime(310000); // 5 min 10 sec
       });
 
       // Unmount the hook
@@ -361,7 +427,7 @@ describe('useMultiTaskTimeTracking', () => {
       );
     });
 
-    it('does not save session on unmount when duration < 1 min', () => {
+    it('does not save session on unmount when duration < 5 min', () => {
       const onAddSession = vi.fn();
       const tasks = [createMockTask({ id: 'task-1', estimate: 30 })];
 
@@ -371,9 +437,9 @@ describe('useMultiTaskTimeTracking', () => {
 
       expect(result.current.isTracking).toBe(true);
 
-      // Advance time by less than 1 minute
+      // Advance time by less than 5 minutes
       act(() => {
-        vi.advanceTimersByTime(30000); // 30 seconds
+        vi.advanceTimersByTime(240000); // 4 minutes
       });
 
       // Unmount the hook

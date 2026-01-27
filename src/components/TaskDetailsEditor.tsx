@@ -225,11 +225,23 @@ export function TaskDetailsEditor({
     onFocusedTaskChange?.(focusedTaskId);
   }, [focusedTaskId, onFocusedTaskChange]);
 
+  // Auto-transition task from todo to in-progress when min tracking duration reached
+  const handleMinDurationReached = useCallback(
+    (taskId: string) => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (task && task.status === 'todo') {
+        onUpdateTask(taskId, { status: 'in-progress' });
+      }
+    },
+    [tasks, onUpdateTask]
+  );
+
   // Time tracking hook
   const { trackingTaskId, elapsedMs } = useMultiTaskTimeTracking({
     activeTaskId: activeTrackingTaskId,
     tasks,
     onAddSession: onAddSession || (() => {}),
+    onMinDurationReached: handleMinDurationReached,
   });
 
   // Build a flat list of all items (headers + blocks)
