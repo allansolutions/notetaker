@@ -331,6 +331,8 @@ function GroupHeaderRow({
   completedCount,
   isFull,
   isArchive,
+  onClick,
+  isSelected,
 }: {
   label: string;
   columnCount: number;
@@ -339,12 +341,25 @@ function GroupHeaderRow({
   completedCount: number;
   isFull?: boolean;
   isArchive?: boolean;
+  onClick?: () => void;
+  isSelected?: boolean;
 }) {
   return (
     <tr className="group-header-row">
       <td colSpan={columnCount + 2} className="pt-4 pb-1 px-2">
         <span className="text-xs font-semibold uppercase tracking-wider inline-flex items-baseline">
-          <span className="text-muted min-w-[6.5rem] shrink-0">{label}:</span>
+          <button
+            type="button"
+            onClick={onClick}
+            className={`min-w-[6.5rem] shrink-0 text-left cursor-pointer uppercase transition-colors ${
+              isSelected ? 'text-accent' : 'text-muted hover:text-foreground'
+            }`}
+          >
+            {label}:
+            {isSelected && (
+              <span className="ml-1 text-[0.6rem] align-middle">✕</span>
+            )}
+          </button>
           {remainingMinutes > 0 && (
             <span className="text-muted min-w-[4.5rem] shrink-0 tabular-nums">
               {formatMinutes(remainingMinutes)}
@@ -484,7 +499,11 @@ export function TaskTable({
   const [dragOverFullGroup, setDragOverFullGroup] = useState<string | null>(
     null
   );
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+
+  // Reset selected group when groupBy mode changes
+  useEffect(() => setSelectedGroup(null), [groupBy]);
 
   // Use controlled or internal filters
   const isControlled = controlledFilters !== undefined;
@@ -784,12 +803,18 @@ export function TaskTable({
     return rowData;
   }, [filteredTasks, groupConfig, todayCompletedCount]);
 
-  // Extract sorted task IDs and task-to-group mapping from groupedRowData
+  // Filter to only the selected group when a group header is clicked
+  const displayedRowData = useMemo(() => {
+    if (!selectedGroup) return groupedRowData;
+    return groupedRowData.filter((row) => row.group === selectedGroup);
+  }, [groupedRowData, selectedGroup]);
+
+  // Extract sorted task IDs and task-to-group mapping from displayedRowData
   const { sortedTaskIds, taskGroupMap } = useMemo(() => {
     const ids: string[] = [];
     const groupMap = new Map<string, string>();
 
-    for (const row of groupedRowData) {
+    for (const row of displayedRowData) {
       if (row.type === 'task') {
         ids.push(row.task.id);
         groupMap.set(row.task.id, row.group);
@@ -797,7 +822,7 @@ export function TaskTable({
     }
 
     return { sortedTaskIds: ids, taskGroupMap: groupMap };
-  }, [groupedRowData]);
+  }, [displayedRowData]);
 
   const columns = useMemo(
     () => [
@@ -1082,6 +1107,9 @@ export function TaskTable({
       } else if (e.key === 'Enter' && activeRowIndex !== null) {
         e.preventDefault();
         handleEnterKey(e.shiftKey);
+      } else if (e.key === 'Escape' && selectedGroup !== null) {
+        e.preventDefault();
+        setSelectedGroup(null);
       } else if (e.key === 'Escape' && activeRowIndex !== null) {
         e.preventDefault();
         setActiveRowIndex(null);
@@ -1096,6 +1124,7 @@ export function TaskTable({
     getNextActiveIndex,
     handleMoveRow,
     handleEnterKey,
+    selectedGroup,
   ]);
 
   // Build assignee options from team members
@@ -1326,7 +1355,7 @@ export function TaskTable({
           >
             <tbody>
               {groupBy !== 'none'
-                ? groupedRowData.map((rowData) => {
+                ? displayedRowData.map((rowData) => {
                     if (rowData.type === 'header') {
                       return (
                         <GroupHeaderRow
@@ -1338,6 +1367,14 @@ export function TaskTable({
                           completedCount={rowData.completedCount}
                           isFull={dragOverFullGroup === rowData.group}
                           isArchive={isArchive}
+                          onClick={() =>
+                            setSelectedGroup(
+                              selectedGroup === rowData.group
+                                ? null
+                                : rowData.group
+                            )
+                          }
+                          isSelected={selectedGroup === rowData.group}
                         />
                       );
                     }
