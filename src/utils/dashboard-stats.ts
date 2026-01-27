@@ -323,6 +323,39 @@ export function computeDashboardStats(
   };
 }
 
+// --- Task Delay Tracking ---
+
+export interface DateChange {
+  oldDueDate: number;
+  newDueDate: number;
+  changedAt: number;
+}
+
+/**
+ * Aggregates date changes that are delays (new > old) into bucketed data points.
+ * Buckets by `changedAt` timestamp.
+ */
+export function aggregateDelays(
+  changes: DateChange[],
+  range: { start: Date; end: Date },
+  granularity: DashboardGranularity = 'daily'
+): DayDataPoint[] {
+  const startTime = range.start.getTime();
+  const endTime = range.end.getTime();
+  const keyFn = getKeyFunction(granularity);
+
+  const counts = new Map<string, number>();
+  for (const change of changes) {
+    // Only count delays (pushed later)
+    if (change.newDueDate <= change.oldDueDate) continue;
+    if (change.changedAt < startTime || change.changedAt > endTime) continue;
+    const key = keyFn(new Date(change.changedAt));
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return buildCompletionBuckets(range, granularity, counts);
+}
+
 // --- Time by Category (stacked bar chart) ---
 
 export const CATEGORY_CHART_COLORS: Record<TaskType, string> = {

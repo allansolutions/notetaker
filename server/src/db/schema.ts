@@ -230,3 +230,20 @@ export const webhookTokens = sqliteTable('webhook_tokens', {
 
 export type DbWebhookToken = typeof webhookTokens.$inferSelect;
 export type NewDbWebhookToken = typeof webhookTokens.$inferInsert;
+
+// Task Date Changes (delay tracking)
+export const taskDateChanges = sqliteTable('task_date_changes', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => tasks.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  oldDueDate: integer('old_due_date').notNull(),
+  newDueDate: integer('new_due_date').notNull(),
+  changedAt: integer('changed_at').notNull(),
+});
+
+export type DbTaskDateChange = typeof taskDateChanges.$inferSelect;
+export type NewDbTaskDateChange = typeof taskDateChanges.$inferInsert;

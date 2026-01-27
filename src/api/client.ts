@@ -231,6 +231,24 @@ export const sessionApi = {
   },
 };
 
+// Analytics types
+export interface ApiDateChange {
+  id: string;
+  taskId: string;
+  oldDueDate: number;
+  newDueDate: number;
+  changedAt: number;
+}
+
+export const analyticsApi = {
+  async getDateChanges(start: number, end: number): Promise<ApiDateChange[]> {
+    const data = await fetchApi<{ changes: ApiDateChange[] }>(
+      `/api/analytics/date-changes?start=${start}&end=${end}`
+    );
+    return data.changes;
+  },
+};
+
 // Settings operations
 export interface ApiSettings {
   theme: string;

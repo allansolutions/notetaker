@@ -25,6 +25,7 @@ import {
   deleteTimeSession,
   verifyTaskOwnership,
 } from '../services/time-sessions';
+import { logDateChange } from '../services/task-date-changes';
 
 export const taskRoutes = new Hono<{
   Bindings: Env;
@@ -234,7 +235,9 @@ taskRoutes.post('/', async (c) => {
   ]);
 
   const toUserObj = (u: typeof assigner) =>
-    u ? { id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl } : null;
+    u
+      ? { id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl }
+      : null;
 
   return c.json(
     {
@@ -305,6 +308,15 @@ taskRoutes.put('/:id', async (c) => {
       }
     }
 
+    // Fetch existing task to detect due date changes
+    const existingTeamTask = await getTaskByIdWithTeam(
+      db,
+      taskId,
+      userId,
+      userRole,
+      teamId
+    );
+
     const success = await updateTaskWithTeam(
       db,
       taskId,
@@ -316,6 +328,22 @@ taskRoutes.put('/:id', async (c) => {
 
     if (!success) {
       return c.json({ error: 'Task not found' }, 404);
+    }
+
+    // Log date change if dueDate was modified and both old/new are non-null
+    if (
+      existingTeamTask &&
+      body.dueDate !== undefined &&
+      existingTeamTask.dueDate != null &&
+      body.dueDate != null &&
+      existingTeamTask.dueDate !== body.dueDate
+    ) {
+      await logDateChange(db, {
+        taskId,
+        userId,
+        oldDueDate: existingTeamTask.dueDate,
+        newDueDate: body.dueDate,
+      });
     }
 
     const updatedTask = await getTaskByIdWithTeam(
@@ -333,7 +361,9 @@ taskRoutes.put('/:id', async (c) => {
             blocks: JSON.parse(updatedTask.blocks),
             scheduled: updatedTask.scheduled ?? false,
             tags: updatedTask.tags ? JSON.parse(updatedTask.tags) : [],
-            resources: updatedTask.resources ? JSON.parse(updatedTask.resources) : [],
+            resources: updatedTask.resources
+              ? JSON.parse(updatedTask.resources)
+              : [],
           }
         : null,
     });
@@ -347,6 +377,21 @@ taskRoutes.put('/:id', async (c) => {
 
   await updateTask(db, taskId, userId, updateData);
 
+  // Log date change if dueDate was modified and both old/new are non-null
+  if (
+    body.dueDate !== undefined &&
+    existingTask.dueDate != null &&
+    body.dueDate != null &&
+    existingTask.dueDate !== body.dueDate
+  ) {
+    await logDateChange(db, {
+      taskId,
+      userId,
+      oldDueDate: existingTask.dueDate,
+      newDueDate: body.dueDate,
+    });
+  }
+
   const updatedTask = await getTaskById(db, taskId, userId);
 
   return c.json({
@@ -356,7 +401,9 @@ taskRoutes.put('/:id', async (c) => {
           blocks: JSON.parse(updatedTask.blocks),
           scheduled: updatedTask.scheduled ?? false,
           tags: updatedTask.tags ? JSON.parse(updatedTask.tags) : [],
-          resources: updatedTask.resources ? JSON.parse(updatedTask.resources) : [],
+          resources: updatedTask.resources
+            ? JSON.parse(updatedTask.resources)
+            : [],
         }
       : null,
   });
