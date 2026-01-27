@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -16,11 +16,14 @@ import { BackButton } from '../BackButton';
 import { DateRangeModal } from '../DateRangeModal';
 import {
   DashboardPreset,
+  DashboardGranularity,
   getPresetDateRange,
   clampRangeToAccountStart,
-  aggregateCompletionsByDay,
+  aggregateCompletions,
   computeDashboardStats,
   aggregateTimeByCategory,
+  getPermittedGranularities,
+  getDefaultGranularity,
   CATEGORY_CHART_COLORS,
 } from '../../utils/dashboard-stats';
 import { formatMinutes } from '../../utils/task-operations';
@@ -39,6 +42,12 @@ const PRESETS: { key: DashboardPreset | 'custom'; label: string }[] = [
   { key: 'custom', label: 'Custom' },
 ];
 
+const GRANULARITY_OPTIONS: { key: DashboardGranularity; label: string }[] = [
+  { key: 'daily', label: 'Daily' },
+  { key: 'weekly', label: 'Weekly' },
+  { key: 'monthly', label: 'Monthly' },
+];
+
 export function DashboardView({ tasks, onBack }: DashboardViewProps) {
   const { user } = useAuth();
   const [activePreset, setActivePreset] = useState<DashboardPreset | 'custom'>(
@@ -46,6 +55,7 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
   );
   const [customRange, setCustomRange] = useState<DateRange | null>(null);
   const [isRangeModalOpen, setIsRangeModalOpen] = useState(false);
+  const [granularity, setGranularity] = useState<DashboardGranularity>('daily');
 
   const range = useMemo(() => {
     let r: { start: Date; end: Date };
@@ -66,19 +76,34 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
     return r;
   }, [activePreset, customRange, user?.createdAt]);
 
-  const points = useMemo(
-    () => aggregateCompletionsByDay(tasks, range),
+  const permitted = useMemo(() => getPermittedGranularities(range), [range]);
+
+  useEffect(() => {
+    setGranularity(getDefaultGranularity(range));
+  }, [range]);
+
+  // Daily points always used for stats (avg/day, peak day)
+  const dailyPoints = useMemo(
+    () => aggregateCompletions(tasks, range),
     [tasks, range]
+  );
+
+  const chartPoints = useMemo(
+    () =>
+      granularity === 'daily'
+        ? dailyPoints
+        : aggregateCompletions(tasks, range, granularity),
+    [tasks, range, granularity, dailyPoints]
   );
 
   const stats = useMemo(
-    () => computeDashboardStats(tasks, points),
-    [tasks, points]
+    () => computeDashboardStats(tasks, dailyPoints),
+    [tasks, dailyPoints]
   );
 
   const timePoints = useMemo(
-    () => aggregateTimeByCategory(tasks, range),
-    [tasks, range]
+    () => aggregateTimeByCategory(tasks, range, granularity),
+    [tasks, range, granularity]
   );
 
   const handlePresetClick = (key: DashboardPreset | 'custom') => {
@@ -97,8 +122,8 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
 
   // Determine tick intervals to avoid crowding
   let tickInterval = 0;
-  if (points.length > 60) tickInterval = 6;
-  else if (points.length > 14) tickInterval = 2;
+  if (chartPoints.length > 60) tickInterval = 6;
+  else if (chartPoints.length > 14) tickInterval = 2;
 
   let timeTickInterval = 0;
   if (timePoints.length > 60) timeTickInterval = 6;
@@ -112,8 +137,8 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
         <h1 className="text-lg font-semibold text-primary">Dashboard</h1>
       </div>
 
-      {/* Preset buttons */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      {/* Preset buttons + granularity */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         {PRESETS.map(({ key, label }) => (
           <button
             key={key}
@@ -128,6 +153,28 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
             {label}
           </button>
         ))}
+        <div className="ml-auto flex items-center gap-1">
+          {GRANULARITY_OPTIONS.map(({ key, label }) => {
+            const isPermitted = permitted.includes(key);
+            const isActive = granularity === key;
+            let btnStyle =
+              'bg-surface-alt text-muted opacity-40 cursor-not-allowed';
+            if (isActive) btnStyle = 'bg-blue-500 text-white';
+            else if (isPermitted)
+              btnStyle = 'bg-surface-alt text-muted hover:text-primary';
+            return (
+              <button
+                key={key}
+                type="button"
+                disabled={!isPermitted}
+                onClick={() => setGranularity(key)}
+                className={`px-3 py-1.5 text-xs rounded-md transition-colors ${btnStyle}`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Stat cards */}
@@ -142,7 +189,7 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
           value={stats.peakDay || '—'}
           subtitle={
             stats.peakDay
-              ? `${points.find((p) => p.dateLabel === stats.peakDay)?.count ?? 0} tasks`
+              ? `${dailyPoints.find((p) => p.dateLabel === stats.peakDay)?.count ?? 0} tasks`
               : undefined
           }
         />
@@ -154,7 +201,7 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
       <div className="h-[300px] mb-8">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={points}
+            data={chartPoints}
             margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
@@ -184,7 +231,7 @@ export function DashboardView({ tasks, onBack }: DashboardViewProps) {
               name="Completed"
               stroke="var(--color-accent)"
               strokeWidth={2}
-              dot={points.length <= 31}
+              dot={chartPoints.length <= 31}
               activeDot={{ r: 4 }}
             />
           </LineChart>
