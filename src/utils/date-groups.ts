@@ -1,10 +1,11 @@
-import { getWeekEnd, isOnDate, startOfDay } from './date-filters';
+import { getWeekEnd, getWeekStart, isOnDate, startOfDay } from './date-filters';
 import type { Task } from '../types';
 
 export const MAX_TASKS_PER_DAY = 8;
 
 export type DateGroup =
   | 'past'
+  | 'last-week'
   | 'today'
   | 'monday'
   | 'tuesday'
@@ -75,12 +76,65 @@ export function getDateGroup(
 }
 
 /**
+ * Get the date group for a task in the archive view.
+ * Groups into: today, individual days of the current week, last week, and past (before last week).
+ */
+export function getArchiveDateGroup(
+  dueDate: number | undefined,
+  now: Date = new Date()
+): DateGroup {
+  if (dueDate === undefined) {
+    return 'no-date';
+  }
+
+  const today = startOfDay(now);
+  const taskDate = startOfDay(new Date(dueDate));
+  const taskTime = taskDate.getTime();
+  const todayTime = today.getTime();
+
+  // Check if it's today
+  if (isOnDate(dueDate, now)) {
+    return 'today';
+  }
+
+  // Get this week's boundaries (Monday-Sunday)
+  const thisMonday = getWeekStart(now);
+  const thisMondayTime = thisMonday.getTime();
+  const thisWeekEnd = getWeekEnd(now);
+  const thisWeekEndTime = thisWeekEnd.getTime();
+
+  // This week (any day other than today)
+  if (taskTime >= thisMondayTime && taskTime <= thisWeekEndTime) {
+    const dayOfWeek = taskDate.getDay();
+    const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    return DAY_GROUPS[dayIndex];
+  }
+
+  // Last week (previous Monday through previous Sunday)
+  const lastMonday = new Date(thisMondayTime);
+  lastMonday.setDate(lastMonday.getDate() - 7);
+  if (taskTime >= lastMonday.getTime() && taskTime < thisMondayTime) {
+    return 'last-week';
+  }
+
+  // Before last week
+  if (taskTime < todayTime) {
+    return 'past';
+  }
+
+  // After this week (uncommon for archive)
+  return 'future';
+}
+
+/**
  * Get human-readable label for a date group
  */
 export function getGroupLabel(group: DateGroup): string {
   switch (group) {
     case 'past':
       return 'Past';
+    case 'last-week':
+      return 'Last Week';
     case 'today':
       return 'Today';
     case 'monday':
@@ -131,6 +185,8 @@ export function getGroupOrder(group: DateGroup): number {
       return 8;
     case 'next-week':
       return 9;
+    case 'last-week':
+      return 9;
     case 'future':
       return 10;
     case 'no-date':
@@ -139,30 +195,40 @@ export function getGroupOrder(group: DateGroup): number {
 }
 
 /**
- * Get the sort order for a date group in archive view (Today first, then Past, etc.)
+ * Get the sort order for a date group in archive view.
+ * Order: Today, then weekdays in reverse chronological order (yesterday first, back to Monday),
+ * then any future weekdays, then Last Week, then Past, then No Date.
  */
-export function getArchiveGroupOrder(group: DateGroup): number {
+export function getArchiveGroupOrder(
+  group: DateGroup,
+  now: Date = new Date()
+): number {
+  const todayDayOfWeek = now.getDay();
+  const todayIndex = todayDayOfWeek === 0 ? 6 : todayDayOfWeek - 1; // Monday=0
+
   switch (group) {
     case 'today':
       return 0;
-    case 'past':
-      return 1;
     case 'monday':
-      return 2;
     case 'tuesday':
-      return 3;
     case 'wednesday':
-      return 4;
     case 'thursday':
-      return 5;
     case 'friday':
-      return 6;
     case 'saturday':
-      return 7;
-    case 'sunday':
+    case 'sunday': {
+      const groupIndex = getWeekdayIndex(group);
+      if (groupIndex < todayIndex) {
+        // Before today: yesterday=1, day before=2, etc.
+        return todayIndex - groupIndex;
+      }
+      // Same day or after today: put after all before-today days
+      return groupIndex + 1;
+    }
+    case 'last-week':
       return 8;
-    case 'next-week':
+    case 'past':
       return 9;
+    case 'next-week':
     case 'future':
       return 10;
     case 'no-date':
@@ -241,6 +307,7 @@ export function getDateForGroup(
 
     // These groups don't have specific dates
     case 'past':
+    case 'last-week':
     case 'future':
     case 'no-date':
       return undefined;

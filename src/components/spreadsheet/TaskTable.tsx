@@ -40,6 +40,7 @@ import {
 import { matchesDatePreset } from '../../utils/date-filters';
 import {
   DateGroup,
+  getArchiveDateGroup,
   getArchiveGroupOrder,
   getDateForGroup,
   getDateGroup,
@@ -668,11 +669,14 @@ export function TaskTable({
     switch (groupBy) {
       case 'date':
         return {
-          getGroup: (task) => getDateGroup(task.dueDate, now),
+          getGroup: (task) =>
+            isArchive
+              ? getArchiveDateGroup(task.dueDate, now)
+              : getDateGroup(task.dueDate, now),
           getLabel: (group) => getGroupLabel(group as DateGroup),
           getOrder: (group) =>
             isArchive
-              ? getArchiveGroupOrder(group as DateGroup)
+              ? getArchiveGroupOrder(group as DateGroup, now)
               : getGroupOrder(group as DateGroup),
           shouldSkipGroup: isArchive
             ? undefined
