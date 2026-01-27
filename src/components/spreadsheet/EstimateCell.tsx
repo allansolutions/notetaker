@@ -11,9 +11,15 @@ interface EstimateCellProps {
   value: number | undefined;
   sessions?: TimeSession[];
   onChange: (estimate: number | undefined) => void;
+  isArchive?: boolean;
 }
 
-export function EstimateCell({ value, sessions, onChange }: EstimateCellProps) {
+export function EstimateCell({
+  value,
+  sessions,
+  onChange,
+  isArchive,
+}: EstimateCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +112,16 @@ export function EstimateCell({ value, sessions, onChange }: EstimateCellProps) {
       </button>
     );
   };
+
+  if (isArchive) {
+    return (
+      <div className="flex items-center px-2 py-1 text-small whitespace-nowrap">
+        {timeSpentMinutes > 0 && (
+          <span className="text-muted">{formatMinutes(timeSpentMinutes)}</span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center px-2 py-1 text-small whitespace-nowrap">

@@ -361,19 +361,16 @@ function GroupHeaderRow({
               <span className="ml-1 text-[0.6rem] align-middle">✕</span>
             )}
           </button>
-          {remainingMinutes > 0 && (
-            <span className="text-muted min-w-[4.5rem] shrink-0 tabular-nums">
-              {formatMinutes(remainingMinutes)}
-            </span>
-          )}
-          {isArchive ? (
-            taskCount > 0 && (
-              <span className="text-emerald-600 dark:text-emerald-400 shrink-0">
-                {taskCount} done
-              </span>
-            )
-          ) : (
+          {!isArchive && (
             <>
+              {remainingMinutes > 0 && (
+                <span className="text-muted shrink-0 tabular-nums">
+                  {formatMinutes(remainingMinutes)} remaining
+                </span>
+              )}
+              {remainingMinutes > 0 && taskCount > 0 && (
+                <span className="text-muted mx-1">·</span>
+              )}
               {taskCount > 0 && (
                 <span className="text-blue-600 dark:text-blue-400 shrink-0">
                   {taskCount} pending
@@ -915,6 +912,7 @@ export function TaskTable({
             value={getValue() as number | undefined}
             sessions={row.original.sessions}
             onChange={(estimate) => onUpdateTask(row.original.id, { estimate })}
+            isArchive={isArchive}
           />
         ),
         size: 105,
@@ -953,7 +951,14 @@ export function TaskTable({
         },
       }),
     ],
-    [onUpdateTask, onSelectTask, handleStatusChange, taskCountsByDate, tasks]
+    [
+      onUpdateTask,
+      onSelectTask,
+      handleStatusChange,
+      taskCountsByDate,
+      tasks,
+      isArchive,
+    ]
   );
 
   const table = useReactTable({
@@ -1417,16 +1422,18 @@ export function TaskTable({
       </DndContext>
 
       {/* Add Task Button */}
-      <div className="mt-2">
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-border text-muted hover:border-muted hover:text-primary hover:bg-hover transition-colors"
-          aria-label="Add task"
-        >
-          <PlusIcon />
-        </button>
-      </div>
+      {!isArchive && (
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-border text-muted hover:border-muted hover:text-primary hover:bg-hover transition-colors"
+            aria-label="Add task"
+          >
+            <PlusIcon />
+          </button>
+        </div>
+      )}
 
       {showAddModal && (
         <AddTaskModal
