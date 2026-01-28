@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    :root { --bg: #0f172a; --line1: #e2e8f0; --line2: #94a3b8; --line3: #64748b; --accent: #3b82f6; }
+    @media (prefers-color-scheme: light) {
+      :root { --bg: #f1f5f9; --line1: #1e293b; --line2: #64748b; --line3: #94a3b8; --accent: #2563eb; }
+    }
+  </style>
+  <rect width="32" height="32" rx="7" fill="var(--bg)"/>
+  <rect x="7" y="8" width="2.5" height="3" rx="1.25" fill="var(--accent)"/>
+  <rect x="11" y="8" width="14" height="3" rx="1.5" fill="var(--line1)"/>
+  <rect x="7" y="14.5" width="13" height="3" rx="1.5" fill="var(--line2)"/>
+  <rect x="7" y="21" width="16" height="3" rx="1.5" fill="var(--line3)"/>
+</svg>
