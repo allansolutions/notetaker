@@ -50,6 +50,7 @@ interface SpreadsheetViewProps {
   onGroupByChange?: (groupBy: GroupByMode) => void;
   onActiveTaskChange?: (taskId: string | null) => void;
   taskCountsByDate?: Map<string, number>;
+  taskTypesByDate?: Map<string, Set<string>>;
 }
 
 export function SpreadsheetView({
@@ -72,6 +73,7 @@ export function SpreadsheetView({
   onGroupByChange,
   onActiveTaskChange,
   taskCountsByDate,
+  taskTypesByDate,
 }: SpreadsheetViewProps) {
   const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>(
     initialFilters?.dateFilterPreset ?? 'all'
@@ -234,6 +236,7 @@ export function SpreadsheetView({
         onGroupByChange={onGroupByChange}
         onActiveTaskChange={onActiveTaskChange}
         taskCountsByDate={taskCountsByDate}
+        taskTypesByDate={taskTypesByDate}
       />
     </div>
   );

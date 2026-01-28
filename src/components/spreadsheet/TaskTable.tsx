@@ -50,6 +50,7 @@ import {
   isWeekdayGroup,
   isDateFull,
   isGroupFull,
+  getGroupTypeCount,
   MAX_TASKS_PER_DAY,
 } from '../../utils/date-groups';
 import {
@@ -175,6 +176,8 @@ interface TaskTableProps {
   onActiveTaskChange?: (taskId: string | null) => void;
   // Task counts per date for enforcing daily limit
   taskCountsByDate?: Map<string, number>;
+  // Task types per date for warning when multiple types exist
+  taskTypesByDate?: Map<string, Set<string>>;
   // Archive mode - changes group header labels and date group ordering
   isArchive?: boolean;
   // Default sorting state (e.g., date descending for archive)
@@ -324,13 +327,16 @@ interface GroupConfig {
   shouldSkipGroup?: (group: string) => boolean;
 }
 
+type DragOverState = 'none' | 'full' | 'type-warning';
+
 function GroupHeaderRow({
   label,
   columnCount,
   remainingMinutes,
   taskCount,
   completedCount,
-  isFull,
+  dragOverState,
+  typeCount,
   isArchive,
   onClick,
   isSelected,
@@ -340,60 +346,122 @@ function GroupHeaderRow({
   remainingMinutes: number;
   taskCount: number;
   completedCount: number;
-  isFull?: boolean;
+  dragOverState?: DragOverState;
+  typeCount?: number;
   isArchive?: boolean;
   onClick?: () => void;
   isSelected?: boolean;
 }) {
   return (
-    <tr className="group-header-row">
-      <td colSpan={columnCount + 2} className="pt-4 pb-1 px-2">
-        <span className="text-xs font-semibold uppercase tracking-wider inline-flex items-baseline">
-          <button
-            type="button"
-            onClick={onClick}
-            className={`min-w-[6.5rem] shrink-0 text-left cursor-pointer uppercase transition-colors ${
-              isSelected ? 'text-accent' : 'text-muted hover:text-foreground'
-            }`}
-          >
-            {label}:
-            {isSelected && (
-              <span className="ml-1 text-[0.6rem] align-middle">✕</span>
+    <>
+      <tr className="group-header-row">
+        <td colSpan={columnCount + 2} className="pt-4 pb-1 px-2">
+          <span className="text-xs font-semibold uppercase tracking-wider inline-flex items-baseline">
+            <button
+              type="button"
+              onClick={onClick}
+              className={`min-w-[6.5rem] shrink-0 text-left cursor-pointer uppercase transition-colors ${
+                isSelected ? 'text-accent' : 'text-muted hover:text-foreground'
+              }`}
+            >
+              {label}:
+              {isSelected && (
+                <span className="ml-1 text-[0.6rem] align-middle">✕</span>
+              )}
+            </button>
+            {!isArchive && (
+              <>
+                {remainingMinutes > 0 && (
+                  <span className="text-muted shrink-0 tabular-nums">
+                    {formatMinutes(remainingMinutes)} remaining
+                  </span>
+                )}
+                {remainingMinutes > 0 && taskCount > 0 && (
+                  <span className="text-muted mx-1">·</span>
+                )}
+                {taskCount > 0 && (
+                  <span className="text-blue-600 dark:text-blue-400 shrink-0">
+                    {taskCount} pending
+                  </span>
+                )}
+                {taskCount > 0 && completedCount > 0 && (
+                  <span className="text-muted mx-1">·</span>
+                )}
+                {completedCount > 0 && (
+                  <span className="text-emerald-600 dark:text-emerald-400 shrink-0">
+                    {completedCount} completed
+                  </span>
+                )}
+              </>
             )}
-          </button>
-          {!isArchive && (
-            <>
-              {remainingMinutes > 0 && (
-                <span className="text-muted shrink-0 tabular-nums">
-                  {formatMinutes(remainingMinutes)} remaining
-                </span>
-              )}
-              {remainingMinutes > 0 && taskCount > 0 && (
-                <span className="text-muted mx-1">·</span>
-              )}
-              {taskCount > 0 && (
-                <span className="text-blue-600 dark:text-blue-400 shrink-0">
-                  {taskCount} pending
-                </span>
-              )}
-              {taskCount > 0 && completedCount > 0 && (
-                <span className="text-muted mx-1">·</span>
-              )}
-              {completedCount > 0 && (
-                <span className="text-emerald-600 dark:text-emerald-400 shrink-0">
-                  {completedCount} completed
-                </span>
-              )}
-            </>
-          )}
-        </span>
-        {isFull && (
-          <span className="text-xs font-semibold text-red-500 dark:text-red-400 ml-2">
-            (full — {MAX_TASKS_PER_DAY} tasks)
           </span>
-        )}
-      </td>
-    </tr>
+        </td>
+      </tr>
+      {dragOverState === 'full' && (
+        <tr className="drag-overlay-row">
+          <td colSpan={columnCount + 2} className="p-0">
+            <div className="bg-red-500/10 dark:bg-red-500/20 border border-red-500/30 rounded-lg mx-2 mb-2 px-4 py-3 flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                <svg
+                  className="w-4 h-4 text-red-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                  Cannot drop here
+                </p>
+                <p className="text-xs text-red-500/80 dark:text-red-400/80">
+                  Maximum {MAX_TASKS_PER_DAY} pending tasks already allocated
+                  for this date
+                </p>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+      {dragOverState === 'type-warning' && (
+        <tr className="drag-overlay-row">
+          <td colSpan={columnCount + 2} className="p-0">
+            <div className="bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 rounded-lg mx-2 mb-2 px-4 py-3 flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <svg
+                  className="w-4 h-4 text-amber-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                  Multiple task types
+                </p>
+                <p className="text-xs text-amber-500/80 dark:text-amber-400/80">
+                  This date already contains {typeCount} task types. Drop to add
+                  another (you'll be asked to confirm).
+                </p>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -480,6 +548,7 @@ export function TaskTable({
   onGroupByChange,
   onActiveTaskChange,
   taskCountsByDate,
+  taskTypesByDate,
   isArchive = false,
   defaultSorting,
 }: TaskTableProps) {
@@ -497,6 +566,16 @@ export function TaskTable({
   const [dragOverFullGroup, setDragOverFullGroup] = useState<string | null>(
     null
   );
+  const [dragOverTypeWarning, setDragOverTypeWarning] = useState<{
+    group: string;
+    typeCount: number;
+  } | null>(null);
+  const [pendingDropConfirmation, setPendingDropConfirmation] = useState<{
+    activeId: string;
+    overId: string;
+    targetGroup: string;
+    newDate: number;
+  } | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -1202,12 +1281,14 @@ export function TaskTable({
   const handleDragOver = (event: DragOverEvent) => {
     if (groupBy !== 'date' || !taskCountsByDate) {
       setDragOverFullGroup(null);
+      setDragOverTypeWarning(null);
       return;
     }
 
     const { active, over } = event;
     if (!over) {
       setDragOverFullGroup(null);
+      setDragOverTypeWarning(null);
       return;
     }
 
@@ -1217,45 +1298,87 @@ export function TaskTable({
     const overGroup = taskGroupMap.get(overId);
 
     if (activeGroup && overGroup && activeGroup !== overGroup) {
+      // Check if target group is full
       if (isGroupFull(overGroup as DateGroup, taskCountsByDate)) {
         setDragOverFullGroup(overGroup);
+        setDragOverTypeWarning(null);
         return;
+      }
+
+      // Check if target group has 2+ task types
+      if (taskTypesByDate) {
+        const typeCount = getGroupTypeCount(
+          overGroup as DateGroup,
+          taskTypesByDate
+        );
+        if (typeCount >= 2) {
+          setDragOverTypeWarning({ group: overGroup, typeCount });
+          setDragOverFullGroup(null);
+          return;
+        }
       }
     }
     setDragOverFullGroup(null);
+    setDragOverTypeWarning(null);
+  };
+
+  // Returns true if cross-group drop should proceed, false to reject
+  const handleCrossGroupDrop = (
+    activeId: string,
+    overId: string,
+    overGroup: string
+  ): boolean => {
+    // Enforce daily task limit
+    if (
+      taskCountsByDate &&
+      isGroupFull(overGroup as DateGroup, taskCountsByDate)
+    ) {
+      return false;
+    }
+
+    const newDate = getDateForGroup(overGroup as DateGroup);
+    if (newDate === undefined) {
+      // past/future/no-date groups - reject drop
+      return false;
+    }
+
+    // Check if target group has 2+ task types - show confirmation
+    if (taskTypesByDate) {
+      const typeCount = getGroupTypeCount(
+        overGroup as DateGroup,
+        taskTypesByDate
+      );
+      if (typeCount >= 2) {
+        setPendingDropConfirmation({
+          activeId,
+          overId,
+          targetGroup: overGroup,
+          newDate,
+        });
+        return false;
+      }
+    }
+
+    onUpdateTask(activeId, { dueDate: newDate });
+    return true;
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     setDragOverFullGroup(null);
+    setDragOverTypeWarning(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // When grouping is enabled, handle cross-group drops
+    // When grouping by date, validate cross-group drops
     if (groupBy === 'date') {
       const activeGroup = taskGroupMap.get(activeId);
       const overGroup = taskGroupMap.get(overId);
 
       if (activeGroup && overGroup && activeGroup !== overGroup) {
-        // Enforce daily task limit
-        if (
-          taskCountsByDate &&
-          isGroupFull(overGroup as DateGroup, taskCountsByDate)
-        ) {
-          return;
-        }
-
-        // Get the date for the target group
-        const newDate = getDateForGroup(overGroup as DateGroup);
-
-        if (newDate !== undefined) {
-          // Update the task's dueDate to match the target group
-          onUpdateTask(activeId, { dueDate: newDate });
-        } else {
-          // For past/future/no-date groups, reject the drop entirely
-          // The task stays in its original position
+        if (!handleCrossGroupDrop(activeId, overId, overGroup)) {
           return;
         }
       }
@@ -1266,6 +1389,20 @@ export function TaskTable({
 
     // Pass IDs directly - the context will find correct indices in the full tasks array
     onReorder(activeId, overId);
+  };
+
+  const handleConfirmDrop = () => {
+    if (!pendingDropConfirmation) return;
+    const { activeId, overId, newDate } = pendingDropConfirmation;
+
+    onUpdateTask(activeId, { dueDate: newDate });
+    setSorting([]);
+    onReorder(activeId, overId);
+    setPendingDropConfirmation(null);
+  };
+
+  const handleCancelDrop = () => {
+    setPendingDropConfirmation(null);
   };
 
   const handleAddTask = (data: AddTaskData) => {
@@ -1366,6 +1503,14 @@ export function TaskTable({
               {groupBy !== 'none'
                 ? displayedRowData.map((rowData) => {
                     if (rowData.type === 'header') {
+                      // Determine drag-over state for this group
+                      let dragOverState: DragOverState = 'none';
+                      if (dragOverFullGroup === rowData.group) {
+                        dragOverState = 'full';
+                      } else if (dragOverTypeWarning?.group === rowData.group) {
+                        dragOverState = 'type-warning';
+                      }
+
                       return (
                         <GroupHeaderRow
                           key={`header-${rowData.group}`}
@@ -1374,7 +1519,8 @@ export function TaskTable({
                           remainingMinutes={rowData.remainingMinutes}
                           taskCount={rowData.taskCount}
                           completedCount={rowData.completedCount}
-                          isFull={dragOverFullGroup === rowData.group}
+                          dragOverState={dragOverState}
+                          typeCount={dragOverTypeWarning?.typeCount}
                           isArchive={isArchive}
                           onClick={() =>
                             setSelectedGroup(
@@ -1472,6 +1618,45 @@ export function TaskTable({
           onSubmit={handleBlockedReasonSubmit}
           onCancel={handleBlockedReasonCancel}
         />
+      )}
+
+      {pendingDropConfirmation && (
+        <div
+          role="presentation"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        >
+          <dialog
+            open
+            className="bg-surface border border-border rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden"
+            onClose={handleCancelDrop}
+          >
+            <div className="px-6 py-4 border-b border-border">
+              <h2 className="text-lg font-semibold">Confirm Move</h2>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-muted">
+                This date already contains multiple task types. Are you sure you
+                want to add another task here?
+              </p>
+            </div>
+            <div className="px-6 py-4 bg-hover/50 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCancelDrop}
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDrop}
+                className="px-4 py-2 text-sm font-medium bg-accent text-white rounded-md hover:bg-accent/90 transition-colors"
+              >
+                Move Task
+              </button>
+            </div>
+          </dialog>
+        </div>
       )}
     </div>
   );

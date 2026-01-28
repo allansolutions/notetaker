@@ -75,7 +75,7 @@ import {
   isOnDate,
   startOfDay,
 } from './utils/date-filters';
-import { getTaskCountsByDate } from './utils/date-groups';
+import { getTaskCountsByDate, getTaskTypesByDate } from './utils/date-groups';
 import { highlightSnippet, tokenizeQuery } from './utils/task-search';
 
 // Get initial state from URL before first render
@@ -528,6 +528,11 @@ export function AppContent() {
 
   const taskCountsByDate = useMemo(
     () => getTaskCountsByDate(activeTasks),
+    [activeTasks]
+  );
+
+  const taskTypesByDate = useMemo(
+    () => getTaskTypesByDate(activeTasks),
     [activeTasks]
   );
 
@@ -1470,6 +1475,7 @@ export function AppContent() {
             onGroupByChange={handleGroupByChange}
             onActiveTaskChange={setSpreadsheetActiveTaskId}
             taskCountsByDate={taskCountsByDate}
+            taskTypesByDate={taskTypesByDate}
           />
         );
       }

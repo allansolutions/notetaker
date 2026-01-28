@@ -377,3 +377,37 @@ export function isGroupFull(
   if (dateTs === undefined) return false;
   return isDateFull(dateTs, counts);
 }
+
+/**
+ * Collect unique task types per calendar date.
+ * Tasks without a dueDate are skipped.
+ */
+export function getTaskTypesByDate(tasks: Task[]): Map<string, Set<string>> {
+  const typesByDate = new Map<string, Set<string>>();
+  for (const task of tasks) {
+    if (task.dueDate === undefined) continue;
+    const key = toDateKey(new Date(task.dueDate));
+    const existing = typesByDate.get(key);
+    if (existing) {
+      existing.add(task.type);
+    } else {
+      typesByDate.set(key, new Set([task.type]));
+    }
+  }
+  return typesByDate;
+}
+
+/**
+ * Get the count of unique task types for a date group.
+ * Returns 0 for multi-date groups (past, future, no-date).
+ */
+export function getGroupTypeCount(
+  group: DateGroup,
+  typesByDate: Map<string, Set<string>>,
+  now?: Date
+): number {
+  const dateTs = getDateForGroup(group, now);
+  if (dateTs === undefined) return 0;
+  const key = toDateKey(new Date(dateTs));
+  return typesByDate.get(key)?.size ?? 0;
+}
