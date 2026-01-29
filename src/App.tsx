@@ -1370,6 +1370,7 @@ export function AppContent() {
             onUpdateSession={updateSession}
             onDeleteSession={deleteSession}
             onBack={handleBackToSpreadsheet}
+            onNavigateToPage={handleSelectWikiPage}
           />
         );
       case 'full-day-details':

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 
 import { Block, BlockType } from '../types';
 import { BlockInput } from './BlockInput';
+import { WikiPageEmbed } from './WikiPageEmbed';
 import { useUndoHistory } from '../hooks/useUndoHistory';
 import {
   deleteBlock as deleteBlockUtil,
@@ -41,6 +42,7 @@ interface EditorProps {
   collapsedBlockIds?: Set<string>;
   onToggleCollapse?: (id: string) => void;
   hiddenBlockIds?: Set<string>;
+  onNavigateToPage?: (pageId: string) => void;
 }
 
 export function Editor({
@@ -51,6 +53,7 @@ export function Editor({
   collapsedBlockIds,
   onToggleCollapse,
   hiddenBlockIds,
+  onNavigateToPage,
 }: EditorProps): JSX.Element {
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
@@ -473,7 +476,8 @@ export function Editor({
           // Use a new block (new ID) so React remounts the component and
           // the contentEditable div picks up the new content on mount.
           const replacement = createBlock(parsed[0].type, parsed[0].content);
-          if (parsed[0].level !== undefined) replacement.level = parsed[0].level;
+          if (parsed[0].level !== undefined)
+            replacement.level = parsed[0].level;
           result[blockIndex] = replacement;
           startIndex = 1;
         } else {
@@ -575,10 +579,58 @@ export function Editor({
     [setBlocks, pushHistory]
   );
 
+  // Convert a block to a wiki page embed
+  const convertToEmbed = useCallback(
+    (blockId: string, pageId: string) => {
+      pushHistory('structural');
+      setBlocks((prev) =>
+        prev.map((b) =>
+          b.id === blockId
+            ? { ...b, type: 'wiki-page-embed' as const, pageId, content: '' }
+            : b
+        )
+      );
+    },
+    [setBlocks, pushHistory]
+  );
+
+  // Handle unlinking an embed (delete the block)
+  const handleUnlinkEmbed = useCallback(
+    (blockId: string) => {
+      deleteBlock(blockId);
+    },
+    [deleteBlock]
+  );
+
+  // Handle page navigation from embed
+  const handleNavigateToPage = useCallback(
+    (pageId: string) => {
+      onNavigateToPage?.(pageId);
+    },
+    [onNavigateToPage]
+  );
+
   return (
     <div className="w-full">
       {visibleBlocks.map((block) => {
         const originalIndex = blocks.findIndex((b) => b.id === block.id);
+
+        // Render wiki page embed blocks
+        if (block.type === 'wiki-page-embed' && block.pageId) {
+          return (
+            <WikiPageEmbed
+              key={block.id}
+              block={block}
+              pageId={block.pageId}
+              isSelected={selectedIds.has(block.id)}
+              onUnlink={handleUnlinkEmbed}
+              onNavigateToPage={handleNavigateToPage}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+            />
+          );
+        }
+
         return (
           <BlockInput
             key={block.id}
@@ -629,6 +681,7 @@ export function Editor({
             undoGeneration={undoGeneration}
             onUndo={handleUndo}
             onRedo={handleRedo}
+            onConvertToEmbed={convertToEmbed}
           />
         );
       })}

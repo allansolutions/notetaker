@@ -28,6 +28,7 @@ interface TaskDetailViewProps {
   ) => void;
   onDeleteSession: (taskId: string, sessionId: string) => void;
   onBack: () => void;
+  onNavigateToPage?: (pageId: string) => void;
 }
 
 export function TaskDetailView({
@@ -37,6 +38,7 @@ export function TaskDetailView({
   onUpdateSession,
   onDeleteSession,
   onBack,
+  onNavigateToPage,
 }: TaskDetailViewProps) {
   const { user } = useAuth();
   const availableTags = useAvailableTags();
@@ -252,6 +254,7 @@ export function TaskDetailView({
           setBlocks={setBlocks}
           collapsedBlockIds={collapsedBlockIds}
           onToggleCollapse={handleToggleCollapse}
+          onNavigateToPage={onNavigateToPage}
         />
       </div>
 

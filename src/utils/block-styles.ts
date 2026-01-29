@@ -12,4 +12,5 @@ export const blockTypeClasses: Record<BlockType, string> = {
   quote: 'text-body',
   code: 'font-mono text-small bg-surface-raised py-3 px-4 rounded-sm whitespace-pre-wrap',
   divider: '',
+  'wiki-page-embed': '',
 };

@@ -1,8 +1,15 @@
-import { useRef, useLayoutEffect, KeyboardEvent, ClipboardEvent } from 'react';
+import {
+  useState,
+  useRef,
+  useLayoutEffect,
+  KeyboardEvent,
+  ClipboardEvent,
+} from 'react';
 import { Block, BlockType } from '../types';
 import { detectBlockType, stripPrefix } from '../utils/markdown';
 import { blockTypeClasses } from '../utils/block-styles';
 import { SplitInfo } from '../utils/block-operations';
+import { PagePicker } from './PagePicker';
 
 export type { SplitInfo };
 
@@ -68,6 +75,8 @@ interface BlockInputProps {
   onRedo?: () => void;
   /** Counter incremented after undo/redo to trigger content re-sync */
   undoGeneration?: number;
+  /** Convert this block to a wiki page embed */
+  onConvertToEmbed?: (blockId: string, pageId: string) => void;
 }
 
 const wrapperBaseClasses: Partial<Record<BlockType, string>> = {
@@ -235,11 +244,13 @@ export function BlockInput({
   onUndo,
   onRedo,
   undoGeneration,
+  onConvertToEmbed,
 }: BlockInputProps) {
   const inputRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isInitialMount = useRef(true);
   const cursorPositionedRef = useRef(false);
+  const [showPagePicker, setShowPagePicker] = useState(false);
 
   // Reset cursor positioned flag when focus is lost
   useLayoutEffect(() => {
@@ -373,6 +384,12 @@ export function BlockInput({
     const text = inputRef.current?.textContent || '';
     const detectedType = detectBlockType(text);
 
+    // Check for /embed command
+    if (text === '/embed' && onConvertToEmbed) {
+      setShowPagePicker(true);
+      return;
+    }
+
     if (detectedType !== 'paragraph' && block.type === 'paragraph') {
       const content = stripPrefix(text, detectedType);
 
@@ -390,6 +407,21 @@ export function BlockInput({
     } else {
       onUpdate(block.id, text, block.type);
     }
+  };
+
+  const handlePageSelect = (pageId: string) => {
+    setShowPagePicker(false);
+    onConvertToEmbed?.(block.id, pageId);
+  };
+
+  const handlePagePickerCancel = () => {
+    setShowPagePicker(false);
+    // Clear the /embed text
+    if (inputRef.current) {
+      inputRef.current.textContent = '';
+    }
+    onUpdate(block.id, '', block.type);
+    inputRef.current?.focus();
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
@@ -794,27 +826,36 @@ export function BlockInput({
 
   /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- Custom editor block widget with selection mode */
   return (
-    <div
-      ref={wrapperRef}
-      className={wrapperClass}
-      data-block-id={block.id}
-      onKeyDown={handleWrapperKeyDown}
-      onClick={handleWrapperClick}
-      tabIndex={0}
-    >
-      {prefix}
+    <>
       <div
-        ref={inputRef}
-        className={prefix ? `${inputClass} flex-1` : inputClass}
-        contentEditable={!isSelected}
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        onFocus={() => onFocus(block.id)}
-        suppressContentEditableWarning
-        data-placeholder={placeholder}
-      />
-    </div>
+        ref={wrapperRef}
+        className={wrapperClass}
+        data-block-id={block.id}
+        onKeyDown={handleWrapperKeyDown}
+        onClick={handleWrapperClick}
+        tabIndex={0}
+      >
+        {prefix}
+        <div
+          ref={inputRef}
+          className={prefix ? `${inputClass} flex-1` : inputClass}
+          contentEditable={!isSelected}
+          onInput={handleInput}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          onFocus={() => onFocus(block.id)}
+          suppressContentEditableWarning
+          data-placeholder={placeholder}
+        />
+      </div>
+      {showPagePicker && (
+        <PagePicker
+          onSelect={handlePageSelect}
+          onCancel={handlePagePickerCancel}
+          anchorRef={wrapperRef}
+        />
+      )}
+    </>
   );
   /* eslint-enable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex */
 }
