@@ -77,6 +77,8 @@ interface BlockInputProps {
   undoGeneration?: number;
   /** Convert this block to a wiki page embed */
   onConvertToEmbed?: (blockId: string, pageId: string) => void;
+  /** Open block command menu (Cmd+/ in selection mode) */
+  onOpenBlockCommandMenu?: () => void;
 }
 
 const wrapperBaseClasses: Partial<Record<BlockType, string>> = {
@@ -245,6 +247,7 @@ export function BlockInput({
   onRedo,
   undoGeneration,
   onConvertToEmbed,
+  onOpenBlockCommandMenu,
 }: BlockInputProps) {
   const inputRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -665,6 +668,13 @@ export function BlockInput({
 
   const handleWrapperKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (!isSelected) return;
+
+    // Handle Cmd+/ to open block command menu
+    if (e.metaKey && e.key === '/') {
+      e.preventDefault();
+      onOpenBlockCommandMenu?.();
+      return;
+    }
 
     e.preventDefault();
 

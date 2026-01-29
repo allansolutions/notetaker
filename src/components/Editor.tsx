@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 
 import { Block, BlockType } from '../types';
 import { BlockInput } from './BlockInput';
+import { BlockCommandMenu } from './BlockCommandMenu';
 import { WikiPageEmbed } from './WikiPageEmbed';
 import { useUndoHistory } from '../hooks/useUndoHistory';
 import {
@@ -71,6 +72,9 @@ export function Editor({
   const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
   // The block that should receive keyboard focus in multi-selection (boundary block)
   const [selectionFocusId, setSelectionFocusId] = useState<string | null>(null);
+  // Block command menu state
+  const [isBlockCommandMenuOpen, setIsBlockCommandMenuOpen] = useState(false);
+  const blockCommandAnchorRef = useRef<HTMLElement | null>(null);
   const pendingFocusRef = useRef<string | null>(null);
   const [pendingCursorOffset, setPendingCursorOffset] = useState<{
     blockId: string;
@@ -280,6 +284,75 @@ export function Editor({
     setSelectedIds(new Set());
     setSelectionAnchor(null);
     setSelectionFocusId(null);
+  }, []);
+
+  // Convert selected blocks to a new type
+  const convertBlocksType = useCallback(
+    (newType: BlockType) => {
+      if (selectedIds.size === 0) return;
+      pushHistory('structural');
+      setBlocks((prev) =>
+        prev.map((block) =>
+          selectedIds.has(block.id) ? { ...block, type: newType } : block
+        )
+      );
+      clearSelection();
+    },
+    [selectedIds, pushHistory, setBlocks, clearSelection]
+  );
+
+  // Duplicate selected blocks (insert copies after the last selected block)
+  const duplicateBlocks = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    pushHistory('structural');
+    setBlocks((prev) => {
+      // Find the last selected block index
+      let lastSelectedIndex = -1;
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (selectedIds.has(prev[i].id)) {
+          lastSelectedIndex = i;
+          break;
+        }
+      }
+      if (lastSelectedIndex === -1) return prev;
+
+      // Collect selected blocks in order and create duplicates
+      const selectedInOrder = prev.filter((b) => selectedIds.has(b.id));
+      const duplicates = selectedInOrder.map((b) => ({
+        ...b,
+        id: generateId(),
+      }));
+
+      // Insert duplicates after the last selected block
+      const result = [...prev];
+      result.splice(lastSelectedIndex + 1, 0, ...duplicates);
+      return result;
+    });
+    clearSelection();
+  }, [selectedIds, pushHistory, setBlocks, clearSelection]);
+
+  // Open block command menu
+  const openBlockCommandMenu = useCallback(() => {
+    if (selectedIds.size === 0) return;
+
+    // Find the first selected block element to anchor the menu
+    const firstSelectedId = visibleBlocks.find((b) =>
+      selectedIds.has(b.id)
+    )?.id;
+    if (firstSelectedId) {
+      const element = document.querySelector(
+        `[data-block-id="${firstSelectedId}"]`
+      );
+      if (element) {
+        blockCommandAnchorRef.current = element as HTMLElement;
+        setIsBlockCommandMenuOpen(true);
+      }
+    }
+  }, [selectedIds, visibleBlocks]);
+
+  // Close block command menu
+  const closeBlockCommandMenu = useCallback(() => {
+    setIsBlockCommandMenuOpen(false);
   }, []);
 
   const handleUndo = useCallback(() => {
@@ -682,9 +755,19 @@ export function Editor({
             onUndo={handleUndo}
             onRedo={handleRedo}
             onConvertToEmbed={convertToEmbed}
+            onOpenBlockCommandMenu={openBlockCommandMenu}
           />
         );
       })}
+      {isBlockCommandMenuOpen && (
+        <BlockCommandMenu
+          onConvertType={convertBlocksType}
+          onDelete={deleteSelectedBlocks}
+          onDuplicate={duplicateBlocks}
+          onClose={closeBlockCommandMenu}
+          anchorRef={blockCommandAnchorRef}
+        />
+      )}
     </div>
   );
 }
