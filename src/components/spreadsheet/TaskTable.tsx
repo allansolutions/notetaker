@@ -31,6 +31,7 @@ import {
   TaskType,
   TaskStatus,
   TaskImportance,
+  TimeSession,
   DateFilterPreset,
   DateRange,
   TASK_TYPE_OPTIONS,
@@ -64,6 +65,7 @@ import { StatusCell } from './StatusCell';
 import { ImportanceCell } from './ImportanceCell';
 import { TitleCell } from './TitleCell';
 import { EstimateCell } from './EstimateCell';
+import { TimeCell } from './TimeCell';
 import { DateCell } from './DateCell';
 import { AssigneeCell } from './AssigneeCell';
 import { ColumnFilter, FilterValue } from './ColumnFilter';
@@ -984,17 +986,31 @@ export function TaskTable({
           return a - b;
         },
       }),
-      columnHelper.accessor('estimate', {
+      columnHelper.accessor('sessions', {
         header: 'Time',
+        cell: ({ row, getValue }) => (
+          <TimeCell
+            sessions={getValue() as TimeSession[] | undefined}
+            estimate={row.original.estimate}
+            onChange={(sessions) => onUpdateTask(row.original.id, { sessions })}
+          />
+        ),
+        size: 70,
+        sortingFn: (rowA, rowB) => {
+          const aMs = computeTimeSpentWithActive(rowA.original.sessions);
+          const bMs = computeTimeSpentWithActive(rowB.original.sessions);
+          return aMs - bMs;
+        },
+      }),
+      columnHelper.accessor('estimate', {
+        header: 'Est',
         cell: ({ row, getValue }) => (
           <EstimateCell
             value={getValue() as number | undefined}
-            sessions={row.original.sessions}
             onChange={(estimate) => onUpdateTask(row.original.id, { estimate })}
-            isArchive={isArchive}
           />
         ),
-        size: 105,
+        size: 70,
         sortingFn: (rowA, rowB) => {
           const a = rowA.original.estimate ?? Infinity;
           const b = rowB.original.estimate ?? Infinity;
@@ -1030,14 +1046,7 @@ export function TaskTable({
         },
       }),
     ],
-    [
-      onUpdateTask,
-      onSelectTask,
-      handleStatusChange,
-      taskCountsByDate,
-      tasks,
-      isArchive,
-    ]
+    [onUpdateTask, onSelectTask, handleStatusChange, taskCountsByDate, tasks]
   );
 
   const table = useReactTable({

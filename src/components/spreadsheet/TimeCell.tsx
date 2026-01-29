@@ -1,17 +1,28 @@
 import { useState, useRef, useEffect } from 'react';
 import { ClockIcon } from '../icons';
-import { formatMinutes } from '../../utils/task-operations';
+import { TimeSession } from '../../types';
+import {
+  formatMinutes,
+  computeTimeSpentWithActive,
+} from '../../utils/task-operations';
 import { parseTimeInput } from '../../utils/time-parsing';
 
-interface EstimateCellProps {
-  value: number | undefined;
-  onChange: (estimate: number | undefined) => void;
+interface TimeCellProps {
+  sessions?: TimeSession[];
+  estimate?: number;
+  onChange: (sessions: TimeSession[]) => void;
 }
 
-export function EstimateCell({ value, onChange }: EstimateCellProps) {
+export function TimeCell({ sessions, estimate, onChange }: TimeCellProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const timeSpentMs = computeTimeSpentWithActive(sessions);
+  const timeSpentMinutes = Math.floor(timeSpentMs / 60000);
+  const isOverEstimate =
+    estimate !== undefined && timeSpentMs > estimate * 60000;
+  const canEdit = timeSpentMinutes === 0;
 
   // Focus input when editing starts
   useEffect(() => {
@@ -21,9 +32,11 @@ export function EstimateCell({ value, onChange }: EstimateCellProps) {
     }
   }, [isEditing]);
 
-  const handleEstimateClick = () => {
-    setInputValue(value !== undefined ? formatMinutes(value) : '');
-    setIsEditing(true);
+  const handleClick = () => {
+    if (canEdit) {
+      setInputValue('');
+      setIsEditing(true);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,12 +60,17 @@ export function EstimateCell({ value, onChange }: EstimateCellProps) {
 
   const commitValue = () => {
     const trimmed = inputValue.trim();
-    if (trimmed === '') {
-      onChange(undefined);
-    } else {
+    if (trimmed !== '') {
       const minutes = parseTimeInput(trimmed);
-      if (minutes !== undefined) {
-        onChange(minutes);
+      if (minutes !== undefined && minutes > 0) {
+        // Create a completed session with the specified duration
+        const now = Date.now();
+        const newSession: TimeSession = {
+          id: crypto.randomUUID(),
+          startTime: now - minutes * 60000,
+          endTime: now,
+        };
+        onChange([...(sessions || []), newSession]);
       }
     }
     setIsEditing(false);
@@ -76,25 +94,22 @@ export function EstimateCell({ value, onChange }: EstimateCellProps) {
     );
   }
 
-  if (value !== undefined) {
+  if (timeSpentMinutes > 0) {
     return (
       <div className="flex items-center px-2 py-1 text-small whitespace-nowrap">
-        <button
-          type="button"
-          onClick={handleEstimateClick}
-          className="rounded hover:bg-hover transition-colors px-1 text-primary"
-        >
-          {formatMinutes(value)}
-        </button>
+        <span className={isOverEstimate ? 'text-red-500' : 'text-muted'}>
+          {formatMinutes(timeSpentMinutes)}
+        </span>
       </div>
     );
   }
 
+  // Time is 0, show editable button
   return (
     <div className="flex items-center px-2 py-1 text-small whitespace-nowrap">
       <button
         type="button"
-        onClick={handleEstimateClick}
+        onClick={handleClick}
         className="text-muted hover:bg-hover rounded transition-colors px-1"
       >
         <ClockIcon />
