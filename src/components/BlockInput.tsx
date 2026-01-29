@@ -84,6 +84,8 @@ interface BlockInputProps {
 const wrapperBaseClasses: Partial<Record<BlockType, string>> = {
   h1: 'flex items-center pt-4 first:pt-0',
   quote: 'flex items-center my-px border-l-[3px] border-primary pl-3.5 ml-0.5',
+  todo: 'flex items-start my-px',
+  'todo-checked': 'flex items-start my-px',
 };
 
 const placeholders: Partial<Record<BlockType, string>> = {
@@ -793,7 +795,7 @@ export function BlockInput({
           <button
             type="button"
             aria-label="Mark as complete"
-            className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer bg-transparent border-none p-0"
+            className="shrink-0 select-none text-primary w-6 mt-[5px] flex items-start justify-center cursor-pointer bg-transparent border-none"
             onClick={handleTodoClick}
           >
             <span className="size-4 border-2 border-primary rounded-sm flex items-center justify-center text-xs transition-all duration-fast hover:bg-hover" />
@@ -804,7 +806,7 @@ export function BlockInput({
           <button
             type="button"
             aria-label="Mark as incomplete"
-            className="shrink-0 select-none text-primary w-6 pt-1 flex items-start justify-center cursor-pointer bg-transparent border-none p-0"
+            className="shrink-0 select-none text-primary w-6 mt-[5px] flex items-start justify-center cursor-pointer bg-transparent border-none"
             onClick={handleTodoClick}
           >
             <span className="size-4 border-2 border-accent bg-accent rounded-sm flex items-center justify-center text-xs transition-all duration-fast text-inverted">
