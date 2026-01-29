@@ -411,3 +411,19 @@ export function getGroupTypeCount(
   const key = toDateKey(new Date(dateTs));
   return typesByDate.get(key)?.size ?? 0;
 }
+
+/**
+ * Check if a task type already exists in a date group.
+ * Returns false for multi-date groups (past, future, no-date).
+ */
+export function isTypeInGroup(
+  taskType: string,
+  group: DateGroup,
+  typesByDate: Map<string, Set<string>>,
+  now?: Date
+): boolean {
+  const dateTs = getDateForGroup(group, now);
+  if (dateTs === undefined) return false;
+  const key = toDateKey(new Date(dateTs));
+  return typesByDate.get(key)?.has(taskType) ?? false;
+}

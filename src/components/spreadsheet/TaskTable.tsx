@@ -52,6 +52,7 @@ import {
   isDateFull,
   isGroupFull,
   getGroupTypeCount,
+  isTypeInGroup,
   MAX_TASKS_PER_DAY,
 } from '../../utils/date-groups';
 import {
@@ -1287,6 +1288,16 @@ export function TaskTable({
     })
   );
 
+  // Check if moving a task to a group would add a new type (returns typeCount if warning needed, 0 otherwise)
+  const getTypeWarningCount = (taskId: string, group: DateGroup): number => {
+    if (!taskTypesByDate) return 0;
+    const typeCount = getGroupTypeCount(group, taskTypesByDate);
+    if (typeCount < 2) return 0;
+    const task = tasks.find((t) => t.id === taskId);
+    if (task && isTypeInGroup(task.type, group, taskTypesByDate)) return 0;
+    return typeCount;
+  };
+
   const handleDragOver = (event: DragOverEvent) => {
     if (groupBy !== 'date' || !taskCountsByDate) {
       setDragOverFullGroup(null);
@@ -1314,17 +1325,12 @@ export function TaskTable({
         return;
       }
 
-      // Check if target group has 2+ task types
-      if (taskTypesByDate) {
-        const typeCount = getGroupTypeCount(
-          overGroup as DateGroup,
-          taskTypesByDate
-        );
-        if (typeCount >= 2) {
-          setDragOverTypeWarning({ group: overGroup, typeCount });
-          setDragOverFullGroup(null);
-          return;
-        }
+      // Check if target group has 2+ task types and dragged task would add a new type
+      const typeCount = getTypeWarningCount(activeId, overGroup as DateGroup);
+      if (typeCount > 0) {
+        setDragOverTypeWarning({ group: overGroup, typeCount });
+        setDragOverFullGroup(null);
+        return;
       }
     }
     setDragOverFullGroup(null);
@@ -1351,21 +1357,16 @@ export function TaskTable({
       return false;
     }
 
-    // Check if target group has 2+ task types - show confirmation
-    if (taskTypesByDate) {
-      const typeCount = getGroupTypeCount(
-        overGroup as DateGroup,
-        taskTypesByDate
-      );
-      if (typeCount >= 2) {
-        setPendingDropConfirmation({
-          activeId,
-          overId,
-          targetGroup: overGroup,
-          newDate,
-        });
-        return false;
-      }
+    // Check if target group has 2+ task types - show confirmation only if adding a new type
+    const typeCount = getTypeWarningCount(activeId, overGroup as DateGroup);
+    if (typeCount > 0) {
+      setPendingDropConfirmation({
+        activeId,
+        overId,
+        targetGroup: overGroup,
+        newDate,
+      });
+      return false;
     }
 
     onUpdateTask(activeId, { dueDate: newDate });
