@@ -1,6 +1,11 @@
 # Run e2e tests with browser coverage as final gate before push
 # Unit tests and coverage are already checked on commit
 
+# Playwright requires Node.js — load nvm so `node` is available
+# (uses whatever version nvm has set, not hardcoded to any specific version)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
 # Clean previous coverage data
 rm -rf .nyc_output
 

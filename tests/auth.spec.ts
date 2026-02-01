@@ -1,5 +1,4 @@
 import { test as customTest, expect } from './fixtures';
-import { test as baseTest } from '@playwright/test';
 import {
   mockUnauthenticated,
   mockAuthenticated,
@@ -23,37 +22,31 @@ test.describe('Authentication', () => {
     ).toBeVisible();
   });
 
-  // Use base test to avoid console error checking - this test expects 500 when navigating to /auth/google
-  baseTest('login button initiates Google OAuth flow', async ({ page }) => {
+  test('login button initiates Google OAuth flow', async ({ page }) => {
     await mockUnauthenticated(page);
+
+    // Intercept the /auth/google navigation to avoid needing a real backend
+    let authUrl = '';
+    await page.route('**/auth/google', async (route) => {
+      authUrl = route.request().url();
+      await route.fulfill({ status: 200, body: 'redirecting' });
+    });
 
     await page.goto('/');
 
-    // Wait for button to be enabled
     const loginButton = page.getByRole('button', {
       name: /continue with google/i,
     });
-    await baseTest.expect(loginButton).toBeEnabled();
-
-    // Click and wait for navigation to start (will go to Google OAuth or /auth/google)
-    const navigationPromise = page.waitForURL(
-      (url) =>
-        url.toString().includes('/auth/google') ||
-        url.toString().includes('accounts.google.com'),
-      { timeout: 10000 }
-    );
+    await expect(loginButton).toBeEnabled();
 
     await loginButton.click();
-    await navigationPromise;
 
-    // Verify we navigated to Google OAuth (either our endpoint or Google directly)
-    const currentUrl = page.url();
-    baseTest
-      .expect(
-        currentUrl.includes('/auth/google') ||
-          currentUrl.includes('accounts.google.com')
-      )
-      .toBe(true);
+    // Wait for the intercepted navigation
+    await page.waitForURL((url) => url.toString().includes('/auth/google'), {
+      timeout: 5000,
+    });
+
+    expect(authUrl).toContain('/auth/google');
   });
 
   test('shows error message from URL params', async ({ page }) => {
