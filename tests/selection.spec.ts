@@ -12,7 +12,7 @@ test.describe('Task Spreadsheet View', () => {
     await mockAuthenticated(page);
     await mockTasksApi(page);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="sidebar"]');
   });
 

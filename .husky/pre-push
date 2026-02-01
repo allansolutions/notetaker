@@ -1,3 +1,18 @@
-# Run e2e tests as final gate before push
+# Run e2e tests with browser coverage as final gate before push
 # Unit tests and coverage are already checked on commit
-./node_modules/.bin/playwright test
+
+# Clean previous coverage data
+rm -rf .nyc_output
+
+# Run Playwright with coverage instrumentation
+# COVERAGE=true starts a separate Vite dev server on port 5174 with Istanbul instrumentation
+COVERAGE=true ./node_modules/.bin/playwright test
+TESTS_OK=$?
+
+# Show coverage report and check thresholds (even if some tests failed, coverage was collected)
+./node_modules/.bin/nyc report --reporter text-summary
+./node_modules/.bin/nyc check-coverage
+COVERAGE_OK=$?
+
+# Fail if either tests or coverage thresholds failed
+[ $TESTS_OK -eq 0 ] && [ $COVERAGE_OK -eq 0 ]

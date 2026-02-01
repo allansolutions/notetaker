@@ -146,9 +146,9 @@ describe('verifyWebhookSignature', () => {
       key,
       encoder.encode(signedPayload)
     );
-    const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+    const expectedSignature = btoa(
+      String.fromCharCode(...new Uint8Array(signatureBuffer))
+    );
 
     const isValid = await verifyWebhookSignature(
       secret,

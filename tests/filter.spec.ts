@@ -11,7 +11,7 @@ test.describe('Column Filters', () => {
     await mockAuthenticated(page);
     await mockTasksApi(page);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="sidebar"]');
 
     // Add a task via modal (stays on spreadsheet after creation)

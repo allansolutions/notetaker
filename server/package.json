@@ -12,6 +12,7 @@
     "db:migrate:local": "wrangler d1 migrations apply notetaker --local",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "setup-secrets": "node scripts/setup-secrets.js"
   },
   "dependencies": {
@@ -20,8 +21,9 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218.0",
+    "@vitest/coverage-istanbul": "^4.0.18",
     "drizzle-kit": "^0.30.0",
     "vitest": "^4.0.0",
-    "wrangler": "^3.99.0"
+    "wrangler": "^4.61.1"
   }
 }

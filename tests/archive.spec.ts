@@ -8,7 +8,7 @@ test.describe('Archive View', () => {
 
   test('archive button is visible in spreadsheet view', async ({ page }) => {
     await mockTasksApi(page);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page
       .waitForSelector('[data-testid^="task-row-"]', {
         state: 'attached',
@@ -23,7 +23,7 @@ test.describe('Archive View', () => {
     page,
   }) => {
     await mockTasksApi(page);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page
       .waitForSelector('[data-testid^="task-row-"]', {
         state: 'attached',
@@ -45,7 +45,7 @@ test.describe('Archive View', () => {
     await mockTasksApi(page, [
       { id: 'task-1', title: 'Active Task', status: 'todo' },
     ]);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid^="task-row-"]');
 
     await page.getByRole('button', { name: /archive/i }).click();
@@ -58,7 +58,7 @@ test.describe('Archive View', () => {
       { id: 'task-1', title: 'Active Task', status: 'todo' },
       { id: 'task-2', title: 'Done Task', status: 'done' },
     ]);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid^="task-row-"]');
 
     await page.getByRole('button', { name: /archive/i }).click();
@@ -76,7 +76,7 @@ test.describe('Archive View', () => {
       { id: 'task-1', title: 'Active Task', status: 'todo' },
       { id: 'task-2', title: 'Done Task', status: 'done' },
     ]);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid^="task-row-"]');
 
     // Active task should be visible
@@ -93,7 +93,7 @@ test.describe('Archive View', () => {
     await mockTasksApi(page, [
       { id: 'task-1', title: 'Active Task', status: 'todo' },
     ]);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid^="task-row-"]');
 
     // Navigate to archive
@@ -119,7 +119,7 @@ test.describe('Archive View', () => {
     await mockTasksApi(page, [
       { id: 'task-1', title: 'My Task', status: 'todo' },
     ]);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid^="task-row-"]');
 
     // Task visible in spreadsheet
@@ -150,7 +150,7 @@ test.describe('Archive View', () => {
     await mockTasksApi(page, [
       { id: 'task-1', title: 'Archived Task', status: 'done' },
     ]);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
 
     // Navigate to archive
     await page.getByRole('button', { name: /archive/i }).click();
@@ -183,7 +183,7 @@ test.describe('Archive View', () => {
     await mockTasksApi(page, [
       { id: 'task-1', title: 'Done Task', status: 'done' },
     ]);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
 
     // Navigate to archive
     await page.getByRole('button', { name: /archive/i }).click();
@@ -202,7 +202,7 @@ test.describe('Archive View', () => {
     await mockTasksApi(page, [
       { id: 'task-1', title: 'Done Task', status: 'done' },
     ]);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
 
     // Navigate to archive
     await page.getByRole('button', { name: /archive/i }).click();

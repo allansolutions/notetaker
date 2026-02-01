@@ -1,0 +1,11 @@
+{
+  "all": false,
+  "reporter": ["text", "text-summary"],
+  "include": ["src/**/*.{ts,tsx}"],
+  "exclude": ["src/**/*.{test,spec}.{ts,tsx}", "src/test/**"],
+  "check-coverage": true,
+  "lines": 30,
+  "branches": 18,
+  "functions": 25,
+  "statements": 30
+}

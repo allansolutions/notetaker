@@ -8,4 +8,7 @@ echo ""
 bunx tsc --noEmit < /dev/null
 
 echo ""
-bun run test
+bun run test:coverage
+
+echo ""
+cd server && bun run test:coverage

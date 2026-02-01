@@ -12,7 +12,7 @@ test.describe('Todo checkbox deletion', () => {
     await mockAuthenticated(page);
     await mockTasksApi(page);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
 
     // Create a task (stays on spreadsheet after creation)
     await addTaskViaModal(page, 'Test Task');
@@ -221,7 +221,7 @@ test.describe('Block Editing', () => {
     await mockAuthenticated(page);
     await mockTasksApi(page);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
 
     // Create a task (stays on spreadsheet after creation)
     await addTaskViaModal(page, 'Test Task');

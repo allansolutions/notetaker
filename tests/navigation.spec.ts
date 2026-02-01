@@ -12,7 +12,7 @@ test.describe('URL-Based Navigation', () => {
 
   test.describe('Basic URL Routing', () => {
     test('loads spreadsheet view at root URL', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Should show the task table
@@ -23,7 +23,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('loads task detail view from URL', async ({ page }) => {
-      await page.goto('http://localhost:5173/task/task-1');
+      await page.goto('/task/task-1');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Should show task detail view with block editor
@@ -33,7 +33,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('loads details view from URL', async ({ page }) => {
-      await page.goto('http://localhost:5173/details');
+      await page.goto('/details');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Should show task details view
@@ -41,7 +41,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('loads archive view from URL', async ({ page }) => {
-      await page.goto('http://localhost:5173/archive');
+      await page.goto('/archive');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Should show archive view
@@ -49,7 +49,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('redirects invalid task ID to spreadsheet', async ({ page }) => {
-      await page.goto('http://localhost:5173/task/nonexistent');
+      await page.goto('/task/nonexistent');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Should redirect to spreadsheet
@@ -62,7 +62,7 @@ test.describe('URL-Based Navigation', () => {
 
   test.describe('Navigation Updates URL', () => {
     test('clicking task updates URL to task detail', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Click on a task
@@ -76,7 +76,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('clicking back updates URL to spreadsheet', async ({ page }) => {
-      await page.goto('http://localhost:5173/task/task-1');
+      await page.goto('/task/task-1');
       await page.waitForSelector('.block-input');
 
       // Click back button
@@ -90,7 +90,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('navigating to archive updates URL', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Click archive link
@@ -106,7 +106,7 @@ test.describe('URL-Based Navigation', () => {
 
   test.describe('Filter Preservation in URL', () => {
     test('date filter is preserved in URL', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Open date filter menu and select "This Week"
@@ -123,7 +123,7 @@ test.describe('URL-Based Navigation', () => {
 
     test('filter state persists after page refresh', async ({ page }) => {
       // Navigate directly to a filtered URL
-      await page.goto('http://localhost:5173/?date=this-week');
+      await page.goto('/?date=this-week');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Date filter should be active - button shows "Date: This Week"
@@ -134,7 +134,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('type filter is preserved in URL', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Open type column filter
@@ -156,7 +156,7 @@ test.describe('URL-Based Navigation', () => {
 
   test.describe('Browser Back/Forward Navigation', () => {
     test('browser back returns to previous view', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Navigate to task detail
@@ -173,7 +173,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('browser forward returns to next view', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Navigate to task detail
@@ -195,7 +195,7 @@ test.describe('URL-Based Navigation', () => {
 
   test.describe('Keyboard Navigation Shortcuts', () => {
     test('Cmd+[ navigates back', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Navigate to task detail
@@ -214,7 +214,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('Cmd+] navigates forward', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Navigate to task detail
@@ -234,7 +234,7 @@ test.describe('URL-Based Navigation', () => {
     });
 
     test('keyboard shortcuts do not trigger when typing', async ({ page }) => {
-      await page.goto('http://localhost:5173/');
+      await page.goto('/');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Navigate to task detail
@@ -254,7 +254,7 @@ test.describe('URL-Based Navigation', () => {
 
   test.describe('URL with Multiple Filters', () => {
     test('loads page with multiple filter params', async ({ page }) => {
-      await page.goto('http://localhost:5173/?date=this-week&type=admin');
+      await page.goto('/?date=this-week&type=admin');
       await page.waitForSelector('[data-testid="sidebar"]');
 
       // Both filters should be applied

@@ -52,7 +52,7 @@ test.describe('Time Tracking', () => {
       }
     });
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
 
     // Create a task (stays on spreadsheet after creation)
     await addTaskViaModal(page, 'Time Test Task');
@@ -128,7 +128,7 @@ test.describe('Time Tracking', () => {
       }
     });
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="sidebar"]');
 
     // Create a task (stays on spreadsheet after creation)
@@ -208,7 +208,7 @@ test.describe('Time Tracking', () => {
       }
     });
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="sidebar"]');
 
     // Navigate to the pre-seeded task
@@ -281,7 +281,7 @@ test.describe('Time Tracking in Details View', () => {
       },
     ]);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="sidebar"]');
 
     // Navigate to full-day details
@@ -321,7 +321,7 @@ test.describe('Time Tracking in Details View', () => {
       },
     ]);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="sidebar"]');
 
     await navigateToFullDayDetails(page);
@@ -351,7 +351,7 @@ test.describe('Time Tracking in Details View', () => {
       },
     ]);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="sidebar"]');
 
     await navigateToFullDayDetails(page);
@@ -389,7 +389,7 @@ test.describe('Time Tracking in Details View', () => {
       },
     ]);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="sidebar"]');
 
     await navigateToFullDayDetails(page);

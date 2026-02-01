@@ -14,7 +14,7 @@ test.describe('Keyboard Row Navigation', () => {
   test('pressing down arrow activates first row when none selected', async ({
     page,
   }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     // Click on body to ensure no input is focused
@@ -31,7 +31,7 @@ test.describe('Keyboard Row Navigation', () => {
   test('pressing up arrow activates last row when none selected', async ({
     page,
   }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -43,7 +43,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('down arrow moves through rows', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -65,7 +65,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('up arrow moves through rows', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -87,7 +87,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('pressing up on first row deactivates selection', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -106,7 +106,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('pressing down on last row deactivates selection', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -125,7 +125,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('pressing Enter on active row navigates to task', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -146,7 +146,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('pressing Escape deactivates the active row', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -174,7 +174,7 @@ test.describe('Keyboard Row Navigation', () => {
   test('keyboard navigation does not trigger when input is focused', async ({
     page,
   }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     // Click on a task to navigate to detail view (which has inputs)
@@ -192,7 +192,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('Shift+Down moves the active row down', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -223,7 +223,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('Shift+Up moves the active row up', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -255,7 +255,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('Shift+Down on last row does nothing', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -283,7 +283,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('Shift+Up on first row does nothing', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -311,7 +311,7 @@ test.describe('Keyboard Row Navigation', () => {
   });
 
   test('Shift+Enter opens edit modal for active row', async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -344,7 +344,7 @@ test.describe('Keyboard Row Navigation', () => {
   test('Shift+Enter edit modal focuses Type dropdown for keyboard navigation', async ({
     page,
   }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -374,7 +374,7 @@ test.describe('Keyboard Row Navigation', () => {
   test('Shift+Enter edit modal shows Save button instead of Create', async ({
     page,
   }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');
@@ -399,7 +399,7 @@ test.describe('Keyboard Row Navigation', () => {
   test('Shift+Enter edit modal saves changes when Save is clicked', async ({
     page,
   }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.waitForSelector('table');
 
     await page.click('body');

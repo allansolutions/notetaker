@@ -7,7 +7,7 @@ test.describe('Sidebar Resize', () => {
     await mockAuthenticated(page);
     await mockTasksApi(page);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
 
     // Clear localStorage for sidebar width after page loads
     await page.evaluate(() =>

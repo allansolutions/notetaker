@@ -116,7 +116,7 @@ test.describe('Wiki Module', () => {
     await mockAuthenticated(page);
     await mockTasksApi(page);
     await mockWikiApi(page);
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
   });
 
   test('can navigate to wiki from area switcher', async ({ page }) => {
@@ -132,7 +132,7 @@ test.describe('Wiki Module', () => {
   });
 
   test('shows empty state when no pages exist', async ({ page }) => {
-    await page.goto('http://localhost:5173/wiki');
+    await page.goto('/wiki');
 
     // Should show empty state message
     await expect(
@@ -141,7 +141,7 @@ test.describe('Wiki Module', () => {
   });
 
   test('can create a new root page', async ({ page }) => {
-    await page.goto('http://localhost:5173/wiki');
+    await page.goto('/wiki');
 
     // Click add root page button
     await page.getByTitle('Add root page').click();
@@ -167,7 +167,7 @@ test.describe('Wiki Module', () => {
     };
     await mockWikiApi(page, [initialPage]);
 
-    await page.goto('http://localhost:5173/wiki');
+    await page.goto('/wiki');
 
     // Should see the page in the tree
     await expect(page.getByText('Test Page')).toBeVisible();
@@ -190,7 +190,7 @@ test.describe('Wiki Module', () => {
     };
     await mockWikiApi(page, [initialPage]);
 
-    await page.goto('http://localhost:5173/wiki');
+    await page.goto('/wiki');
 
     // Click on the page
     await page.getByText('My Wiki Page').click();
@@ -222,7 +222,7 @@ test.describe('Wiki Module', () => {
     await mockTasksApi(page);
     await mockWikiApi(page, [initialPage]);
 
-    await page.goto('http://localhost:5173');
+    await page.goto('/');
 
     // Wait for app to fully load
     await page.waitForSelector('[data-testid="sidebar"]');
