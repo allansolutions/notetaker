@@ -7,6 +7,7 @@ export type DateGroup =
   | 'past'
   | 'last-week'
   | 'today'
+  | 'tomorrow'
   | 'monday'
   | 'tuesday'
   | 'wednesday'
@@ -29,7 +30,8 @@ const DAY_GROUPS: DateGroup[] = [
 ];
 
 /**
- * Get the date group for a task's due date
+ * Get the date group for a task's due date.
+ * Groups: past, today, tomorrow, next-week, future, no-date.
  */
 export function getDateGroup(
   dueDate: number | undefined,
@@ -54,17 +56,15 @@ export function getDateGroup(
     return 'past';
   }
 
-  // Check if it's within this week (after today)
-  const weekEnd = getWeekEnd(now);
-  if (taskTime <= weekEnd.getTime()) {
-    // Return the specific day of the week
-    const dayOfWeek = taskDate.getDay();
-    // Convert 0 (Sunday) to 6, otherwise subtract 1 to get 0-based Monday index
-    const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    return DAY_GROUPS[dayIndex];
+  // Check if it's tomorrow
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (taskTime === tomorrow.getTime()) {
+    return 'tomorrow';
   }
 
-  // Check if it's within next week
+  // Check if it's within next week (the upcoming Monday–Sunday block)
+  const weekEnd = getWeekEnd(now);
   const nextWeekEnd = new Date(weekEnd);
   nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
   if (taskTime <= nextWeekEnd.getTime()) {
@@ -129,7 +129,7 @@ export function getArchiveDateGroup(
 /**
  * Get human-readable label for a date group
  */
-export function getGroupLabel(group: DateGroup): string {
+export function getGroupLabel(group: DateGroup, now?: Date): string {
   switch (group) {
     case 'past':
       return 'Past';
@@ -137,6 +137,8 @@ export function getGroupLabel(group: DateGroup): string {
       return 'Last Week';
     case 'today':
       return 'Today';
+    case 'tomorrow':
+      return 'Tomorrow';
     case 'monday':
       return 'Monday';
     case 'tuesday':
@@ -151,8 +153,11 @@ export function getGroupLabel(group: DateGroup): string {
       return 'Saturday';
     case 'sunday':
       return 'Sunday';
-    case 'next-week':
-      return 'Next Week';
+    case 'next-week': {
+      const day = (now ?? new Date()).getDay();
+      // Monday (1) through Friday (5): bucket still contains current-week days
+      return day >= 1 && day <= 5 ? 'This Week' : 'Next Week';
+    }
     case 'future':
       return 'Future';
     case 'no-date':
@@ -169,28 +174,24 @@ export function getGroupOrder(group: DateGroup): number {
       return 0;
     case 'today':
       return 1;
-    case 'monday':
+    case 'tomorrow':
       return 2;
+    case 'monday':
     case 'tuesday':
-      return 3;
     case 'wednesday':
-      return 4;
     case 'thursday':
-      return 5;
     case 'friday':
-      return 6;
     case 'saturday':
-      return 7;
     case 'sunday':
-      return 8;
+      return 3;
     case 'next-week':
-      return 9;
+      return 4;
     case 'last-week':
-      return 9;
+      return 4;
     case 'future':
-      return 10;
+      return 5;
     case 'no-date':
-      return 11;
+      return 6;
   }
 }
 
@@ -228,6 +229,7 @@ export function getArchiveGroupOrder(
       return 8;
     case 'past':
       return 9;
+    case 'tomorrow':
     case 'next-week':
     case 'future':
       return 10;
@@ -275,6 +277,12 @@ export function getDateForGroup(
   switch (group) {
     case 'today':
       return today.getTime();
+
+    case 'tomorrow': {
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return tomorrow.getTime();
+    }
 
     case 'monday':
     case 'tuesday':

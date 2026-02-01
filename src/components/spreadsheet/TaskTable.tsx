@@ -47,8 +47,6 @@ import {
   getDateGroup,
   getGroupLabel,
   getGroupOrder,
-  getRemainingWeekdayGroups,
-  isWeekdayGroup,
   isDateFull,
   isGroupFull,
   getGroupTypeCount,
@@ -682,7 +680,6 @@ export function TaskTable({
     if (groupBy === 'none') return null;
 
     const now = new Date();
-    const remainingWeekdays = new Set(getRemainingWeekdayGroups(now));
 
     // Type grouping
     const typeOrder = TASK_TYPE_OPTIONS.reduce(
@@ -752,16 +749,11 @@ export function TaskTable({
             isArchive
               ? getArchiveDateGroup(task.dueDate, now)
               : getDateGroup(task.dueDate, now),
-          getLabel: (group) => getGroupLabel(group as DateGroup),
+          getLabel: (group) => getGroupLabel(group as DateGroup, now),
           getOrder: (group) =>
             isArchive
               ? getArchiveGroupOrder(group as DateGroup, now)
               : getGroupOrder(group as DateGroup),
-          shouldSkipGroup: isArchive
-            ? undefined
-            : (group: string) =>
-                isWeekdayGroup(group as DateGroup) &&
-                !remainingWeekdays.has(group as DateGroup),
         };
       case 'type':
         return {
