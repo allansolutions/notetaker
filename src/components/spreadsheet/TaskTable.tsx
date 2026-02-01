@@ -17,6 +17,7 @@ import {
   useSensors,
   DragEndEvent,
   DragOverEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -32,6 +33,7 @@ import {
   TaskStatus,
   TaskImportance,
   TimeSession,
+  TimeOfDay,
   DateFilterPreset,
   DateRange,
   TASK_TYPE_OPTIONS,
@@ -73,6 +75,12 @@ import {
   formatMinutes,
   computeTimeSpentWithActive,
 } from '../../utils/task-operations';
+import {
+  PERIODS,
+  PERIOD_LABELS,
+  getPeriodMinutesLeft,
+  isPeriodPast,
+} from '../../utils/time-of-day';
 import { useTeam } from '@/modules/teams/context/TeamContext';
 import { AddTaskModal, AddTaskData, EditTaskData } from '../AddTaskModal';
 import { BlockedReasonModal } from '../BlockedReasonModal';
@@ -312,12 +320,21 @@ type RowData =
       completedCount: number;
     }
   | {
+      type: 'subheader';
+      group: string;
+      subgroup: TimeOfDay;
+      label: string;
+      taskEstimateMinutes: number;
+      periodMinutesLeft: number;
+    }
+  | {
       type: 'task';
       task: Task;
       rowIndex: number;
       isFirstInGroup: boolean;
       isLastInGroup: boolean;
       group: string;
+      subgroup?: TimeOfDay | 'unassigned';
     };
 
 // Group configuration for different group modes
@@ -326,6 +343,151 @@ interface GroupConfig {
   getLabel: (group: string) => string;
   getOrder: (group: string) => number;
   shouldSkipGroup?: (group: string) => boolean;
+}
+
+// Types for grouped task items used in row data computation
+type TaskWithGroup = { task: Task; group: string; originalIndex: number };
+
+/** Compute remaining estimate minutes for a list of tasks */
+function computeRemainingEstimate(taskList: TaskWithGroup[]): number {
+  let total = 0;
+  for (const { task } of taskList) {
+    if (task.estimate !== undefined) {
+      const spentMs = computeTimeSpentWithActive(task.sessions);
+      const spentMinutes = Math.floor(spentMs / 60000);
+      total += Math.max(0, task.estimate - spentMinutes);
+    }
+  }
+  return total;
+}
+
+/** Push task rows into rowData, tracking first/last within a visual block */
+function emitTaskRows(
+  rowData: RowData[],
+  taskList: TaskWithGroup[],
+  group: string,
+  subgroup?: TimeOfDay | 'unassigned'
+) {
+  taskList.forEach((item, i) => {
+    rowData.push({
+      type: 'task',
+      task: item.task,
+      rowIndex: item.originalIndex,
+      isFirstInGroup: i === 0,
+      isLastInGroup: i === taskList.length - 1,
+      group,
+      subgroup,
+    });
+  });
+}
+
+/** Compute per-group stats: remaining estimate minutes and task counts */
+function computeGroupStats(tasksWithGroups: TaskWithGroup[]) {
+  const remainingMinutes = new Map<string, number>();
+  const taskCounts = new Map<string, number>();
+  for (const { task, group } of tasksWithGroups) {
+    taskCounts.set(group, (taskCounts.get(group) ?? 0) + 1);
+    if (task.estimate !== undefined) {
+      const spentMs = computeTimeSpentWithActive(task.sessions);
+      const spentMinutes = Math.floor(spentMs / 60000);
+      const remaining = Math.max(0, task.estimate - spentMinutes);
+      remainingMinutes.set(
+        group,
+        (remainingMinutes.get(group) ?? 0) + remaining
+      );
+    }
+  }
+  return { remainingMinutes, taskCounts };
+}
+
+/** Group tasks by their group key, preserving order */
+function collectTasksByGroup(tasksWithGroups: TaskWithGroup[]) {
+  const grouped = new Map<string, TaskWithGroup[]>();
+  for (const item of tasksWithGroups) {
+    const existing = grouped.get(item.group);
+    if (existing) {
+      existing.push(item);
+    } else {
+      grouped.set(item.group, [item]);
+    }
+  }
+  return grouped;
+}
+
+/** Mark the last task row in rowData as last-in-group */
+function markLastRowAsGroupEnd(rowData: RowData[]) {
+  const lastRow = rowData[rowData.length - 1];
+  if (lastRow?.type === 'task') lastRow.isLastInGroup = true;
+}
+
+/** Build the full grouped row array from ordered groups */
+function buildGroupedRows(
+  orderedGroups: string[],
+  groupedTasks: Map<string, TaskWithGroup[]>,
+  opts: {
+    getLabel: (group: string) => string;
+    remainingMinutes: Map<string, number>;
+    taskCounts: Map<string, number>;
+    todayCompletedCount: number;
+    useTodaySubgroups: boolean;
+    now: Date;
+  }
+): RowData[] {
+  const rowData: RowData[] = [];
+
+  for (const group of orderedGroups) {
+    const groupTasks = groupedTasks.get(group) ?? [];
+
+    if (rowData.length > 0) markLastRowAsGroupEnd(rowData);
+
+    rowData.push({
+      type: 'header',
+      group,
+      label: opts.getLabel(group),
+      remainingMinutes: opts.remainingMinutes.get(group) ?? 0,
+      taskCount: opts.taskCounts.get(group) ?? 0,
+      completedCount: group === 'today' ? opts.todayCompletedCount : 0,
+    });
+
+    if (group === 'today' && opts.useTodaySubgroups) {
+      emitTodaySubgroups(rowData, groupTasks, opts.now);
+    } else {
+      emitTaskRows(rowData, groupTasks, group);
+    }
+  }
+
+  markLastRowAsGroupEnd(rowData);
+  return rowData;
+}
+
+/** Emit today's subgroup rows (unassigned + period subheaders with tasks) */
+function emitTodaySubgroups(
+  rowData: RowData[],
+  groupTasks: TaskWithGroup[],
+  now: Date
+) {
+  const unassigned = groupTasks.filter((t) => !t.task.timeOfDay);
+  if (unassigned.length > 0) {
+    emitTaskRows(rowData, unassigned, 'today', 'unassigned');
+  }
+
+  for (const period of PERIODS) {
+    const periodTasks = groupTasks.filter((t) => t.task.timeOfDay === period);
+    if (isPeriodPast(period, now) && periodTasks.length === 0) continue;
+
+    rowData.push({
+      type: 'subheader',
+      group: 'today',
+      subgroup: period,
+      label: PERIOD_LABELS[period],
+      taskEstimateMinutes: computeRemainingEstimate(periodTasks),
+      periodMinutesLeft: getPeriodMinutesLeft(period, now),
+    });
+
+    if (periodTasks.length > 0) {
+      emitTaskRows(rowData, periodTasks, 'today', period);
+    }
+  }
 }
 
 type DragOverState = 'none' | 'full' | 'type-warning';
@@ -463,6 +625,60 @@ function GroupHeaderRow({
         </tr>
       )}
     </>
+  );
+}
+
+const SUBHEADER_PREFIX = 'subheader-';
+
+function SubgroupHeaderRow({
+  label,
+  columnCount,
+  taskEstimateMinutes,
+  periodMinutesLeft,
+  subgroup,
+}: {
+  label: string;
+  columnCount: number;
+  taskEstimateMinutes: number;
+  periodMinutesLeft: number;
+  subgroup: TimeOfDay;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `${SUBHEADER_PREFIX}${subgroup}`,
+  });
+  const overTime =
+    taskEstimateMinutes > periodMinutesLeft && periodMinutesLeft > 0;
+
+  return (
+    <tr
+      ref={setNodeRef}
+      className={`subgroup-header-row transition-colors ${isOver ? 'bg-accent/10' : ''}`}
+    >
+      <td colSpan={columnCount + 2} className="pt-3 pb-1 px-2 pl-6">
+        <span className="text-[0.65rem] font-medium uppercase tracking-wider inline-flex items-baseline gap-3">
+          <span className={isOver ? 'text-accent' : 'text-muted/80'}>
+            {label}
+          </span>
+          {(taskEstimateMinutes > 0 || periodMinutesLeft > 0) && (
+            <span className="tabular-nums">
+              {taskEstimateMinutes > 0 && (
+                <span className={overTime ? 'text-red-500' : 'text-muted/60'}>
+                  {formatMinutes(taskEstimateMinutes)}
+                </span>
+              )}
+              {taskEstimateMinutes > 0 && periodMinutesLeft > 0 && (
+                <span className="text-muted/40"> / </span>
+              )}
+              {periodMinutesLeft > 0 && (
+                <span className="text-muted/60">
+                  {formatMinutes(periodMinutesLeft)} left
+                </span>
+              )}
+            </span>
+          )}
+        </span>
+      </td>
+    </tr>
   );
 }
 
@@ -788,95 +1004,39 @@ export function TaskTable({
   const groupedRowData = useMemo((): RowData[] => {
     if (!groupConfig) return [];
 
-    // Compute group for each task and sort by group order (preserving original order within groups)
-    const tasksWithGroups = filteredTasks.map((task, originalIndex) => ({
-      task,
-      group: groupConfig.getGroup(task),
-      originalIndex,
-    }));
+    const now = new Date();
+    const useTodaySubgroups = groupBy === 'date' && !isArchive;
 
-    // Sort by group order, then by original index to preserve order within groups
+    const tasksWithGroups: TaskWithGroup[] = filteredTasks.map(
+      (task, originalIndex) => ({
+        task,
+        group: groupConfig.getGroup(task),
+        originalIndex,
+      })
+    );
+
     tasksWithGroups.sort((a, b) => {
       const groupDiff =
         groupConfig.getOrder(a.group) - groupConfig.getOrder(b.group);
-      if (groupDiff !== 0) return groupDiff;
-      return a.originalIndex - b.originalIndex;
+      return groupDiff !== 0 ? groupDiff : a.originalIndex - b.originalIndex;
     });
 
-    // Compute remaining time and task count per group
-    const groupRemainingMinutes = new Map<string, number>();
-    const groupTaskCounts = new Map<string, number>();
-    for (const { task, group } of tasksWithGroups) {
-      groupTaskCounts.set(group, (groupTaskCounts.get(group) ?? 0) + 1);
-      if (task.estimate !== undefined) {
-        const spentMs = computeTimeSpentWithActive(task.sessions);
-        const spentMinutes = Math.floor(spentMs / 60000);
-        const remaining = Math.max(0, task.estimate - spentMinutes);
-        groupRemainingMinutes.set(
-          group,
-          (groupRemainingMinutes.get(group) ?? 0) + remaining
-        );
-      }
-    }
+    const { remainingMinutes, taskCounts } = computeGroupStats(tasksWithGroups);
+    const groupedTasks = collectTasksByGroup(tasksWithGroups);
 
-    // Build row data with headers
-    const rowData: RowData[] = [];
-    let currentGroup: string | null = null;
-    let groupStartIndex = 0;
+    const orderedGroups = [
+      ...new Set(tasksWithGroups.map((t) => t.group)),
+    ].filter((g) => !groupConfig.shouldSkipGroup?.(g));
 
-    tasksWithGroups.forEach((item, index) => {
-      const { task, group } = item;
-
-      // Check if we should skip this group (e.g., past weekdays for date grouping)
-      const shouldShowGroup = !groupConfig.shouldSkipGroup?.(group);
-
-      if (shouldShowGroup && group !== currentGroup) {
-        // Mark the previous group's last row
-        if (rowData.length > 0) {
-          const lastRow = rowData[rowData.length - 1];
-          if (lastRow.type === 'task') {
-            lastRow.isLastInGroup = true;
-          }
-        }
-
-        // Add header for new group
-        rowData.push({
-          type: 'header',
-          group,
-          label: groupConfig.getLabel(group),
-          remainingMinutes: groupRemainingMinutes.get(group) ?? 0,
-          taskCount: groupTaskCounts.get(group) ?? 0,
-          completedCount: group === 'today' ? todayCompletedCount : 0,
-        });
-        currentGroup = group;
-        groupStartIndex = rowData.length;
-      }
-
-      // Determine if this is first in group
-      const isFirstInGroup =
-        rowData.length === groupStartIndex ||
-        rowData[rowData.length - 1]?.type === 'header';
-
-      rowData.push({
-        type: 'task',
-        task,
-        rowIndex: index,
-        isFirstInGroup,
-        isLastInGroup: false, // Will be updated when next group starts or at end
-        group,
-      });
+    return buildGroupedRows(orderedGroups, groupedTasks, {
+      getLabel: groupConfig.getLabel,
+      remainingMinutes,
+      taskCounts,
+      todayCompletedCount,
+      useTodaySubgroups,
+      now,
     });
-
-    // Mark the final task as last in group
-    if (rowData.length > 0) {
-      const lastRow = rowData[rowData.length - 1];
-      if (lastRow.type === 'task') {
-        lastRow.isLastInGroup = true;
-      }
-    }
-
-    return rowData;
-  }, [filteredTasks, groupConfig, todayCompletedCount]);
+  }, [filteredTasks, groupConfig, todayCompletedCount, groupBy, isArchive]);
 
   // Filter to only the selected group when a group header is clicked
   const displayedRowData = useMemo(() => {
@@ -884,19 +1044,27 @@ export function TaskTable({
     return groupedRowData.filter((row) => row.group === selectedGroup);
   }, [groupedRowData, selectedGroup]);
 
-  // Extract sorted task IDs and task-to-group mapping from displayedRowData
-  const { sortedTaskIds, taskGroupMap } = useMemo(() => {
+  // Extract sorted task IDs, task-to-group mapping, and subgroup mapping from displayedRowData
+  const { sortedTaskIds, taskGroupMap, taskSubgroupMap } = useMemo(() => {
     const ids: string[] = [];
     const groupMap = new Map<string, string>();
+    const subgroupMap = new Map<string, TimeOfDay | 'unassigned'>();
 
     for (const row of displayedRowData) {
       if (row.type === 'task') {
         ids.push(row.task.id);
         groupMap.set(row.task.id, row.group);
+        if (row.subgroup) {
+          subgroupMap.set(row.task.id, row.subgroup);
+        }
       }
     }
 
-    return { sortedTaskIds: ids, taskGroupMap: groupMap };
+    return {
+      sortedTaskIds: ids,
+      taskGroupMap: groupMap,
+      taskSubgroupMap: subgroupMap,
+    };
   }, [displayedRowData]);
 
   const columns = useMemo(
@@ -1098,13 +1266,29 @@ export function TaskTable({
     []
   );
 
+  // Sync timeOfDay when a task moves between subgroups within the today group
+  const syncSubgroup = useCallback(
+    (taskId: string, targetTaskId: string) => {
+      const activeSubgroup = taskSubgroupMap.get(taskId);
+      const targetSubgroup = taskSubgroupMap.get(targetTaskId);
+      if (activeSubgroup === targetSubgroup || targetSubgroup === undefined)
+        return;
+      onUpdateTask(taskId, {
+        timeOfDay: targetSubgroup === 'unassigned' ? undefined : targetSubgroup,
+      });
+    },
+    [taskSubgroupMap, onUpdateTask]
+  );
+
   const handleCrossGroupMove = useCallback(
     (activeTaskId: string, targetTaskId: string): boolean => {
       const activeGroup = taskGroupMap.get(activeTaskId);
       const targetGroup = taskGroupMap.get(targetTaskId);
 
-      if (!activeGroup || !targetGroup || activeGroup === targetGroup)
+      if (!activeGroup || !targetGroup || activeGroup === targetGroup) {
+        if (activeGroup === 'today') syncSubgroup(activeTaskId, targetTaskId);
         return true;
+      }
 
       if (
         taskCountsByDate &&
@@ -1119,7 +1303,7 @@ export function TaskTable({
       onUpdateTask(activeTaskId, { dueDate: newDate });
       return true;
     },
-    [taskGroupMap, taskCountsByDate, onUpdateTask]
+    [taskGroupMap, syncSubgroup, taskCountsByDate, onUpdateTask]
   );
 
   const handleMoveRow = useCallback(
@@ -1374,22 +1558,29 @@ export function TaskTable({
     const activeId = String(active.id);
     const overId = String(over.id);
 
+    // Handle drop onto a subheader (empty period target)
+    if (overId.startsWith(SUBHEADER_PREFIX)) {
+      const period = overId.slice(SUBHEADER_PREFIX.length) as TimeOfDay;
+      onUpdateTask(activeId, { timeOfDay: period });
+      return;
+    }
+
     // When grouping by date, validate cross-group drops
     if (groupBy === 'date') {
       const activeGroup = taskGroupMap.get(activeId);
       const overGroup = taskGroupMap.get(overId);
 
       if (activeGroup && overGroup && activeGroup !== overGroup) {
-        if (!handleCrossGroupDrop(activeId, overId, overGroup)) {
-          return;
-        }
+        if (!handleCrossGroupDrop(activeId, overId, overGroup)) return;
+      }
+
+      // Handle subgroup changes within the today group
+      if (activeGroup === 'today' && overGroup === 'today') {
+        syncSubgroup(activeId, overId);
       }
     }
 
-    // Clear any active sorting so manual ordering takes effect
     setSorting([]);
-
-    // Pass IDs directly - the context will find correct indices in the full tasks array
     onReorder(activeId, overId);
   };
 
@@ -1532,6 +1723,19 @@ export function TaskTable({
                             )
                           }
                           isSelected={selectedGroup === rowData.group}
+                        />
+                      );
+                    }
+
+                    if (rowData.type === 'subheader') {
+                      return (
+                        <SubgroupHeaderRow
+                          key={`subheader-${rowData.group}-${rowData.subgroup}`}
+                          label={rowData.label}
+                          columnCount={columns.length}
+                          taskEstimateMinutes={rowData.taskEstimateMinutes}
+                          periodMinutesLeft={rowData.periodMinutesLeft}
+                          subgroup={rowData.subgroup}
                         />
                       );
                     }

@@ -1,4 +1,4 @@
-import type { Task, TimeSession, Block } from '../types';
+import type { Task, TimeSession, Block, TimeOfDay } from '../types';
 import type { Team, TeamMember, TeamInvite } from '@/modules/teams/types';
 import type { Contact, Company } from '../modules/crm/types';
 import type { WikiPage, WikiBreadcrumb } from '../modules/wiki/types';
@@ -62,6 +62,7 @@ export interface ApiTask {
   assigneeId?: string | null;
   assigner?: ApiTaskUser | null;
   assignee?: ApiTaskUser | null;
+  timeOfDay?: string;
   tags?: string[];
   resources?: string[];
   orderIndex: number;
@@ -99,6 +100,7 @@ export function apiTaskToTask(
     assigneeId: apiTask.assigneeId,
     assigner: apiTask.assigner,
     assignee: apiTask.assignee,
+    timeOfDay: apiTask.timeOfDay as TimeOfDay | undefined,
     tags: apiTask.tags,
     resources: apiTask.resources,
     sessions,

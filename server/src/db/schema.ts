@@ -93,6 +93,7 @@ export const tasks = sqliteTable('tasks', {
   estimate: integer('estimate'),
   dueDate: integer('due_date'),
   blockedReason: text('blocked_reason'),
+  timeOfDay: text('time_of_day'),
   tags: text('tags').default('[]'),
   resources: text('resources').default('[]'),
   orderIndex: integer('order_index').notNull().default(0),

@@ -48,6 +48,8 @@ export interface TodoMetadata {
   duration?: number; // Duration in minutes (min 15)
 }
 
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening';
+
 export type TaskType =
   | 'admin'
   | 'operations'
@@ -96,6 +98,7 @@ export interface Task {
   assigneeId?: string | null; // User assigned to this task
   assigner?: TaskUser | null; // User who created/assigned the task
   assignee?: TaskUser | null; // User the task is assigned to
+  timeOfDay?: TimeOfDay; // Time-of-day subgroup: morning, afternoon, evening
   tags?: string[]; // User-defined tags for categorization
   resources?: string[]; // URLs attached to the task (Google Docs, Sheets, etc.)
   createdAt: number;

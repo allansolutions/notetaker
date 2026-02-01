@@ -222,6 +222,7 @@ taskRoutes.post('/', async (c) => {
     estimate: body.estimate,
     dueDate: body.dueDate,
     blockedReason: body.blockedReason,
+    timeOfDay: body.timeOfDay ?? null,
     tags: JSON.stringify(body.tags ?? []),
     resources: JSON.stringify(body.resources ?? []),
     orderIndex: body.orderIndex ?? maxOrder + 1,
@@ -285,6 +286,7 @@ taskRoutes.put('/:id', async (c) => {
   if (body.tags !== undefined) updateData.tags = JSON.stringify(body.tags);
   if (body.resources !== undefined)
     updateData.resources = JSON.stringify(body.resources);
+  if (body.timeOfDay !== undefined) updateData.timeOfDay = body.timeOfDay;
   if (body.orderIndex !== undefined) updateData.orderIndex = body.orderIndex;
   if (body.assigneeId !== undefined) updateData.assigneeId = body.assigneeId;
 

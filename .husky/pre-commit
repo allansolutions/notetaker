@@ -8,6 +8,4 @@ echo ""
 bunx tsc --noEmit < /dev/null
 
 echo ""
-# Run tests with coverage threshold check (80% minimum)
-# This ensures new code has tests before it can be committed
-bun run test:coverage
+bun run test

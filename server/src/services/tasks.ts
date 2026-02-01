@@ -27,7 +27,13 @@ export async function getTaskById(
   const result = await db
     .select()
     .from(tasks)
-    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId), isNull(tasks.deletedAt)))
+    .where(
+      and(
+        eq(tasks.id, taskId),
+        eq(tasks.userId, userId),
+        isNull(tasks.deletedAt)
+      )
+    )
     .limit(1);
 
   return result[0];
@@ -206,6 +212,7 @@ export async function getTasksByTeam(
       estimate: tasks.estimate,
       dueDate: tasks.dueDate,
       blockedReason: tasks.blockedReason,
+      timeOfDay: tasks.timeOfDay,
       tags: tasks.tags,
       resources: tasks.resources,
       orderIndex: tasks.orderIndex,
@@ -243,7 +250,11 @@ export async function getTaskByIdWithTeam(
   userRole: 'admin' | 'member',
   teamId: string
 ): Promise<TaskWithUsers | undefined> {
-  const conditions = [eq(tasks.id, taskId), eq(tasks.teamId, teamId), isNull(tasks.deletedAt)];
+  const conditions = [
+    eq(tasks.id, taskId),
+    eq(tasks.teamId, teamId),
+    isNull(tasks.deletedAt),
+  ];
 
   // Visibility rules for members
   if (userRole === 'member') {
@@ -289,6 +300,7 @@ export async function getTaskByIdWithTeam(
       estimate: tasks.estimate,
       dueDate: tasks.dueDate,
       blockedReason: tasks.blockedReason,
+      timeOfDay: tasks.timeOfDay,
       tags: tasks.tags,
       resources: tasks.resources,
       orderIndex: tasks.orderIndex,
