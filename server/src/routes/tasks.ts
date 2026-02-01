@@ -27,6 +27,23 @@ import {
 } from '../services/time-sessions';
 import { logDateChange } from '../services/task-date-changes';
 
+function transformTask<
+  T extends {
+    blocks: string;
+    scheduled: boolean | null;
+    tags: string | null;
+    resources: string | null;
+  },
+>(task: T) {
+  return {
+    ...task,
+    blocks: JSON.parse(task.blocks),
+    scheduled: task.scheduled ?? false,
+    tags: task.tags ? JSON.parse(task.tags) : [],
+    resources: task.resources ? JSON.parse(task.resources) : [],
+  };
+}
+
 export const taskRoutes = new Hono<{
   Bindings: Env;
   Variables: Variables;
@@ -66,31 +83,13 @@ taskRoutes.get('/', async (c) => {
       assignerIds: assignerIds?.length ? assignerIds : undefined,
     });
 
-    // Transform DB tasks to frontend format
-    const transformed = teamTasks.map((task) => ({
-      ...task,
-      blocks: JSON.parse(task.blocks),
-      scheduled: task.scheduled ?? false,
-      tags: task.tags ? JSON.parse(task.tags) : [],
-      resources: task.resources ? JSON.parse(task.resources) : [],
-    }));
-
-    return c.json({ tasks: transformed });
+    return c.json({ tasks: teamTasks.map(transformTask) });
   }
 
   // Legacy: personal tasks (no team)
   const tasks = await getTasksByUserId(db, userId);
 
-  // Transform DB tasks to frontend format
-  const transformed = tasks.map((task) => ({
-    ...task,
-    blocks: JSON.parse(task.blocks),
-    scheduled: task.scheduled ?? false,
-    tags: task.tags ? JSON.parse(task.tags) : [],
-    resources: task.resources ? JSON.parse(task.resources) : [],
-  }));
-
-  return c.json({ tasks: transformed });
+  return c.json({ tasks: tasks.map(transformTask) });
 });
 
 // Reorder tasks - MUST be before /:id routes to avoid matching "reorder" as an ID
@@ -146,15 +145,7 @@ taskRoutes.get('/:id', async (c) => {
       return c.json({ error: 'Task not found' }, 404);
     }
 
-    return c.json({
-      task: {
-        ...task,
-        blocks: JSON.parse(task.blocks),
-        scheduled: task.scheduled ?? false,
-        tags: task.tags ? JSON.parse(task.tags) : [],
-        resources: task.resources ? JSON.parse(task.resources) : [],
-      },
-    });
+    return c.json({ task: transformTask(task) });
   }
 
   // Legacy: personal task
@@ -164,15 +155,7 @@ taskRoutes.get('/:id', async (c) => {
     return c.json({ error: 'Task not found' }, 404);
   }
 
-  return c.json({
-    task: {
-      ...task,
-      blocks: JSON.parse(task.blocks),
-      scheduled: task.scheduled ?? false,
-      tags: task.tags ? JSON.parse(task.tags) : [],
-      resources: task.resources ? JSON.parse(task.resources) : [],
-    },
-  });
+  return c.json({ task: transformTask(task) });
 });
 
 // Create task
@@ -243,11 +226,7 @@ taskRoutes.post('/', async (c) => {
   return c.json(
     {
       task: {
-        ...task,
-        blocks: JSON.parse(task.blocks),
-        scheduled: task.scheduled ?? false,
-        tags: task.tags ? JSON.parse(task.tags) : [],
-        resources: task.resources ? JSON.parse(task.resources) : [],
+        ...transformTask(task),
         assigner: toUserObj(assigner),
         assignee: toUserObj(assignee),
       },
@@ -357,17 +336,7 @@ taskRoutes.put('/:id', async (c) => {
     );
 
     return c.json({
-      task: updatedTask
-        ? {
-            ...updatedTask,
-            blocks: JSON.parse(updatedTask.blocks),
-            scheduled: updatedTask.scheduled ?? false,
-            tags: updatedTask.tags ? JSON.parse(updatedTask.tags) : [],
-            resources: updatedTask.resources
-              ? JSON.parse(updatedTask.resources)
-              : [],
-          }
-        : null,
+      task: updatedTask ? transformTask(updatedTask) : null,
     });
   }
 
@@ -397,17 +366,7 @@ taskRoutes.put('/:id', async (c) => {
   const updatedTask = await getTaskById(db, taskId, userId);
 
   return c.json({
-    task: updatedTask
-      ? {
-          ...updatedTask,
-          blocks: JSON.parse(updatedTask.blocks),
-          scheduled: updatedTask.scheduled ?? false,
-          tags: updatedTask.tags ? JSON.parse(updatedTask.tags) : [],
-          resources: updatedTask.resources
-            ? JSON.parse(updatedTask.resources)
-            : [],
-        }
-      : null,
+    task: updatedTask ? transformTask(updatedTask) : null,
   });
 });
 

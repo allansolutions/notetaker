@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import { useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   TaskType,
   TaskStatus,
@@ -126,9 +125,7 @@ export function AddTaskModal({
     estimate !== null;
 
   const isSelectedDateDisabled =
-    isDateDisabled && dueDate
-      ? isDateDisabled(new Date(dueDate))
-      : false;
+    isDateDisabled && dueDate ? isDateDisabled(new Date(dueDate)) : false;
 
   const handleSubmit = () => {
     if (!isValid || isSelectedDateDisabled) return;

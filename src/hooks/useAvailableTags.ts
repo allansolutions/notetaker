@@ -13,13 +13,13 @@ export function useAvailableTags(): string[] {
   return useMemo(() => {
     const tagSet = new Set<string>();
 
-    tasks.forEach((task) => {
-      task.tags?.forEach((tag) => tagSet.add(tag));
-    });
+    for (const task of tasks) {
+      for (const tag of task.tags ?? []) tagSet.add(tag);
+    }
 
-    pages.forEach((page) => {
-      page.tags?.forEach((tag) => tagSet.add(tag));
-    });
+    for (const page of pages) {
+      for (const tag of page.tags ?? []) tagSet.add(tag);
+    }
 
     return Array.from(tagSet).sort((a, b) =>
       a.toLowerCase().localeCompare(b.toLowerCase())

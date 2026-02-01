@@ -473,10 +473,6 @@ export function AppContent() {
     [router]
   );
 
-  const handleContactSaved = useCallback(() => {
-    handleNavigateToCrm();
-  }, [handleNavigateToCrm]);
-
   // Wiki Navigation Handlers
   const handleNavigateToWiki = useCallback(() => {
     setCurrentView('wiki-list');
@@ -1419,7 +1415,7 @@ export function AppContent() {
           <ContactDetailView
             contactId={null}
             onBack={handleNavigateToCrm}
-            onSaved={handleContactSaved}
+            onSaved={handleNavigateToCrm}
           />
         );
       case 'crm-detail':
@@ -1427,7 +1423,7 @@ export function AppContent() {
           <ContactDetailView
             contactId={selectedContactId}
             onBack={handleNavigateToCrm}
-            onSaved={handleContactSaved}
+            onSaved={handleNavigateToCrm}
           />
         );
       case 'wiki-list':
@@ -1439,7 +1435,7 @@ export function AppContent() {
         );
       case 'wiki-page':
         return selectedWikiPageId ? (
-          <WikiPageViewWrapper
+          <WikiPageView
             pageId={selectedWikiPageId}
             onNavigateToPage={handleSelectWikiPage}
             onNavigateToList={handleNavigateToWiki}
@@ -1650,24 +1646,6 @@ function WikiListViewWrapper({
 
   return (
     <WikiListView onSelectPage={onSelectPage} onCreatePage={handleCreatePage} />
-  );
-}
-
-function WikiPageViewWrapper({
-  pageId,
-  onNavigateToPage,
-  onNavigateToList,
-}: {
-  pageId: string;
-  onNavigateToPage: (id: string) => void;
-  onNavigateToList: () => void;
-}) {
-  return (
-    <WikiPageView
-      pageId={pageId}
-      onNavigateToPage={onNavigateToPage}
-      onNavigateToList={onNavigateToList}
-    />
   );
 }
 

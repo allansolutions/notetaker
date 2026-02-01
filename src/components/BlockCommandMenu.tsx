@@ -292,13 +292,6 @@ export function BlockCommandMenu({
     [isSearching, executeCommand]
   );
 
-  const handleSubmenuItemClick = useCallback(
-    (cmd: BlockCommand) => {
-      executeCommand(cmd);
-    },
-    [executeCommand]
-  );
-
   return (
     /* eslint-disable jsx-a11y/no-static-element-interactions -- Keyboard handling delegated to input */
     <div
@@ -366,7 +359,7 @@ export function BlockCommandMenu({
                               ? 'bg-accent-subtle'
                               : 'hover:bg-hover'
                           }`}
-                          onClick={() => handleSubmenuItemClick(subCmd)}
+                          onClick={() => executeCommand(subCmd)}
                           onMouseEnter={() => setSubmenuIndex(subIndex)}
                         >
                           <span className="text-primary">{subCmd.label}</span>

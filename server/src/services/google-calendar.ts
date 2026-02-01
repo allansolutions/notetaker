@@ -103,8 +103,7 @@ export async function getUserProfile(
     throw new Error('Failed to fetch user info');
   }
 
-  const data = (await response.json()) as GoogleUserProfile;
-  return data;
+  return (await response.json()) as GoogleUserProfile;
 }
 
 export async function fetchCalendarEvents(
@@ -144,15 +143,8 @@ export async function fetchCalendarEvents(
   return data.items || [];
 }
 
-/**
- * Check if the current user has declined/rejected this calendar event.
- * Returns true if the user (identified by self: true in attendees) has responseStatus 'declined'.
- */
 export function isDeclinedByUser(event: GoogleCalendarEvent): boolean {
-  if (!event.attendees) {
-    return false;
-  }
-  const selfAttendee = event.attendees.find((a) => a.self === true);
+  const selfAttendee = event.attendees?.find((a) => a.self === true);
   return selfAttendee?.responseStatus === 'declined';
 }
 
