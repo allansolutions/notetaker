@@ -75,7 +75,7 @@ import {
   isOnDate,
   startOfDay,
 } from './utils/date-filters';
-import { getTaskCountsByDate, getTaskTypesByDate } from './utils/date-groups';
+import { getRemainingMinutesByDate } from './utils/date-groups';
 import { highlightSnippet, tokenizeQuery } from './utils/task-search';
 
 // Get initial state from URL before first render
@@ -522,13 +522,8 @@ export function AppContent() {
       .length;
   }, [doneTasks]);
 
-  const taskCountsByDate = useMemo(
-    () => getTaskCountsByDate(activeTasks),
-    [activeTasks]
-  );
-
-  const taskTypesByDate = useMemo(
-    () => getTaskTypesByDate(activeTasks),
+  const remainingMinutesByDate = useMemo(
+    () => getRemainingMinutesByDate(activeTasks),
     [activeTasks]
   );
 
@@ -1471,8 +1466,7 @@ export function AppContent() {
             groupBy={groupBy}
             onGroupByChange={handleGroupByChange}
             onActiveTaskChange={setSpreadsheetActiveTaskId}
-            taskCountsByDate={taskCountsByDate}
-            taskTypesByDate={taskTypesByDate}
+            remainingMinutesByDate={remainingMinutesByDate}
           />
         );
       }

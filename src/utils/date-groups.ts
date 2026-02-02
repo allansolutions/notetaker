@@ -1,7 +1,8 @@
 import { getWeekEnd, getWeekStart, isOnDate, startOfDay } from './date-filters';
+import { computeTimeSpentWithActive } from './task-operations';
 import type { Task } from '../types';
 
-export const MAX_TASKS_PER_DAY = 8;
+export const MAX_MINUTES_PER_DAY = 720;
 
 export type DateGroup =
   | 'past'
@@ -333,105 +334,75 @@ export function toDateKey(date: Date): string {
 }
 
 /**
- * Count active (non-done) tasks per calendar date.
- * Tasks without a dueDate are skipped.
+ * Compute the remaining estimate (minutes) for a single task.
+ * Returns 0 if the task has no estimate.
  */
-export function getTaskCountsByDate(tasks: Task[]): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const task of tasks) {
-    if (task.dueDate === undefined) continue;
-    const key = toDateKey(new Date(task.dueDate));
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return counts;
+function taskRemainingMinutes(task: Task): number {
+  if (task.estimate === undefined) return 0;
+  const spentMs = computeTimeSpentWithActive(task.sessions);
+  const spentMinutes = Math.floor(spentMs / 60000);
+  return Math.max(0, task.estimate - spentMinutes);
 }
 
 /**
- * Check whether a specific date has reached the task limit.
- * `excludeTaskId` allows a task being edited to not count against its own current date.
+ * Sum remaining estimate minutes per calendar date.
+ * Tasks without a dueDate or without an estimate are skipped.
  */
-export function isDateFull(
+export function getRemainingMinutesByDate(tasks: Task[]): Map<string, number> {
+  const minutes = new Map<string, number>();
+  for (const task of tasks) {
+    if (task.dueDate === undefined) continue;
+    const remaining = taskRemainingMinutes(task);
+    if (remaining === 0) continue;
+    const key = toDateKey(new Date(task.dueDate));
+    minutes.set(key, (minutes.get(key) ?? 0) + remaining);
+  }
+  return minutes;
+}
+
+/**
+ * Check whether adding a task with `taskEstimateMinutes` to a specific date
+ * would push remaining estimates past the daily capacity limit.
+ *
+ * Returns false (always allowed) when `taskEstimateMinutes === 0` (no estimate).
+ * `excludeTaskId` allows a task being moved/edited to not count against its current date.
+ */
+export function isDateOverCapacity(
   dateTs: number,
-  counts: Map<string, number>,
+  remainingByDate: Map<string, number>,
+  taskEstimateMinutes: number,
   excludeTaskId?: string,
   tasks?: Task[]
 ): boolean {
+  if (taskEstimateMinutes === 0) return false;
+
   const key = toDateKey(new Date(dateTs));
-  let count = counts.get(key) ?? 0;
+  let current = remainingByDate.get(key) ?? 0;
 
   if (excludeTaskId && tasks) {
     const task = tasks.find((t) => t.id === excludeTaskId);
     if (task?.dueDate !== undefined) {
       const taskKey = toDateKey(new Date(task.dueDate));
       if (taskKey === key) {
-        count = Math.max(0, count - 1);
+        current = Math.max(0, current - taskRemainingMinutes(task));
       }
     }
   }
 
-  return count >= MAX_TASKS_PER_DAY;
+  return current + taskEstimateMinutes > MAX_MINUTES_PER_DAY;
 }
 
 /**
- * Check whether a date group is full.
+ * Check whether adding a task to a date group would exceed daily capacity.
  * Returns false for multi-date groups (past, future, no-date).
  */
-export function isGroupFull(
+export function isGroupOverCapacity(
   group: DateGroup,
-  counts: Map<string, number>,
+  remainingByDate: Map<string, number>,
+  taskEstimateMinutes: number,
   now?: Date
 ): boolean {
   const dateTs = getDateForGroup(group, now);
   if (dateTs === undefined) return false;
-  return isDateFull(dateTs, counts);
-}
-
-/**
- * Collect unique task types per calendar date.
- * Tasks without a dueDate are skipped.
- */
-export function getTaskTypesByDate(tasks: Task[]): Map<string, Set<string>> {
-  const typesByDate = new Map<string, Set<string>>();
-  for (const task of tasks) {
-    if (task.dueDate === undefined) continue;
-    const key = toDateKey(new Date(task.dueDate));
-    const existing = typesByDate.get(key);
-    if (existing) {
-      existing.add(task.type);
-    } else {
-      typesByDate.set(key, new Set([task.type]));
-    }
-  }
-  return typesByDate;
-}
-
-/**
- * Get the count of unique task types for a date group.
- * Returns 0 for multi-date groups (past, future, no-date).
- */
-export function getGroupTypeCount(
-  group: DateGroup,
-  typesByDate: Map<string, Set<string>>,
-  now?: Date
-): number {
-  const dateTs = getDateForGroup(group, now);
-  if (dateTs === undefined) return 0;
-  const key = toDateKey(new Date(dateTs));
-  return typesByDate.get(key)?.size ?? 0;
-}
-
-/**
- * Check if a task type already exists in a date group.
- * Returns false for multi-date groups (past, future, no-date).
- */
-export function isTypeInGroup(
-  taskType: string,
-  group: DateGroup,
-  typesByDate: Map<string, Set<string>>,
-  now?: Date
-): boolean {
-  const dateTs = getDateForGroup(group, now);
-  if (dateTs === undefined) return false;
-  const key = toDateKey(new Date(dateTs));
-  return typesByDate.get(key)?.has(taskType) ?? false;
+  return isDateOverCapacity(dateTs, remainingByDate, taskEstimateMinutes);
 }

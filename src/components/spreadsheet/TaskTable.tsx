@@ -49,11 +49,9 @@ import {
   getDateGroup,
   getGroupLabel,
   getGroupOrder,
-  isDateFull,
-  isGroupFull,
-  getGroupTypeCount,
-  isTypeInGroup,
-  MAX_TASKS_PER_DAY,
+  isDateOverCapacity,
+  isGroupOverCapacity,
+  MAX_MINUTES_PER_DAY,
 } from '../../utils/date-groups';
 import {
   matchesMultiselect,
@@ -183,10 +181,8 @@ interface TaskTableProps {
   onGroupByChange?: (groupBy: GroupByMode) => void;
   // Active row callback for command palette integration
   onActiveTaskChange?: (taskId: string | null) => void;
-  // Task counts per date for enforcing daily limit
-  taskCountsByDate?: Map<string, number>;
-  // Task types per date for warning when multiple types exist
-  taskTypesByDate?: Map<string, Set<string>>;
+  // Remaining estimate minutes per date for enforcing daily capacity limit
+  remainingMinutesByDate?: Map<string, number>;
   // Archive mode - changes group header labels and date group ordering
   isArchive?: boolean;
   // Default sorting state (e.g., date descending for archive)
@@ -490,7 +486,7 @@ function emitTodaySubgroups(
   }
 }
 
-type DragOverState = 'none' | 'full' | 'type-warning';
+type DragOverState = 'none' | 'full';
 
 function GroupHeaderRow({
   label,
@@ -499,7 +495,6 @@ function GroupHeaderRow({
   taskCount,
   completedCount,
   dragOverState,
-  typeCount,
   isArchive,
   onClick,
   isSelected,
@@ -510,7 +505,6 @@ function GroupHeaderRow({
   taskCount: number;
   completedCount: number;
   dragOverState?: DragOverState;
-  typeCount?: number;
   isArchive?: boolean;
   onClick?: () => void;
   isSelected?: boolean;
@@ -584,40 +578,8 @@ function GroupHeaderRow({
                   Cannot drop here
                 </p>
                 <p className="text-xs text-red-500/80 dark:text-red-400/80">
-                  Maximum {MAX_TASKS_PER_DAY} pending tasks already allocated
-                  for this date
-                </p>
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-      {dragOverState === 'type-warning' && (
-        <tr className="drag-overlay-row">
-          <td colSpan={columnCount + 2} className="p-0">
-            <div className="bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 rounded-lg mx-2 mb-2 px-4 py-3 flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                <svg
-                  className="w-4 h-4 text-amber-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                  Multiple task types
-                </p>
-                <p className="text-xs text-amber-500/80 dark:text-amber-400/80">
-                  This date already contains {typeCount} task types. Drop to add
-                  another (you'll be asked to confirm).
+                  Daily capacity exceeded &mdash; more than{' '}
+                  {MAX_MINUTES_PER_DAY / 60} hours of estimates for this date
                 </p>
               </div>
             </div>
@@ -636,12 +598,14 @@ function SubgroupHeaderRow({
   taskEstimateMinutes,
   periodMinutesLeft,
   subgroup,
+  dragOverFull,
 }: {
   label: string;
   columnCount: number;
   taskEstimateMinutes: number;
   periodMinutesLeft: number;
   subgroup: TimeOfDay;
+  dragOverFull?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `${SUBHEADER_PREFIX}${subgroup}`,
@@ -649,32 +613,45 @@ function SubgroupHeaderRow({
   const overTime =
     taskEstimateMinutes > periodMinutesLeft && periodMinutesLeft > 0;
 
+  let bgClass = '';
+  if (dragOverFull) bgClass = 'bg-red-500/10';
+  else if (isOver) bgClass = 'bg-accent/10';
+
+  let labelClass = 'text-muted/80';
+  if (dragOverFull) labelClass = 'text-red-500';
+  else if (isOver) labelClass = 'text-accent';
+
   return (
     <tr
       ref={setNodeRef}
-      className={`subgroup-header-row transition-colors ${isOver ? 'bg-accent/10' : ''}`}
+      className={`subgroup-header-row transition-colors ${bgClass}`}
     >
       <td colSpan={columnCount + 2} className="pt-3 pb-1 px-2 pl-6">
         <span className="text-[0.65rem] font-medium uppercase tracking-wider inline-flex items-baseline gap-3">
-          <span className={isOver ? 'text-accent' : 'text-muted/80'}>
-            {label}
-          </span>
-          {(taskEstimateMinutes > 0 || periodMinutesLeft > 0) && (
-            <span className="tabular-nums">
-              {taskEstimateMinutes > 0 && (
-                <span className={overTime ? 'text-red-500' : 'text-muted/60'}>
-                  {formatMinutes(taskEstimateMinutes)}
-                </span>
-              )}
-              {taskEstimateMinutes > 0 && periodMinutesLeft > 0 && (
-                <span className="text-muted/40"> / </span>
-              )}
-              {periodMinutesLeft > 0 && (
-                <span className="text-muted/60">
-                  {formatMinutes(periodMinutesLeft)} left
-                </span>
-              )}
+          <span className={labelClass}>{label}</span>
+          {dragOverFull ? (
+            <span className="text-red-500 text-[0.6rem]">
+              Cannot drop &mdash; only {formatMinutes(periodMinutesLeft)}{' '}
+              remaining
             </span>
+          ) : (
+            (taskEstimateMinutes > 0 || periodMinutesLeft > 0) && (
+              <span className="tabular-nums">
+                {taskEstimateMinutes > 0 && (
+                  <span className={overTime ? 'text-red-500' : 'text-muted/60'}>
+                    {formatMinutes(taskEstimateMinutes)}
+                  </span>
+                )}
+                {taskEstimateMinutes > 0 && periodMinutesLeft > 0 && (
+                  <span className="text-muted/40"> / </span>
+                )}
+                {periodMinutesLeft > 0 && (
+                  <span className="text-muted/60">
+                    {formatMinutes(periodMinutesLeft)} left
+                  </span>
+                )}
+              </span>
+            )
           )}
         </span>
       </td>
@@ -764,8 +741,7 @@ export function TaskTable({
   groupBy = 'none',
   onGroupByChange,
   onActiveTaskChange,
-  taskCountsByDate,
-  taskTypesByDate,
+  remainingMinutesByDate,
   isArchive = false,
   defaultSorting,
 }: TaskTableProps) {
@@ -783,16 +759,8 @@ export function TaskTable({
   const [dragOverFullGroup, setDragOverFullGroup] = useState<string | null>(
     null
   );
-  const [dragOverTypeWarning, setDragOverTypeWarning] = useState<{
-    group: string;
-    typeCount: number;
-  } | null>(null);
-  const [pendingDropConfirmation, setPendingDropConfirmation] = useState<{
-    activeId: string;
-    overId: string;
-    targetGroup: string;
-    newDate: number;
-  } | null>(null);
+  const [dragOverFullSubgroup, setDragOverFullSubgroup] =
+    useState<TimeOfDay | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -1067,6 +1035,36 @@ export function TaskTable({
     };
   }, [displayedRowData]);
 
+  // Helper: remaining estimate minutes for a single task (0 if no estimate)
+  const getTaskRemainingMinutes = useCallback((task: Task): number => {
+    if (task.estimate === undefined) return 0;
+    const spentMs = computeTimeSpentWithActive(task.sessions);
+    const spentMinutes = Math.floor(spentMs / 60000);
+    return Math.max(0, task.estimate - spentMinutes);
+  }, []);
+
+  // Precompute remaining estimates per today subgroup
+  const subgroupEstimates = useMemo(() => {
+    const estimates = new Map<TimeOfDay, number>();
+    for (const row of displayedRowData) {
+      if (
+        row.type === 'task' &&
+        row.group === 'today' &&
+        row.subgroup &&
+        row.subgroup !== 'unassigned'
+      ) {
+        const remaining = getTaskRemainingMinutes(row.task);
+        if (remaining > 0) {
+          estimates.set(
+            row.subgroup,
+            (estimates.get(row.subgroup) ?? 0) + remaining
+          );
+        }
+      }
+    }
+    return estimates;
+  }, [displayedRowData, getTaskRemainingMinutes]);
+
   const columns = useMemo(
     () => [
       columnHelper.accessor('type', {
@@ -1187,11 +1185,12 @@ export function TaskTable({
               onUpdateTask(row.original.id, { dueDate: date })
             }
             isDateDisabled={
-              taskCountsByDate
+              remainingMinutesByDate
                 ? (date: Date) =>
-                    isDateFull(
+                    isDateOverCapacity(
                       date.getTime(),
-                      taskCountsByDate,
+                      remainingMinutesByDate,
+                      getTaskRemainingMinutes(row.original),
                       row.original.id,
                       tasks
                     )
@@ -1207,7 +1206,14 @@ export function TaskTable({
         },
       }),
     ],
-    [onUpdateTask, onSelectTask, handleStatusChange, taskCountsByDate, tasks]
+    [
+      onUpdateTask,
+      onSelectTask,
+      handleStatusChange,
+      remainingMinutesByDate,
+      getTaskRemainingMinutes,
+      tasks,
+    ]
   );
 
   const table = useReactTable({
@@ -1280,21 +1286,72 @@ export function TaskTable({
     [taskSubgroupMap, onUpdateTask]
   );
 
+  // Check if a task would exceed a subgroup's remaining period time.
+  // `excludeSelf` subtracts the task's own minutes when it's already in that period.
+  const isSubgroupOverCapacity = useCallback(
+    (period: TimeOfDay, taskMinutes: number, excludeSelf: boolean): boolean => {
+      if (taskMinutes === 0) return false;
+      const now = new Date();
+      const periodLeft = getPeriodMinutesLeft(period, now);
+      if (periodLeft <= 0) return false;
+      const current = subgroupEstimates.get(period) ?? 0;
+      const adjusted = excludeSelf ? current - taskMinutes : current;
+      return adjusted + taskMinutes > periodLeft;
+    },
+    [subgroupEstimates]
+  );
+
+  // Sync subgroup for keyboard moves, skipping if target subgroup is over capacity.
+  const syncSubgroupWithCapacity = useCallback(
+    (activeTaskId: string, targetTaskId: string) => {
+      const activeSubgroup = taskSubgroupMap.get(activeTaskId);
+      const targetSubgroup = taskSubgroupMap.get(targetTaskId);
+      if (
+        targetSubgroup &&
+        targetSubgroup !== 'unassigned' &&
+        activeSubgroup !== targetSubgroup
+      ) {
+        const task = tasks.find((t) => t.id === activeTaskId);
+        const taskMinutes = task ? getTaskRemainingMinutes(task) : 0;
+        if (isSubgroupOverCapacity(targetSubgroup, taskMinutes, false)) {
+          return; // Skip subgroup sync — over capacity
+        }
+      }
+      syncSubgroup(activeTaskId, targetTaskId);
+    },
+    [
+      taskSubgroupMap,
+      syncSubgroup,
+      isSubgroupOverCapacity,
+      tasks,
+      getTaskRemainingMinutes,
+    ]
+  );
+
   const handleCrossGroupMove = useCallback(
     (activeTaskId: string, targetTaskId: string): boolean => {
       const activeGroup = taskGroupMap.get(activeTaskId);
       const targetGroup = taskGroupMap.get(targetTaskId);
 
       if (!activeGroup || !targetGroup || activeGroup === targetGroup) {
-        if (activeGroup === 'today') syncSubgroup(activeTaskId, targetTaskId);
+        if (activeGroup === 'today') {
+          syncSubgroupWithCapacity(activeTaskId, targetTaskId);
+        }
         return true;
       }
 
-      if (
-        taskCountsByDate &&
-        isGroupFull(targetGroup as DateGroup, taskCountsByDate)
-      ) {
-        return false;
+      if (remainingMinutesByDate) {
+        const task = tasks.find((t) => t.id === activeTaskId);
+        const taskMinutes = task ? getTaskRemainingMinutes(task) : 0;
+        if (
+          isGroupOverCapacity(
+            targetGroup as DateGroup,
+            remainingMinutesByDate,
+            taskMinutes
+          )
+        ) {
+          return false;
+        }
       }
 
       const newDate = getDateForGroup(targetGroup as DateGroup);
@@ -1303,7 +1360,14 @@ export function TaskTable({
       onUpdateTask(activeTaskId, { dueDate: newDate });
       return true;
     },
-    [taskGroupMap, syncSubgroup, taskCountsByDate, onUpdateTask]
+    [
+      taskGroupMap,
+      syncSubgroupWithCapacity,
+      remainingMinutesByDate,
+      tasks,
+      getTaskRemainingMinutes,
+      onUpdateTask,
+    ]
   );
 
   const handleMoveRow = useCallback(
@@ -1464,84 +1528,97 @@ export function TaskTable({
     })
   );
 
-  // Check if moving a task to a group would add a new type (returns typeCount if warning needed, 0 otherwise)
-  const getTypeWarningCount = (taskId: string, group: DateGroup): number => {
-    if (!taskTypesByDate) return 0;
-    const typeCount = getGroupTypeCount(group, taskTypesByDate);
-    if (typeCount < 2) return 0;
-    const task = tasks.find((t) => t.id === taskId);
-    if (task && isTypeInGroup(task.type, group, taskTypesByDate)) return 0;
-    return typeCount;
-  };
-
   const handleDragOver = (event: DragOverEvent) => {
-    if (groupBy !== 'date' || !taskCountsByDate) {
+    if (groupBy !== 'date' || !remainingMinutesByDate) {
       setDragOverFullGroup(null);
-      setDragOverTypeWarning(null);
+      setDragOverFullSubgroup(null);
       return;
     }
 
     const { active, over } = event;
     if (!over) {
       setDragOverFullGroup(null);
-      setDragOverTypeWarning(null);
+      setDragOverFullSubgroup(null);
       return;
     }
 
     const activeId = String(active.id);
     const overId = String(over.id);
     const activeGroup = taskGroupMap.get(activeId);
+    const task = tasks.find((t) => t.id === activeId);
+    const taskMinutes = task ? getTaskRemainingMinutes(task) : 0;
+
+    // Check subgroup capacity for today subheader drops
+    if (overId.startsWith(SUBHEADER_PREFIX)) {
+      const period = overId.slice(SUBHEADER_PREFIX.length) as TimeOfDay;
+      const alreadyInPeriod = taskSubgroupMap.get(activeId) === period;
+      const overCapacity = isSubgroupOverCapacity(
+        period,
+        taskMinutes,
+        alreadyInPeriod
+      );
+      setDragOverFullSubgroup(overCapacity ? period : null);
+      setDragOverFullGroup(null);
+      return;
+    }
+
     const overGroup = taskGroupMap.get(overId);
 
     if (activeGroup && overGroup && activeGroup !== overGroup) {
-      // Check if target group is full
-      if (isGroupFull(overGroup as DateGroup, taskCountsByDate)) {
+      if (
+        isGroupOverCapacity(
+          overGroup as DateGroup,
+          remainingMinutesByDate,
+          taskMinutes
+        )
+      ) {
         setDragOverFullGroup(overGroup);
-        setDragOverTypeWarning(null);
+        setDragOverFullSubgroup(null);
         return;
       }
+    }
 
-      // Check if target group has 2+ task types and dragged task would add a new type
-      const typeCount = getTypeWarningCount(activeId, overGroup as DateGroup);
-      if (typeCount > 0) {
-        setDragOverTypeWarning({ group: overGroup, typeCount });
+    // Check subgroup capacity when hovering over a task in a different today subgroup
+    if (activeGroup === 'today' && overGroup === 'today') {
+      const overSubgroup = taskSubgroupMap.get(overId);
+      if (
+        overSubgroup &&
+        overSubgroup !== 'unassigned' &&
+        taskSubgroupMap.get(activeId) !== overSubgroup &&
+        isSubgroupOverCapacity(overSubgroup, taskMinutes, false)
+      ) {
+        setDragOverFullSubgroup(overSubgroup);
         setDragOverFullGroup(null);
         return;
       }
     }
+
     setDragOverFullGroup(null);
-    setDragOverTypeWarning(null);
+    setDragOverFullSubgroup(null);
   };
 
   // Returns true if cross-group drop should proceed, false to reject
   const handleCrossGroupDrop = (
     activeId: string,
-    overId: string,
+    _overId: string,
     overGroup: string
   ): boolean => {
-    // Enforce daily task limit
-    if (
-      taskCountsByDate &&
-      isGroupFull(overGroup as DateGroup, taskCountsByDate)
-    ) {
-      return false;
+    if (remainingMinutesByDate) {
+      const task = tasks.find((t) => t.id === activeId);
+      const taskMinutes = task ? getTaskRemainingMinutes(task) : 0;
+      if (
+        isGroupOverCapacity(
+          overGroup as DateGroup,
+          remainingMinutesByDate,
+          taskMinutes
+        )
+      ) {
+        return false;
+      }
     }
 
     const newDate = getDateForGroup(overGroup as DateGroup);
     if (newDate === undefined) {
-      // past/future/no-date groups - reject drop
-      return false;
-    }
-
-    // Check if target group has 2+ task types - show confirmation only if adding a new type
-    const typeCount = getTypeWarningCount(activeId, overGroup as DateGroup);
-    if (typeCount > 0) {
-      setPendingDropConfirmation({
-        activeId,
-        overId,
-        targetGroup: overGroup,
-        newDate,
-      });
       return false;
     }
 
@@ -1549,23 +1626,55 @@ export function TaskTable({
     return true;
   };
 
+  // Handle drop onto a period subheader. Returns true if handled (caller should stop).
+  const handleSubheaderDrop = (activeId: string, overId: string): boolean => {
+    if (!overId.startsWith(SUBHEADER_PREFIX)) return false;
+    const period = overId.slice(SUBHEADER_PREFIX.length) as TimeOfDay;
+    const task = tasks.find((t) => t.id === activeId);
+    const taskMinutes = task ? getTaskRemainingMinutes(task) : 0;
+    const alreadyInPeriod = taskSubgroupMap.get(activeId) === period;
+    if (isSubgroupOverCapacity(period, taskMinutes, alreadyInPeriod))
+      return true;
+    onUpdateTask(activeId, { timeOfDay: period });
+    return true;
+  };
+
+  // Sync subgroup for within-today moves, respecting capacity.
+  // Returns true if the drop should be rejected entirely.
+  const handleTodaySubgroupDrop = (
+    activeId: string,
+    overId: string
+  ): boolean => {
+    const activeSubgroup = taskSubgroupMap.get(activeId);
+    const overSubgroup = taskSubgroupMap.get(overId);
+    const needsChange =
+      overSubgroup &&
+      overSubgroup !== 'unassigned' &&
+      activeSubgroup !== overSubgroup;
+    if (!needsChange) {
+      syncSubgroup(activeId, overId);
+      return false;
+    }
+    const task = tasks.find((t) => t.id === activeId);
+    const taskMinutes = task ? getTaskRemainingMinutes(task) : 0;
+    if (isSubgroupOverCapacity(overSubgroup, taskMinutes, false)) {
+      return true; // Reject — target subgroup over capacity
+    }
+    syncSubgroup(activeId, overId);
+    return false;
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     setDragOverFullGroup(null);
-    setDragOverTypeWarning(null);
+    setDragOverFullSubgroup(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // Handle drop onto a subheader (empty period target)
-    if (overId.startsWith(SUBHEADER_PREFIX)) {
-      const period = overId.slice(SUBHEADER_PREFIX.length) as TimeOfDay;
-      onUpdateTask(activeId, { timeOfDay: period });
-      return;
-    }
+    if (handleSubheaderDrop(activeId, overId)) return;
 
-    // When grouping by date, validate cross-group drops
     if (groupBy === 'date') {
       const activeGroup = taskGroupMap.get(activeId);
       const overGroup = taskGroupMap.get(overId);
@@ -1574,28 +1683,13 @@ export function TaskTable({
         if (!handleCrossGroupDrop(activeId, overId, overGroup)) return;
       }
 
-      // Handle subgroup changes within the today group
       if (activeGroup === 'today' && overGroup === 'today') {
-        syncSubgroup(activeId, overId);
+        if (handleTodaySubgroupDrop(activeId, overId)) return;
       }
     }
 
     setSorting([]);
     onReorder(activeId, overId);
-  };
-
-  const handleConfirmDrop = () => {
-    if (!pendingDropConfirmation) return;
-    const { activeId, overId, newDate } = pendingDropConfirmation;
-
-    onUpdateTask(activeId, { dueDate: newDate });
-    setSorting([]);
-    onReorder(activeId, overId);
-    setPendingDropConfirmation(null);
-  };
-
-  const handleCancelDrop = () => {
-    setPendingDropConfirmation(null);
   };
 
   const handleAddTask = (data: AddTaskData) => {
@@ -1696,13 +1790,8 @@ export function TaskTable({
               {groupBy !== 'none'
                 ? displayedRowData.map((rowData) => {
                     if (rowData.type === 'header') {
-                      // Determine drag-over state for this group
-                      let dragOverState: DragOverState = 'none';
-                      if (dragOverFullGroup === rowData.group) {
-                        dragOverState = 'full';
-                      } else if (dragOverTypeWarning?.group === rowData.group) {
-                        dragOverState = 'type-warning';
-                      }
+                      const dragOverState: DragOverState =
+                        dragOverFullGroup === rowData.group ? 'full' : 'none';
 
                       return (
                         <GroupHeaderRow
@@ -1713,7 +1802,6 @@ export function TaskTable({
                           taskCount={rowData.taskCount}
                           completedCount={rowData.completedCount}
                           dragOverState={dragOverState}
-                          typeCount={dragOverTypeWarning?.typeCount}
                           isArchive={isArchive}
                           onClick={() =>
                             setSelectedGroup(
@@ -1736,6 +1824,9 @@ export function TaskTable({
                           taskEstimateMinutes={rowData.taskEstimateMinutes}
                           periodMinutesLeft={rowData.periodMinutesLeft}
                           subgroup={rowData.subgroup}
+                          dragOverFull={
+                            dragOverFullSubgroup === rowData.subgroup
+                          }
                         />
                       );
                     }
@@ -1791,11 +1882,6 @@ export function TaskTable({
         <AddTaskModal
           onSubmit={handleAddTask}
           onClose={() => setShowAddModal(false)}
-          isDateDisabled={
-            taskCountsByDate
-              ? (date: Date) => isDateFull(date.getTime(), taskCountsByDate)
-              : undefined
-          }
         />
       )}
 
@@ -1806,11 +1892,12 @@ export function TaskTable({
           editTask={editingTask}
           onEditSubmit={handleEditTask}
           isDateDisabled={
-            taskCountsByDate
+            remainingMinutesByDate
               ? (date: Date) =>
-                  isDateFull(
+                  isDateOverCapacity(
                     date.getTime(),
-                    taskCountsByDate,
+                    remainingMinutesByDate,
+                    getTaskRemainingMinutes(editingTask),
                     editingTask.id,
                     tasks
                   )
@@ -1824,45 +1911,6 @@ export function TaskTable({
           onSubmit={handleBlockedReasonSubmit}
           onCancel={handleBlockedReasonCancel}
         />
-      )}
-
-      {pendingDropConfirmation && (
-        <div
-          role="presentation"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-        >
-          <dialog
-            open
-            className="bg-surface border border-border rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden"
-            onClose={handleCancelDrop}
-          >
-            <div className="px-6 py-4 border-b border-border">
-              <h2 className="text-lg font-semibold">Confirm Move</h2>
-            </div>
-            <div className="px-6 py-4">
-              <p className="text-sm text-muted">
-                This date already contains multiple task types. Are you sure you
-                want to add another task here?
-              </p>
-            </div>
-            <div className="px-6 py-4 bg-hover/50 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={handleCancelDrop}
-                className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDrop}
-                className="px-4 py-2 text-sm font-medium bg-accent text-white rounded-md hover:bg-accent/90 transition-colors"
-              >
-                Move Task
-              </button>
-            </div>
-          </dialog>
-        </div>
       )}
     </div>
   );
