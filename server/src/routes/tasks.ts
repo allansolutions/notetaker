@@ -26,6 +26,7 @@ import {
   verifyTaskOwnership,
 } from '../services/time-sessions';
 import { logDateChange } from '../services/task-date-changes';
+import type { Database } from '../db';
 
 function transformTask<
   T extends {
@@ -42,6 +43,31 @@ function transformTask<
     tags: task.tags ? JSON.parse(task.tags) : [],
     resources: task.resources ? JSON.parse(task.resources) : [],
   };
+}
+
+/** Verify team membership and return the user's role, or null if unauthorized. */
+async function verifyTeamAccess(db: Database, teamId: string, userId: string) {
+  const isMember = await isTeamMember(db, teamId, userId);
+  if (!isMember) return null;
+  return getUserRole(db, teamId, userId);
+}
+
+/** Log a due date change if the date actually changed and both old/new are non-null. */
+async function logDateChangeIfNeeded(
+  db: Database,
+  taskId: string,
+  userId: string,
+  oldDueDate: number | null | undefined,
+  newDueDate: number | null | undefined
+) {
+  if (
+    newDueDate !== undefined &&
+    oldDueDate != null &&
+    newDueDate != null &&
+    oldDueDate !== newDueDate
+  ) {
+    await logDateChange(db, { taskId, userId, oldDueDate, newDueDate });
+  }
 }
 
 export const taskRoutes = new Hono<{
@@ -66,16 +92,8 @@ taskRoutes.get('/', async (c) => {
   const assignerIds = c.req.queries('assignerId');
 
   if (teamId) {
-    // Team-based query with visibility rules
-    const isMember = await isTeamMember(db, teamId, userId);
-    if (!isMember) {
-      return c.json({ error: 'Team not found' }, 404);
-    }
-
-    const userRole = await getUserRole(db, teamId, userId);
-    if (!userRole) {
-      return c.json({ error: 'Team not found' }, 404);
-    }
+    const userRole = await verifyTeamAccess(db, teamId, userId);
+    if (!userRole) return c.json({ error: 'Team not found' }, 404);
 
     const teamTasks = await getTasksByTeam(db, userId, userRole, {
       teamId,
@@ -86,9 +104,7 @@ taskRoutes.get('/', async (c) => {
     return c.json({ tasks: teamTasks.map(transformTask) });
   }
 
-  // Legacy: personal tasks (no team)
   const tasks = await getTasksByUserId(db, userId);
-
   return c.json({ tasks: tasks.map(transformTask) });
 });
 
@@ -123,16 +139,8 @@ taskRoutes.get('/:id', async (c) => {
   const db = c.get('db');
 
   if (teamId) {
-    // Team-based query with visibility rules
-    const isMember = await isTeamMember(db, teamId, userId);
-    if (!isMember) {
-      return c.json({ error: 'Team not found' }, 404);
-    }
-
-    const userRole = await getUserRole(db, teamId, userId);
-    if (!userRole) {
-      return c.json({ error: 'Team not found' }, 404);
-    }
+    const userRole = await verifyTeamAccess(db, teamId, userId);
+    if (!userRole) return c.json({ error: 'Team not found' }, 404);
 
     const task = await getTaskByIdWithTeam(
       db,
@@ -141,19 +149,13 @@ taskRoutes.get('/:id', async (c) => {
       userRole,
       teamId
     );
-    if (!task) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
+    if (!task) return c.json({ error: 'Task not found' }, 404);
 
     return c.json({ task: transformTask(task) });
   }
 
-  // Legacy: personal task
   const task = await getTaskById(db, taskId, userId);
-
-  if (!task) {
-    return c.json({ error: 'Task not found' }, 404);
-  }
+  if (!task) return c.json({ error: 'Task not found' }, 404);
 
   return c.json({ task: transformTask(task) });
 });
@@ -168,24 +170,19 @@ taskRoutes.post('/', async (c) => {
   const body = await c.req.json();
   const db = c.get('db');
 
-  // If teamId is provided, verify membership and get order index for team
   let maxOrder: number;
   if (body.teamId) {
-    const isMember = await isTeamMember(db, body.teamId, userId);
-    if (!isMember) {
-      return c.json({ error: 'Team not found' }, 404);
-    }
+    const teamRole = await verifyTeamAccess(db, body.teamId, userId);
+    if (!teamRole) return c.json({ error: 'Team not found' }, 404);
 
-    // If assigneeId is provided, verify they are a team member
     if (body.assigneeId) {
       const isAssigneeMember = await isTeamMember(
         db,
         body.teamId,
         body.assigneeId
       );
-      if (!isAssigneeMember) {
+      if (!isAssigneeMember)
         return c.json({ error: 'Assignee is not a team member' }, 400);
-      }
     }
 
     maxOrder = await getMaxOrderIndexForTeam(db, body.teamId);
@@ -247,49 +244,45 @@ taskRoutes.put('/:id', async (c) => {
   const body = await c.req.json();
   const db = c.get('db');
 
-  const updateData: Record<string, unknown> = {};
+  // Fields that require JSON serialization
+  const jsonFields = { blocks: true, tags: true, resources: true } as const;
+  const allowedFields = [
+    'type',
+    'title',
+    'status',
+    'importance',
+    'blocks',
+    'scheduled',
+    'startTime',
+    'duration',
+    'estimate',
+    'dueDate',
+    'blockedReason',
+    'tags',
+    'resources',
+    'timeOfDay',
+    'orderIndex',
+    'assigneeId',
+  ] as const;
 
-  if (body.type !== undefined) updateData.type = body.type;
-  if (body.title !== undefined) updateData.title = body.title;
-  if (body.status !== undefined) updateData.status = body.status;
-  if (body.importance !== undefined) updateData.importance = body.importance;
-  if (body.blocks !== undefined)
-    updateData.blocks = JSON.stringify(body.blocks);
-  if (body.scheduled !== undefined) updateData.scheduled = body.scheduled;
-  if (body.startTime !== undefined) updateData.startTime = body.startTime;
-  if (body.duration !== undefined) updateData.duration = body.duration;
-  if (body.estimate !== undefined) updateData.estimate = body.estimate;
-  if (body.dueDate !== undefined) updateData.dueDate = body.dueDate;
-  if (body.blockedReason !== undefined)
-    updateData.blockedReason = body.blockedReason;
-  if (body.tags !== undefined) updateData.tags = JSON.stringify(body.tags);
-  if (body.resources !== undefined)
-    updateData.resources = JSON.stringify(body.resources);
-  if (body.timeOfDay !== undefined) updateData.timeOfDay = body.timeOfDay;
-  if (body.orderIndex !== undefined) updateData.orderIndex = body.orderIndex;
-  if (body.assigneeId !== undefined) updateData.assigneeId = body.assigneeId;
+  const updateData: Record<string, unknown> = {};
+  for (const field of allowedFields) {
+    if (body[field] !== undefined) {
+      updateData[field] =
+        field in jsonFields ? JSON.stringify(body[field]) : body[field];
+    }
+  }
 
   if (teamId) {
-    // Team-based update with visibility rules
-    const isMember = await isTeamMember(db, teamId, userId);
-    if (!isMember) {
-      return c.json({ error: 'Team not found' }, 404);
-    }
+    const userRole = await verifyTeamAccess(db, teamId, userId);
+    if (!userRole) return c.json({ error: 'Team not found' }, 404);
 
-    const userRole = await getUserRole(db, teamId, userId);
-    if (!userRole) {
-      return c.json({ error: 'Team not found' }, 404);
-    }
-
-    // If updating assigneeId, verify they are a team member
     if (body.assigneeId) {
       const isAssigneeMember = await isTeamMember(db, teamId, body.assigneeId);
-      if (!isAssigneeMember) {
+      if (!isAssigneeMember)
         return c.json({ error: 'Assignee is not a team member' }, 400);
-      }
     }
 
-    // Fetch existing task to detect due date changes
     const existingTeamTask = await getTaskByIdWithTeam(
       db,
       taskId,
@@ -297,7 +290,6 @@ taskRoutes.put('/:id', async (c) => {
       userRole,
       teamId
     );
-
     const success = await updateTaskWithTeam(
       db,
       taskId,
@@ -306,26 +298,15 @@ taskRoutes.put('/:id', async (c) => {
       teamId,
       updateData
     );
+    if (!success) return c.json({ error: 'Task not found' }, 404);
 
-    if (!success) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
-
-    // Log date change if dueDate was modified and both old/new are non-null
-    if (
-      existingTeamTask &&
-      body.dueDate !== undefined &&
-      existingTeamTask.dueDate != null &&
-      body.dueDate != null &&
-      existingTeamTask.dueDate !== body.dueDate
-    ) {
-      await logDateChange(db, {
-        taskId,
-        userId,
-        oldDueDate: existingTeamTask.dueDate,
-        newDueDate: body.dueDate,
-      });
-    }
+    await logDateChangeIfNeeded(
+      db,
+      taskId,
+      userId,
+      existingTeamTask?.dueDate,
+      body.dueDate
+    );
 
     const updatedTask = await getTaskByIdWithTeam(
       db,
@@ -334,40 +315,23 @@ taskRoutes.put('/:id', async (c) => {
       userRole,
       teamId
     );
-
-    return c.json({
-      task: updatedTask ? transformTask(updatedTask) : null,
-    });
+    return c.json({ task: updatedTask ? transformTask(updatedTask) : null });
   }
 
-  // Legacy: personal task
   const existingTask = await getTaskById(db, taskId, userId);
-  if (!existingTask) {
-    return c.json({ error: 'Task not found' }, 404);
-  }
+  if (!existingTask) return c.json({ error: 'Task not found' }, 404);
 
   await updateTask(db, taskId, userId, updateData);
-
-  // Log date change if dueDate was modified and both old/new are non-null
-  if (
-    body.dueDate !== undefined &&
-    existingTask.dueDate != null &&
-    body.dueDate != null &&
-    existingTask.dueDate !== body.dueDate
-  ) {
-    await logDateChange(db, {
-      taskId,
-      userId,
-      oldDueDate: existingTask.dueDate,
-      newDueDate: body.dueDate,
-    });
-  }
+  await logDateChangeIfNeeded(
+    db,
+    taskId,
+    userId,
+    existingTask.dueDate,
+    body.dueDate
+  );
 
   const updatedTask = await getTaskById(db, taskId, userId);
-
-  return c.json({
-    task: updatedTask ? transformTask(updatedTask) : null,
-  });
+  return c.json({ task: updatedTask ? transformTask(updatedTask) : null });
 });
 
 // Delete task
@@ -382,16 +346,8 @@ taskRoutes.delete('/:id', async (c) => {
   const db = c.get('db');
 
   if (teamId) {
-    // Team-based delete with visibility rules
-    const isMember = await isTeamMember(db, teamId, userId);
-    if (!isMember) {
-      return c.json({ error: 'Team not found' }, 404);
-    }
-
-    const userRole = await getUserRole(db, teamId, userId);
-    if (!userRole) {
-      return c.json({ error: 'Team not found' }, 404);
-    }
+    const userRole = await verifyTeamAccess(db, teamId, userId);
+    if (!userRole) return c.json({ error: 'Team not found' }, 404);
 
     const success = await deleteTaskWithTeam(
       db,
@@ -400,22 +356,15 @@ taskRoutes.delete('/:id', async (c) => {
       userRole,
       teamId
     );
-
-    if (!success) {
-      return c.json({ error: 'Task not found' }, 404);
-    }
+    if (!success) return c.json({ error: 'Task not found' }, 404);
 
     return c.json({ success: true });
   }
 
-  // Legacy: personal task
   const existingTask = await getTaskById(db, taskId, userId);
-  if (!existingTask) {
-    return c.json({ error: 'Task not found' }, 404);
-  }
+  if (!existingTask) return c.json({ error: 'Task not found' }, 404);
 
   await deleteTask(db, taskId, userId);
-
   return c.json({ success: true });
 });
 

@@ -89,18 +89,6 @@ export function SpreadsheetView({
   // Track visible task IDs for navigation
   const visibleTaskIdsRef = useRef<string[]>([]);
 
-  // Apply initial filters when they change (e.g., returning from task details)
-  const initialFiltersApplied = useRef(false);
-  useEffect(() => {
-    if (initialFilters && !initialFiltersApplied.current) {
-      setDateFilterPreset(initialFilters.dateFilterPreset);
-      setDateFilterDate(initialFilters.dateFilterDate ?? null);
-      setDateFilterRange(initialFilters.dateFilterRange ?? null);
-      setFilters(initialFilters.filters);
-      initialFiltersApplied.current = true;
-    }
-  }, [initialFilters]);
-
   useEffect(() => {
     onFilterStateChange?.({
       filters,

@@ -86,6 +86,14 @@ interface TaskDetailsContext {
   pinnedTaskIds: string[];
 }
 
+const WIDE_VIEWS: ReadonlySet<ViewType> = new Set([
+  'spreadsheet',
+  'archive',
+  'dashboard',
+  'crm-list',
+  'wiki-list',
+]);
+
 const SIDEBAR_WIDTH_KEY = 'notetaker-sidebar-width';
 const SIDEBAR_COLLAPSED_KEY = 'notetaker-sidebar-collapsed';
 const DEFAULT_SIDEBAR_WIDTH = 240;
@@ -550,64 +558,45 @@ export function AppContent() {
     setIsAddTaskModalOpen(true);
   }, [currentView, handleBackToSpreadsheet]);
 
-  // Context-aware mark as done command
-  const handleCommandMarkDone = useCallback(() => {
-    // Determine target task based on current view
-    let targetTaskId: string | null = null;
-    if (currentView === 'task-detail') {
-      targetTaskId = selectedTaskId;
-    } else if (currentView === 'full-day-details') {
-      targetTaskId = focusedDetailsTaskId;
-    } else if (
-      (currentView === 'spreadsheet' || currentView === 'archive') &&
-      spreadsheetActiveTaskId
-    ) {
-      targetTaskId = spreadsheetActiveTaskId;
+  // Get the target task ID based on current view context
+  const getContextTargetTaskId = useCallback((): string | null => {
+    if (currentView === 'task-detail') return selectedTaskId;
+    if (currentView === 'full-day-details') return focusedDetailsTaskId;
+    if (currentView === 'spreadsheet' || currentView === 'archive') {
+      return spreadsheetActiveTaskId;
     }
-
-    if (!targetTaskId) return;
-
-    // Mark the task as done and clear blockedReason if it was set
-    updateTaskById(targetTaskId, { status: 'done', blockedReason: undefined });
-
-    // Navigate based on context: task-detail → spreadsheet, others → stay
-    if (currentView === 'task-detail') {
-      handleBackToSpreadsheet();
-    }
+    return null;
   }, [
     currentView,
     selectedTaskId,
     focusedDetailsTaskId,
     spreadsheetActiveTaskId,
+  ]);
+
+  const handleCommandMarkDone = useCallback(() => {
+    const targetTaskId = getContextTargetTaskId();
+    if (!targetTaskId) return;
+
+    updateTaskById(targetTaskId, { status: 'done', blockedReason: undefined });
+
+    if (currentView === 'task-detail') handleBackToSpreadsheet();
+  }, [
+    getContextTargetTaskId,
+    currentView,
     updateTaskById,
     handleBackToSpreadsheet,
   ]);
 
   const handleCommandDeleteTask = useCallback(() => {
-    let targetTaskId: string | null = null;
-    if (currentView === 'task-detail') {
-      targetTaskId = selectedTaskId;
-    } else if (currentView === 'full-day-details') {
-      targetTaskId = focusedDetailsTaskId;
-    } else if (
-      (currentView === 'spreadsheet' || currentView === 'archive') &&
-      spreadsheetActiveTaskId
-    ) {
-      targetTaskId = spreadsheetActiveTaskId;
-    }
-
+    const targetTaskId = getContextTargetTaskId();
     if (!targetTaskId) return;
 
     removeTask(targetTaskId);
 
-    if (currentView === 'task-detail') {
-      handleBackToSpreadsheet();
-    }
+    if (currentView === 'task-detail') handleBackToSpreadsheet();
   }, [
+    getContextTargetTaskId,
     currentView,
-    selectedTaskId,
-    focusedDetailsTaskId,
-    spreadsheetActiveTaskId,
     removeTask,
     handleBackToSpreadsheet,
   ]);
@@ -917,12 +906,7 @@ export function AppContent() {
         label: 'Task: Mark as Done',
         type: 'command',
         keywords: ['complete', 'finish', 'done', 'mark'],
-        shouldShow: () =>
-          (currentView === 'task-detail' && selectedTaskId !== null) ||
-          (currentView === 'full-day-details' &&
-            focusedDetailsTaskId !== null) ||
-          ((currentView === 'spreadsheet' || currentView === 'archive') &&
-            spreadsheetActiveTaskId !== null),
+        shouldShow: () => getContextTargetTaskId() !== null,
         onExecute: handleCommandMarkDone,
       },
       {
@@ -930,12 +914,7 @@ export function AppContent() {
         label: 'Task: Delete',
         type: 'command',
         keywords: ['delete', 'remove', 'trash'],
-        shouldShow: () =>
-          (currentView === 'task-detail' && selectedTaskId !== null) ||
-          (currentView === 'full-day-details' &&
-            focusedDetailsTaskId !== null) ||
-          ((currentView === 'spreadsheet' || currentView === 'archive') &&
-            spreadsheetActiveTaskId !== null),
+        shouldShow: () => getContextTargetTaskId() !== null,
         onExecute: handleCommandDeleteTask,
       },
       {
@@ -1080,6 +1059,7 @@ export function AppContent() {
     [
       currentView,
       router,
+      getContextTargetTaskId,
       handleCommandSetPreset,
       handleCommandClearFilters,
       handleCommandNavigateToTaskDetails,
@@ -1096,9 +1076,6 @@ export function AppContent() {
       handleNavigateToCrmNew,
       handleNavigateToWiki,
       handleCreateWikiPage,
-      selectedTaskId,
-      focusedDetailsTaskId,
-      spreadsheetActiveTaskId,
       members,
     ]
   );
@@ -1479,11 +1456,7 @@ export function AppContent() {
     >
       <div
         className={`flex-1 mx-auto py-20 px-24 relative ${
-          currentView === 'spreadsheet' ||
-          currentView === 'archive' ||
-          currentView === 'dashboard' ||
-          currentView === 'crm-list' ||
-          currentView === 'wiki-list'
+          WIDE_VIEWS.has(currentView)
             ? 'max-w-[var(--width-content-wide)]'
             : 'max-w-[var(--width-content)]'
         }`}

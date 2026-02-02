@@ -239,30 +239,9 @@ export function getArchiveGroupOrder(
   }
 }
 
-/**
- * Check if a group represents a specific weekday (for filtering out days before today)
- */
-export function isWeekdayGroup(group: DateGroup): boolean {
-  return DAY_GROUPS.includes(group);
-}
-
-/**
- * Get the day index (0=Monday, 6=Sunday) for a weekday group
- */
+/** Get the day index (0=Monday, 6=Sunday) for a weekday group */
 export function getWeekdayIndex(group: DateGroup): number {
   return DAY_GROUPS.indexOf(group);
-}
-
-/**
- * Get remaining weekday groups (after today's day of week)
- * Used to filter which day headers should be shown
- */
-export function getRemainingWeekdayGroups(now: Date = new Date()): DateGroup[] {
-  const todayDayOfWeek = now.getDay();
-  // Convert Sunday (0) to 6, otherwise subtract 1 for 0-based Monday index
-  const todayIndex = todayDayOfWeek === 0 ? 6 : todayDayOfWeek - 1;
-  // Return days after today
-  return DAY_GROUPS.slice(todayIndex + 1);
 }
 
 /**

@@ -83,7 +83,6 @@ import { useTeam } from '@/modules/teams/context/TeamContext';
 import { AddTaskModal, AddTaskData, EditTaskData } from '../AddTaskModal';
 import { BlockedReasonModal } from '../BlockedReasonModal';
 
-// Sort order maps for custom sorting
 const STATUS_ORDER: Record<TaskStatus, number> = {
   todo: 0,
   'in-progress': 1,
@@ -95,6 +94,35 @@ const IMPORTANCE_ORDER: Record<TaskImportance, number> = {
   low: 0,
   mid: 1,
   high: 2,
+};
+
+// Build label/order maps from option arrays (shared between sorting and grouping)
+function buildLabelMap(
+  options: { value: string; label: string }[]
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const opt of options) map[opt.value] = opt.label;
+  return map;
+}
+
+function buildOrderMap(options: { value: string }[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (let i = 0; i < options.length; i++) map[options[i].value] = i;
+  return map;
+}
+
+const TYPE_LABELS = buildLabelMap(TASK_TYPE_OPTIONS);
+const TYPE_ORDER = buildOrderMap(TASK_TYPE_OPTIONS);
+const STATUS_LABELS = buildLabelMap(TASK_STATUS_OPTIONS);
+const IMPORTANCE_LABELS: Record<string, string> = {
+  ...buildLabelMap(TASK_IMPORTANCE_OPTIONS),
+  '': 'No Importance',
+};
+const IMPORTANCE_GROUP_ORDER: Record<string, number> = {
+  high: 0,
+  mid: 1,
+  low: 2,
+  '': 3,
 };
 
 // Filter state type
@@ -865,67 +893,6 @@ export function TaskTable({
 
     const now = new Date();
 
-    // Type grouping
-    const typeOrder = TASK_TYPE_OPTIONS.reduce(
-      (acc, opt, idx) => {
-        acc[opt.value] = idx;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-    const typeLabels = TASK_TYPE_OPTIONS.reduce(
-      (acc, opt) => {
-        acc[opt.value] = opt.label;
-        return acc;
-      },
-      {} as Record<string, string>
-    );
-
-    // Status grouping
-    const statusOrder: Record<string, number> = {
-      todo: 0,
-      'in-progress': 1,
-      blocked: 2,
-      done: 3,
-    };
-    const statusLabels = TASK_STATUS_OPTIONS.reduce(
-      (acc, opt) => {
-        acc[opt.value] = opt.label;
-        return acc;
-      },
-      {} as Record<string, string>
-    );
-
-    // Importance grouping (high first)
-    const importanceOrder: Record<string, number> = {
-      high: 0,
-      mid: 1,
-      low: 2,
-      '': 3, // No importance set
-    };
-    const importanceLabels: Record<string, string> = {
-      high: 'High',
-      mid: 'Mid',
-      low: 'Low',
-      '': 'No Importance',
-    };
-
-    // Assignee grouping
-    const assigneeLabels = members.reduce(
-      (acc, member) => {
-        acc[member.userId] = member.user.name || member.user.email;
-        return acc;
-      },
-      { '': 'Unassigned' } as Record<string, string>
-    );
-    const assigneeOrder = members.reduce(
-      (acc, member, idx) => {
-        acc[member.userId] = idx + 1; // Start at 1, 0 is for unassigned
-        return acc;
-      },
-      { '': 0 } as Record<string, number>
-    );
-
     switch (groupBy) {
       case 'date':
         return {
@@ -942,27 +909,34 @@ export function TaskTable({
       case 'type':
         return {
           getGroup: (task) => task.type,
-          getLabel: (group) => typeLabels[group] || group,
-          getOrder: (group) => typeOrder[group] ?? 999,
+          getLabel: (group) => TYPE_LABELS[group] || group,
+          getOrder: (group) => TYPE_ORDER[group] ?? 999,
         };
       case 'status':
         return {
           getGroup: (task) => task.status,
-          getLabel: (group) => statusLabels[group] || group,
-          getOrder: (group) => statusOrder[group] ?? 999,
+          getLabel: (group) => STATUS_LABELS[group] || group,
+          getOrder: (group) => STATUS_ORDER[group as TaskStatus] ?? 999,
         };
       case 'importance':
         return {
           getGroup: (task) => task.importance || '',
-          getLabel: (group) => importanceLabels[group] || group,
-          getOrder: (group) => importanceOrder[group] ?? 999,
+          getLabel: (group) => IMPORTANCE_LABELS[group] || group,
+          getOrder: (group) => IMPORTANCE_GROUP_ORDER[group] ?? 999,
         };
-      case 'assignee':
+      case 'assignee': {
+        const assigneeLabels: Record<string, string> = { '': 'Unassigned' };
+        const assigneeOrder: Record<string, number> = { '': 0 };
+        members.forEach((member, idx) => {
+          assigneeLabels[member.userId] = member.user.name || member.user.email;
+          assigneeOrder[member.userId] = idx + 1;
+        });
         return {
           getGroup: (task) => task.assigneeId || '',
           getLabel: (group) => assigneeLabels[group] || 'Unknown',
           getOrder: (group) => assigneeOrder[group] ?? 999,
         };
+      }
       default:
         return null;
     }

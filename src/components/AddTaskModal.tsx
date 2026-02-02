@@ -129,27 +129,21 @@ export function AddTaskModal({
 
   const handleSubmit = () => {
     if (!isValid || isSelectedDateDisabled) return;
+
+    const data = {
+      title: title.trim(),
+      type: type as TaskType,
+      status,
+      importance: importance as TaskImportance,
+      estimate: estimate as number,
+      dueDate,
+      assigneeId: assigneeId || undefined,
+    };
+
     if (isEditMode && editTask && onEditSubmit) {
-      onEditSubmit({
-        id: editTask.id,
-        title: title.trim(),
-        type: type as TaskType,
-        status,
-        importance: importance as TaskImportance,
-        estimate: estimate as number,
-        dueDate,
-        assigneeId: assigneeId || undefined,
-      });
+      onEditSubmit({ id: editTask.id, ...data });
     } else {
-      onSubmit({
-        title: title.trim(),
-        type: type as TaskType,
-        status,
-        importance: importance as TaskImportance,
-        estimate: estimate as number,
-        dueDate,
-        assigneeId: assigneeId || undefined,
-      });
+      onSubmit(data);
     }
   };
 

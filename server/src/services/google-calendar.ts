@@ -153,24 +153,28 @@ export function transformGoogleEvent(
 ): CalendarEvent {
   const isAllDay = !event.start.dateTime;
 
-  let startTime = 0;
-  let duration = 24 * 60;
-
-  if (!isAllDay && event.start.dateTime && event.end.dateTime) {
-    const startDate = new Date(event.start.dateTime);
-    const endDate = new Date(event.end.dateTime);
-
-    startTime = startDate.getHours() * 60 + startDate.getMinutes();
-    duration = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+  if (isAllDay) {
+    return {
+      id: event.id,
+      summary: event.summary || '(No title)',
+      description: event.description,
+      startTime: 0,
+      duration: 24 * 60,
+      isAllDay: true,
+      htmlLink: event.htmlLink,
+    };
   }
+
+  const startDate = new Date(event.start.dateTime!);
+  const endDate = new Date(event.end.dateTime!);
 
   return {
     id: event.id,
     summary: event.summary || '(No title)',
     description: event.description,
-    startTime,
-    duration,
-    isAllDay,
+    startTime: startDate.getHours() * 60 + startDate.getMinutes(),
+    duration: Math.round((endDate.getTime() - startDate.getTime()) / 60000),
+    isAllDay: false,
     htmlLink: event.htmlLink,
   };
 }

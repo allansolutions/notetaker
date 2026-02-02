@@ -159,45 +159,10 @@ export function BlockCommandMenu({
     [onConvertType, onDelete, onDuplicate, onClose]
   );
 
-  const exitSubmenu = useCallback(() => {
-    setActiveSubmenu(null);
-    setSubmenuIndex(0);
-  }, []);
-
   const enterSubmenu = useCallback((cmdId: string) => {
     setActiveSubmenu(cmdId);
     setSubmenuIndex(0);
   }, []);
-
-  const handleSearchKeyDown = useCallback(
-    (e: React.KeyboardEvent): boolean => {
-      if (!isSearching) return false;
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setSelectedIndex((prev) =>
-            Math.min(prev + 1, displayItems.length - 1)
-          );
-          return true;
-        case 'ArrowUp':
-          e.preventDefault();
-          setSelectedIndex((prev) => Math.max(prev - 1, 0));
-          return true;
-        case 'Enter':
-          e.preventDefault();
-          if (displayItems[selectedIndex]) {
-            executeCommand(displayItems[selectedIndex]);
-          }
-          return true;
-        case 'Escape':
-          e.preventDefault();
-          onClose();
-          return true;
-      }
-      return false;
-    },
-    [isSearching, displayItems, selectedIndex, executeCommand, onClose]
-  );
 
   const handleSubmenuKeyDown = useCallback(
     (e: React.KeyboardEvent): boolean => {
@@ -216,22 +181,24 @@ export function BlockCommandMenu({
         case 'ArrowLeft':
         case 'Escape':
           e.preventDefault();
-          exitSubmenu();
+          setActiveSubmenu(null);
+          setSubmenuIndex(0);
           return true;
         case 'Enter':
           e.preventDefault();
-          if (submenuItems[submenuIndex]) {
+          if (submenuItems[submenuIndex])
             executeCommand(submenuItems[submenuIndex]);
-          }
           return true;
       }
       return false;
     },
-    [activeSubmenu, submenuItems, submenuIndex, executeCommand, exitSubmenu]
+    [activeSubmenu, submenuItems, submenuIndex, executeCommand]
   );
 
-  const handleBrowseKeyDown = useCallback(
+  const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (handleSubmenuKeyDown(e)) return;
+
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
@@ -244,19 +211,19 @@ export function BlockCommandMenu({
           setSelectedIndex((prev) => Math.max(prev - 1, 0));
           break;
         case 'ArrowRight': {
+          if (isSearching) break;
           e.preventDefault();
           const cmd = displayItems[selectedIndex];
-          if (cmd?.children) {
-            enterSubmenu(cmd.id);
-          }
+          if (cmd?.children) enterSubmenu(cmd.id);
           break;
         }
         case 'Enter': {
           e.preventDefault();
           const cmd = displayItems[selectedIndex];
-          if (cmd?.children) {
+          if (!cmd) break;
+          if (cmd.children && !isSearching) {
             enterSubmenu(cmd.id);
-          } else if (cmd) {
+          } else {
             executeCommand(cmd);
           }
           break;
@@ -267,16 +234,15 @@ export function BlockCommandMenu({
           break;
       }
     },
-    [displayItems, selectedIndex, executeCommand, enterSubmenu, onClose]
-  );
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (handleSearchKeyDown(e)) return;
-      if (handleSubmenuKeyDown(e)) return;
-      handleBrowseKeyDown(e);
-    },
-    [handleSearchKeyDown, handleSubmenuKeyDown, handleBrowseKeyDown]
+    [
+      handleSubmenuKeyDown,
+      isSearching,
+      displayItems,
+      selectedIndex,
+      executeCommand,
+      enterSubmenu,
+      onClose,
+    ]
   );
 
   const handleItemClick = useCallback(
